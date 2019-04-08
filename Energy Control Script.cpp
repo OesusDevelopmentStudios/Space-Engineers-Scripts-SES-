@@ -173,40 +173,40 @@ public void Auto(){
         if(getBatteries() == false){
             setBatteries(true);
             enableBatteries(true);
-            ControlScreen.WritePublicText("\nBatteries turned on", true);
+            ControlScreen.WriteText("\nBatteries turned on", true);
         }
         else
         if(getH2() == false){
             setH2(true);
-            ControlScreen.WritePublicText("\nPower cores turned on", true);
+            ControlScreen.WriteText("\nPower cores turned on", true);
         }
         else
         if(getProduction() == true){
             setProduction(false);
-            ControlScreen.WritePublicText("\nProduction blocks\nturned off", true);
+            ControlScreen.WriteText("\nProduction blocks\nturned off", true);
         }
     }
     else
     if(getOutputPercent() < (float)10){
         if(getReactors()==true){
             setReactors(false);
-            ControlScreen.WritePublicText("\nReactors turned off", true);
+            ControlScreen.WriteText("\nReactors turned off", true);
         }
         else
         if(getProduction()==false){
             setProduction(true);
-            ControlScreen.WritePublicText("\nProduction turned\nback online", true);
+            ControlScreen.WriteText("\nProduction turned\nback online", true);
         }
         else
         if(getH2()==true && getBatteries()==true){
             setH2(false);
-            ControlScreen.WritePublicText("\nPower Cores\nare offline", true);
+            ControlScreen.WriteText("\nPower Cores\nare offline", true);
         }
         else{
             if(getOutputPercent() < (float)3){
                 setH2(true);
                 setBatteries(false);
-                ControlScreen.WritePublicText("\nRecharging Batteries", true);
+                ControlScreen.WriteText("\nRecharging Batteries", true);
             }
         }
     }
@@ -225,7 +225,7 @@ public void Main(string argument, UpdateType updateSource) {
 			bnormal.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WritePublicText("NORMAL MODE TIMER\nNOT PRESENT\n", false);
+			ControlScreen.WriteText("NORMAL MODE TIMER\nNOT PRESENT\n", false);
 			ControlScreen.BackgroundColor = Color.DarkRed;
 			norm = false;
 		}
@@ -234,7 +234,7 @@ public void Main(string argument, UpdateType updateSource) {
 			bstdby.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WritePublicText("STANDBY MODE TIMER\nNOT PRESENT\n", false);
+			ControlScreen.WriteText("STANDBY MODE TIMER\nNOT PRESENT\n", false);
 			ControlScreen.BackgroundColor = Color.DarkRed;
 			stdby = false;
 		}
@@ -243,7 +243,7 @@ public void Main(string argument, UpdateType updateSource) {
 			bcombat.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WritePublicText("COMBAT MODE TIMER\nNOT PRESENT\n", false);
+			ControlScreen.WriteText("COMBAT MODE TIMER\nNOT PRESENT\n", false);
 			ControlScreen.BackgroundColor = Color.DarkRed;
 			comb = false;
 		}
@@ -252,7 +252,7 @@ public void Main(string argument, UpdateType updateSource) {
 			bauto.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WritePublicText("AUTO MODE TIMER\nNOT PRESENT\n", false);
+			ControlScreen.WriteText("AUTO MODE TIMER\nNOT PRESENT\n", false);
 			ControlScreen.BackgroundColor = Color.DarkRed;
 			aut = false;
 		}
@@ -261,7 +261,7 @@ public void Main(string argument, UpdateType updateSource) {
 			brecharge.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WritePublicText("RECHARGE MODE TIMER\nNOT PRESENT\n", false);
+			ControlScreen.WriteText("RECHARGE MODE TIMER\nNOT PRESENT\n", false);
 			ControlScreen.BackgroundColor = Color.DarkRed;
 			rech = false;
 		}
@@ -271,7 +271,7 @@ public void Main(string argument, UpdateType updateSource) {
         switch(argument){
             case "0":
  			if(aut==true){
-        		ControlScreen.WritePublicText("\n AUTO MODE", false);
+        		ControlScreen.WriteText("\n AUTO MODE", false);
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Auto Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();
                 Auto();
@@ -280,7 +280,7 @@ public void Main(string argument, UpdateType updateSource) {
 
             case "1":
  			if(stdby==true){
-                ControlScreen.WritePublicText("\n\n\n\nSTANDING BY", false);
+                ControlScreen.WriteText("\n\n\n\nSTANDING BY", false);
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Standby Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();                
                 Standby();
@@ -289,7 +289,7 @@ public void Main(string argument, UpdateType updateSource) {
 
             case "2":
  			if(norm==true){
-                ControlScreen.WritePublicText("\n\n\n\nNORMAL MODE", false);
+                ControlScreen.WriteText("\n\n\n\nNORMAL MODE", false);
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Normal Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();
                 Normal();
@@ -298,7 +298,7 @@ public void Main(string argument, UpdateType updateSource) {
 
             case "3":
  			if(comb==true){
-                ControlScreen.WritePublicText("\n\n\n\nCOMBAT MODE", false);
+                ControlScreen.WriteText("\n\n\n\nCOMBAT MODE", false);
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Combat Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();
                 Combat();
@@ -307,7 +307,7 @@ public void Main(string argument, UpdateType updateSource) {
 			
 			case "4":
  			if(rech==true){
-                ControlScreen.WritePublicText("\n\n\n\nRECHARGING", false);
+                ControlScreen.WriteText("\n\n\n\nRECHARGING", false);
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Recharge Timer")	as IMyTimerBlock;
         		kwi.StartCountdown();
                 Combat();

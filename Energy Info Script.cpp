@@ -64,5 +64,5 @@ public String printEnergyInfo(){
 public void Main(string argument, UpdateType updateSource) {
         IMyTextPanel EnergyScreen = GridTerminalSystem.GetBlockWithName("#EnergyScreen") as IMyTextPanel;
         EnergyScreen.FontSize = (float)1.9;
-        EnergyScreen.WritePublicText(printEnergyInfo(), false);
+        EnergyScreen.WriteText(printEnergyInfo(), false);
 }
