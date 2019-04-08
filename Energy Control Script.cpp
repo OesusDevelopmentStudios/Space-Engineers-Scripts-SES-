@@ -135,9 +135,9 @@ public void Recharge(){
     
     if(getPowerPercent()<=1) Emergency();
     if(getPowerPercent()>80) {
-    	IMyTimerBlock bstdby = GridTerminalSystem.GetBlockWithName("#Recharge Timer") 	as IMyTimerBlock;
-		bstdby.Trigger();
-	}	
+        	IMyTimerBlock bstdby = GridTerminalSystem.GetBlockWithName("#Recharge Timer") 	as IMyTimerBlock;
+    	   	bstdby.Trigger();
+    	}	
 }
 
 public void Standby(){
@@ -184,10 +184,6 @@ public void Auto(){
         if(getProduction() == true){
             setProduction(false);
             ControlScreen.WritePublicText("\nProduction blocks\nturned off", true);
-        }
-        else{	
-			IMyTimerBlock brecharge		= GridTerminalSystem.GetBlockWithName("#Recharge Timer") 	as IMyTimerBlock;
-            brecharge.Trigger();
         }
     }
     else
