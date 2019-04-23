@@ -23,10 +23,11 @@ public String printEnergyInfo(){
             if(P.IsWorking) MaxShipOutput 	+= P.MaxOutput;
             CurrentShipOutput  				+= P.CurrentOutput;
             
-            if(!(P is IMyBatteryBlock)){
+	if(P is IMySolarPanel) {}
+        else if(!(P is IMyBatteryBlock)){
                 if(P.IsWorking) RNominal++;
-                else 			ROff++;
-            }
+        	else 			ROff++;
+        }
         	else{
 				IMyBatteryBlock B = (IMyBatteryBlock) P;
 				
