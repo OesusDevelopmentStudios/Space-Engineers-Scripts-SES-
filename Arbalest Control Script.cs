@@ -162,14 +162,12 @@ public String BeltStatus(){
         else if (B is IMyArtificialMassBlock) mass++;
         else if (B is IMyShipMergeBlock) mergers++;
     }
-    mass -= (mass % 2);
-    mass /= 2;
 
-    if (mass == 0 || batteries == 0 || mergers == 0) return "No missiles ready.";
-    else if (mass == 1 || batteries == 1 || mergers == 1) return "1 missile loaded.";
-    else if (mass == 2 || batteries == 2 || mergers == 2) return "2 missiles loaded.";
-    else if (mass == 3 || batteries == 3 || mergers == 3) return "3 missiles loaded.";
-    else return "All missiles loaded.";
+    if (mass == 0 || batteries == 0 || mergers == 0) return "No missiles built.";
+    else if (mass == 1 || batteries == 1 || mergers == 1) return "1 missile built.";
+    else if (mass == 2 || batteries == 2 || mergers == 2) return "2 missiles built.";
+    else if (mass == 3 || batteries == 3 || mergers == 3) return "3 missiles built.";
+    else return "All missiles built.";
 }
 
 public void Output(String output){
@@ -335,14 +333,21 @@ public void WriteStatus(){
     List<IMyShipMergeBlock>     Mergers     = getMergers();
     List<IMyGravityGenerator>   Accelerators= getAccelerators();
     List<IMyShipWelder>         Construtors = getConstructors();
+    int mconnected = 0, monline = 0;
 
     IMyTextPanel ControlScreen = GridTerminalSystem.GetBlockWithName("#ArbalestControl") as IMyTextPanel;
     Output(BeltStatus() + "\n\n");
     Output(doorStatus() + "\n");
     if (Doors.Count < 8) Output(Doors.Count.ToString() + "/8 Safety Hatches present.\n");
-    if (Mergers.Count < 4) Output(Mergers.Count.ToString() + "/4 Launch Platfroms present.\n");
-    if (Accelerators.Count < 8) Output(Accelerators.Count.ToString() + "/8 Belt Accelerators present.\n");
-    if (Construtors.Count < 12) Output(Construtors.Count.ToString() + "/12 Belt Constructors present.\n");
+    foreach(IMyMergeShipBlock m in Mergers){
+        if(m.IsFunctional()) {
+            monline++;
+            if(m.IsConnected()) mconnected++;
+        }
+    }
+    Output(monline.ToString() + "/4 Launch Platforms present, of which " + mconnected.ToString() + " are connected.\n");
+    if (Accelerators.Count < 12) Output(Accelerators.Count.ToString() + "/12 Belt Accelerators present.\n");
+    if (Construtors.Count < 4) Output(Construtors.Count.ToString() + "/4 Belt Constructors present.\n");
 }
 
 public void VolleyFire(){
@@ -391,7 +396,7 @@ public void Main(string argument, UpdateType updateSource){
             WriteStatus();
             break;
 
-        case "fire":
+        case "VF":
             VolleyFire();
             break;
 
