@@ -109,7 +109,7 @@ public void toggleDoors()
     foreach (IMyAirtightHangarDoor Abip in Doors)
     {
         if (Abip.IsWorking && (Abip.Status == DoorStatus.Closed || Abip.Status == DoorStatus.Closing)) { setDoors(true); }
-        else if (Abip.IsWorking && (Abip.Status == DoorStatus.Opened || Abip.Status == DoorStatus.Opening)) { setDoors(false); }
+        else if (Abip.IsWorking && (Abip.Status == DoorStatus.Open || Abip.Status == DoorStatus.Opening)) { setDoors(false); }
         else continue;
     }
 }
@@ -305,15 +305,15 @@ public void AccelControl(String Argument, bool Standby){
     Output(BeltStatus() + "\n\n");
     Output(doorStatus() + "\n");
     if (Doors.Count < 8) Output(Doors.Count.ToString() + "/8 Safety Hatches present.\n");
-    foreach (IMyMergeShipBlock m in Mergers)
+    foreach (IMyShipMergeBlock m in Mergers)
     {
-        if (m.IsFunctional())
+        if (m.IsFunctional)
         {
             monline++;
-            if (m.IsConnected()) mconnected++;
+            if (m.IsConnected) mconnected++;
         }
     }
-    Output(monline.ToString() + "/4 Launch Platforms present, of which " + mconnected.ToString() + " are connected.\n");
+    Output(monline.ToString() + "/4 Launch Platforms present,\nof which " + mconnected.ToString() + " are connected.\n");
     if (Accelerators.Count < 12) Output(Accelerators.Count.ToString() + "/12 Belt Accelerators present.\n");
     if (Construtors.Count < 4) Output(Construtors.Count.ToString() + "/4 Belt Constructors present.\n");
 }
