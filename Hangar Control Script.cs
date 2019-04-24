@@ -9,12 +9,12 @@ public IMyTextPanel getScreen()
 public List<IMyAirtightHangarDoor> getInternalDoors()
 {
     /*
-        Drzwi, które równoczeœnie umo¿liwiaj¹ transport pomiêdzy lewym i prawym hangarem oraz
-        umo¿liwiaj¹ utrzymanie jednego hangaru pod ciœnieniem, a drugiego przeciwnie.
+        Drzwi, ktÃ³re rÃ³wnoczeÅ“nie umoÂ¿liwiajÂ¹ transport pomiÃªdzy lewym i prawym hangarem oraz
+        umoÂ¿liwiajÂ¹ utrzymanie jednego hangaru pod ciÅ“nieniem, a drugiego przeciwnie.
      */
     List<IMyAirtightHangarDoor> Doors = new List<IMyAirtightHangarDoor>();
     List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
+    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniÃªcie  zeby ta nazwa aktualnie miaÂ³a jakiÅ“ sens
 
     foreach (IMyTerminalBlock b in temp)
     {
@@ -32,12 +32,12 @@ public List<IMyAirtightHangarDoor> getInternalDoors()
 public List<IMyDoor> getLeftEntranceDoors()
 {
     /*
-        Drzwi prowadz¹ce z hangaru do reszty okrêtu. Podczas zmiany stanu lewych drzwi hangaru na "Open",
-        powinny zostaæ zamkniête, by nie zdepressurize'owaæ ca³oœci okrêtu.
+        Drzwi prowadzÂ¹ce z hangaru do reszty okrÃªtu. Podczas zmiany stanu lewych drzwi hangaru na "Open",
+        powinny zostaÃ¦ zamkniÃªte, by nie zdepressurize'owaÃ¦ caÂ³oÅ“ci okrÃªtu.
      */
     List<IMyDoor> Doors = new List<IMyDoor>();
     List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
+    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniÃªcie  zeby ta nazwa aktualnie miaÂ³a jakiÅ“ sens
 
     foreach (IMyTerminalBlock b in temp)
     {
@@ -55,12 +55,12 @@ public List<IMyDoor> getLeftEntranceDoors()
 public List<IMyDoor> getRightEntranceDoors()
 {
     /*
-        Drzwi prowadz¹ce z hangaru do reszty okrêtu. Podczas zmiany stanu prawych drzwi hangaru na "Open",
-        powinny zostaæ zamkniête, by nie zdepressurize'owaæ ca³oœci okrêtu.
+        Drzwi prowadzÂ¹ce z hangaru do reszty okrÃªtu. Podczas zmiany stanu prawych drzwi hangaru na "Open",
+        powinny zostaÃ¦ zamkniÃªte, by nie zdepressurize'owaÃ¦ caÂ³oÅ“ci okrÃªtu.
      */
     List<IMyDoor> Doors = new List<IMyDoor>();
     List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
+    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniÃªcie  zeby ta nazwa aktualnie miaÂ³a jakiÅ“ sens
 
     foreach (IMyTerminalBlock b in temp)
     {
@@ -78,12 +78,12 @@ public List<IMyDoor> getRightEntranceDoors()
 public List<IMyAirVent> getMainOxygenOutlets()
 {
     /*
-        Outlety z g³ównej rezerwy tlenu na okrêcie, powinny w³¹czyæ siê jako drugie, po
-        tym, gdy hangarowe pojemniki z tlenem wypuszcz¹ ju¿ absolutnie wszystko. 
+        Outlety z gÂ³Ã³wnej rezerwy tlenu na okrÃªcie, powinny wÂ³Â¹czyÃ¦ siÃª jako drugie, po
+        tym, gdy hangarowe pojemniki z tlenem wypuszczÂ¹ juÂ¿ absolutnie wszystko. 
      */
     List<IMyAirVent> output = new List<IMyAirVent>();
     List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
+    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniÃªcie  zeby ta nazwa aktualnie miaÂ³a jakiÅ“ sens
 
     foreach (IMyTerminalBlock b in temp)
     {
@@ -101,12 +101,12 @@ public List<IMyAirVent> getMainOxygenOutlets()
 public List<IMyAirVent> getReserveOxygenOutlets()
 {
     /*
-        Outlety ze specjalnej, hangarowej rezerwy tlenu, maj¹ jako pierwsze jak najszybciej wype³niæ hangary
+        Outlety ze specjalnej, hangarowej rezerwy tlenu, majÂ¹ jako pierwsze jak najszybciej wypeÂ³niÃ¦ hangary
         tlenem
      */
     List<IMyAirVent> output = new List<IMyAirVent>();
     List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
+    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniÃªcie  zeby ta nazwa aktualnie miaÂ³a jakiÅ“ sens
 
     foreach (IMyTerminalBlock b in temp)
     {
@@ -124,14 +124,14 @@ public List<IMyAirVent> getReserveOxygenOutlets()
 public List<IMyGasTank> getOxygenReserve()
 {
     /*
-        Zbiorniki z tlenem umieszczone pod mostkiem, od³¹czone od reszty systemu logistycznego okrêtu.
-        Stworzone w ten sposób, ¿eby uproœciæ algorytm/skrypt do minimum.
-        Nie powinny posiadaæ ¿adnego dodatkowego systemu tworzenia tlenu, bo ich przeznaczeniem jest 
-        byæ pustymi przez wiêkszoœæ czasu
+        Zbiorniki z tlenem umieszczone pod mostkiem, odÂ³Â¹czone od reszty systemu logistycznego okrÃªtu.
+        Stworzone w ten sposÃ³b, Â¿eby uproÅ“ciÃ¦ algorytm/skrypt do minimum.
+        Nie powinny posiadaÃ¦ Â¿adnego dodatkowego systemu tworzenia tlenu, bo ich przeznaczeniem jest 
+        byÃ¦ pustymi przez wiÃªkszoÅ“Ã¦ czasu
      */
     List<IMyGasTank> output = new List<IMyGasTank>();
     List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
+    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniÃªcie  zeby ta nazwa aktualnie miaÂ³a jakiÅ“ sens
 
     foreach (IMyTerminalBlock b in temp)
     {
@@ -252,6 +252,7 @@ public void WriteStatus()
     IMyTextPanel ControlScreen = getScreen();
     Output("Left hangar doors are " + statusToString(HangarStatus(getLeftHangar())) +"\n");
     Output("Right hangar doors are " + statusToString(HangarStatus(getLeftHangar())) + "\n");
+    Output("Internal doors are " + statusToString(HangarStatus(getInternalDoors())) + "\n");
 }
 
 public void DoorControl(string argument, bool open)
@@ -340,6 +341,14 @@ public void ToggleDoor(string argument)
 
 }
 
+public void ToggleDoor(List<IMyAirtightHangarDoor> controledDoors)
+{
+    Output(statusToString(HangarStatus(controledDoors)));
+    if (HangarStatus(controledDoors) == DoorStatus.Open || HangarStatus(controledDoors) == DoorStatus.Opening) DoorControl(controledDoors, false);
+    else DoorControl(controledDoors, true);
+
+}
+
 public void Main(string argument, UpdateType updateSource)
 {
     DefaultLook();
@@ -372,6 +381,18 @@ public void Main(string argument, UpdateType updateSource)
 
         case "RHT":
             ToggleDoor("RH");
+            break;
+            
+        case "IDO":
+            DoorControl(getInternalDoors(), true);
+            break;
+            
+        case "IDC":
+            DoorControl(getInternalDoors(),false);
+            break;
+            
+        case "IDT":
+            ToggleDoor(getInternalDoors());
             break;
 
         default:
