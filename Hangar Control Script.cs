@@ -14,7 +14,7 @@ public List<IMyAirtightHangarDoor> getInternalDoors()
      */
     List<IMyAirtightHangarDoor> Doors = new List<IMyAirtightHangarDoor>();
     List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-    GridTerminalSystem.SearchBlocksOfName("[]", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
+    GridTerminalSystem.SearchBlocksOfName("Internal Hangar Door Block", temp); //TODO: ogarniêcie  zeby ta nazwa aktualnie mia³a jakiœ sens
 
     foreach (IMyTerminalBlock b in temp)
     {
