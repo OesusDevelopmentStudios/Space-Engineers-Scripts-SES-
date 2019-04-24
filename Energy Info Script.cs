@@ -91,10 +91,30 @@ public String printEnergyInfo()
     return output;
 }
 
+public List<IMyTextPanel> getEnergyScreen(){
+	List<IMyTextPanel> output = new List<IMyTextPanel>();
+	List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
+	GridTerminalSystem.SearchBlocksOfName("#EnergyScreen", temp);
+	
+	foreach(IMyTerminalBlock b in temp){
+		if(b is IMyTextPanel) {
+    		IMyTextPanel tempo = b as IMyTextPanel;
+    		output.Add(tempo);
+		}
+	}
+	temp.Clear();
+	
+	return output;
+}
+
+public void Output(String output){
+    foreach(IMyTextPanel EnergyScreen in getEnergyScreen()){
+        EnergyScreen.FontSize = (float)1.9;
+        EnergyScreen.WriteText(output, false);
+    }
+}
 
 public void Main(string argument, UpdateType updateSource)
 {
-    IMyTextPanel EnergyScreen = GridTerminalSystem.GetBlockWithName("#EnergyScreen") as IMyTextPanel;
-    EnergyScreen.FontSize = (float)1.9;
-    EnergyScreen.WriteText(printEnergyInfo(), false);
+    Output(printEnergyInfo());
 }
