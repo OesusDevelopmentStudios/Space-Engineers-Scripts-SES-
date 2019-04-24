@@ -212,21 +212,40 @@ public void Auto(){
     }
 }
 
+public void Output(String output){
+    foreach(IMyTextPanel EnergyScreen in getEnergyScreen()){
+        EnergyScreen.FontSize = 2.0f;
+        EnergyScreen.WriteText(output, false);
+    }
+}
+
+public List<IMyTextPanel> getEnergyScreen(){
+	List<IMyTextPanel> output = new List<IMyTextPanel>();
+	List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
+	GridTerminalSystem.SearchBlocksOfName("#EnergyControl", temp);
+	
+	foreach(IMyTerminalBlock b in temp){
+		if(b is IMyTextPanel) {
+    		IMyTextPanel tempo = b as IMyTextPanel;
+    		output.Add(tempo);
+		}
+	}
+	temp.Clear();
+	
+	return output;
+}
+
 
 public void Main(string argument, UpdateType updateSource) {
 		
 		bool norm = true, stdby = true, comb = true, aut = true, rech = true;
-		
-        IMyTextPanel ControlScreen	= GridTerminalSystem.GetBlockWithName("#EnergyControl") 	as IMyTextPanel;
-		ControlScreen.FontSize = (float)2.0;
 		
 		try{
 			IMyTimerBlock bnormal		= GridTerminalSystem.GetBlockWithName("#Normal Timer")		as IMyTimerBlock;
 			bnormal.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WriteText("NORMAL MODE TIMER\nNOT PRESENT\n", true);
-			ControlScreen.BackgroundColor = Color.DarkRed;
+			Output("NORMAL MODE TIMER\nNOT PRESENT\n");
 			norm = false;
 		}
 		try{
@@ -234,8 +253,7 @@ public void Main(string argument, UpdateType updateSource) {
 			bstdby.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WriteText("STANDBY MODE TIMER\nNOT PRESENT\n", true);
-			ControlScreen.BackgroundColor = Color.DarkRed;
+			Output("STANDBY MODE TIMER\nNOT PRESENT\n");
 			stdby = false;
 		}
 		try{
@@ -243,8 +261,7 @@ public void Main(string argument, UpdateType updateSource) {
 			bcombat.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WriteText("COMBAT MODE TIMER\nNOT PRESENT\n", true);
-			ControlScreen.BackgroundColor = Color.DarkRed;
+			Output("COMBAT MODE TIMER\nNOT PRESENT\n");
 			comb = false;
 		}
 		try{
@@ -252,8 +269,7 @@ public void Main(string argument, UpdateType updateSource) {
 			bauto.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WriteText("AUTO MODE TIMER\nNOT PRESENT\n", true);
-			ControlScreen.BackgroundColor = Color.DarkRed;
+			Output("AUTO MODE TIMER\nNOT PRESENT\n");
 			aut = false;
 		}
 		try{
@@ -261,17 +277,13 @@ public void Main(string argument, UpdateType updateSource) {
 			brecharge.StopCountdown();
 		}
 		catch (Exception e){
-			ControlScreen.WriteText("RECHARGE MODE TIMER\nNOT PRESENT\n", true);
-			ControlScreen.BackgroundColor = Color.DarkRed;
+			Output("RECHARGE MODE TIMER\nNOT PRESENT\n");
 			rech = false;
-		}
-        
-        if(norm&&stdby&&comb&&aut&&rech) ControlScreen.BackgroundColor = Color.Black;
-        
+		}      
         switch(argument){
             case "0":
  			if(aut==true){
-        		ControlScreen.WriteText("\n AUTO MODE", false);
+        		Output("\n AUTO MODE");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Auto Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();
                 Auto();
@@ -280,7 +292,7 @@ public void Main(string argument, UpdateType updateSource) {
 
             case "1":
  			if(stdby==true){
-                ControlScreen.WriteText("\n\n\n\nSTANDING BY", false);
+                Output("\n\n\n\nSTANDING BY");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Standby Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();                
                 Standby();
@@ -289,7 +301,7 @@ public void Main(string argument, UpdateType updateSource) {
 
             case "2":
  			if(norm==true){
-                ControlScreen.WriteText("\n\n\n\nNORMAL MODE", false);
+                Output("\n\n\n\nNORMAL MODE");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Normal Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();
                 Normal();
@@ -298,7 +310,7 @@ public void Main(string argument, UpdateType updateSource) {
 
             case "3":
  			if(comb==true){
-                ControlScreen.WriteText("\n\n\n\nCOMBAT MODE", false);
+                Output("\n\n\n\nCOMBAT MODE");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Combat Timer")		as IMyTimerBlock;
         		kwi.StartCountdown();
                 Combat();
@@ -307,7 +319,7 @@ public void Main(string argument, UpdateType updateSource) {
 			
 			case "4":
  			if(rech==true){
-                ControlScreen.WriteText("\n\n\n\nRECHARGING", false);
+                Output("\n\n\n\nRECHARGING");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Recharge Timer")	as IMyTimerBlock;
         		kwi.StartCountdown();
                 Combat();
