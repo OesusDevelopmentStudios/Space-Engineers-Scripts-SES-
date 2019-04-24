@@ -154,18 +154,16 @@ public String BeltStatus(){
 	int mass=0, batteries=0, mergers=0;
 	
 	foreach(IMyFunctionalBlock B in blocks){
-		if(B is IMyBatteryBlock) 			batteries++;
-		else if(B is IMyArtificialMassBlock)mass++;
-		else if(B is IMyShipMergeBlock) 	mergers++;		
+		if(B is IMyBatteryBlock)		batteries++;
+		else if(B is IMyArtificialMassBlock)	mass++;
+		else if(B is IMyShipMergeBlock)		mergers++;		
 	}
-	mass-=(mass%2);
-	mass/=2;
 	
 	if(mass==0||batteries==0||mergers==0) 		return "No missiles ready.";
 	else if(mass==1||batteries==1||mergers==1)	return "1 missile loaded.";
 	else if(mass==2||batteries==2||mergers==2)	return "2 missiles loaded.";
 	else if(mass==3||batteries==3||mergers==3)	return "3 missiles loaded.";
-	else 										return "All missiles loaded.";	
+	else 						return "All missiles loaded.";	
 }
 
 public void Output(String output){
@@ -297,8 +295,8 @@ public void AccelControl(String Argument, bool Standby){
 
 
  public void WriteStatus(){
-	List<IMyAirtightHangarDoor> Doors 			= getDoors();
-	List<IMyShipMergeBlock> 	Mergers 		= getMergers();
+	List<IMyAirtightHangarDoor> Doors 		= getDoors();
+	List<IMyShipMergeBlock> 	Mergers 	= getMergers();
 	List<IMyGravityGenerator> 	Accelerators 	= getAccelerators();
 	List<IMyShipWelder> 		Construtors 	= getConstructors();
     int mconnected = 0, monline = 0;
@@ -329,7 +327,7 @@ public void VolleyFire(){
 	*/
 	
 	IMyTimerBlock TAlpha	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Alpha") as IMyTimerBlock;
-	IMyTimerBlock TBeta		= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Beta" ) as IMyTimerBlock;
+	IMyTimerBlock TBeta	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Beta" ) as IMyTimerBlock;
 	IMyTimerBlock TGamma	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Gamma") as IMyTimerBlock;
 	IMyTimerBlock TDelta	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Delta") as IMyTimerBlock;	
 	
@@ -339,27 +337,29 @@ public void VolleyFire(){
 	else{
 		if(BeltStatus() != "No missiles ready." && !(TDelta.IsCountingDown)){
 			List<IMySoundBlock> Sounds = new List<IMySoundBlock>();
-    		GridTerminalSystem.GetBlocksOfType<IMySoundBlock> (Sounds);
+    			GridTerminalSystem.GetBlocksOfType<IMySoundBlock> (Sounds);
 
-            TAlpha. TriggerDelay = 1.0f; TAlpha.StartCountdown();
-            TBeta.  TriggerDelay = 3.5f; TBeta.StartCountdown();
-            TGamma. TriggerDelay = 6.0f; TGamma.StartCountdown();
-            TDelta. TriggerDelay = 8.5f; TDelta.StartCountdown();
-        }
-		else AlertOutput("\n\nSTAND BY\nFIRING IN\nPROGRESS");
+            		TAlpha. TriggerDelay = 1.0f; TAlpha.StartCountdown();
+           		TBeta.  TriggerDelay = 3.5f; TBeta.StartCountdown();
+            		TGamma. TriggerDelay = 6.0f; TGamma.StartCountdown();
+            		TDelta. TriggerDelay = 8.5f; TDelta.StartCountdown();
+       		}
+		else 	AlertOutput("\n\nSTAND BY\nFIRING IN\nPROGRESS");
 	}
 }
 
 public void CeaseFire(){
-	IMyTimerBlock TAlpha	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Alpha") as IMyTimerBlock;
-	IMyTimerBlock TBeta		= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Beta" ) as IMyTimerBlock;
-	IMyTimerBlock TGamma	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Gamma") as IMyTimerBlock;
-	IMyTimerBlock TDelta	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Delta") as IMyTimerBlock;
+	IMyTimerBlock TAlpha	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Alpha"	) as IMyTimerBlock;
+	IMyTimerBlock TBeta	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Beta" 	) as IMyTimerBlock;
+	IMyTimerBlock TGamma	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Gamma"	) as IMyTimerBlock;
+	IMyTimerBlock TDelta	= GridTerminalSystem.GetBlockWithName("#Arbalest Timer Delta"	) as IMyTimerBlock;
+	IMyTimerBlock Cleanup	= GridTerminalSystem.GetBlockWithName("#Arbalest Cleanup Timer"	) as IMyTimerBlock;
 	
 	TAlpha	.StopCountdown();
 	TBeta	.StopCountdown();
 	TGamma	.StopCountdown();
 	TDelta	.StopCountdown();
+	Cleanup .Trigger();
 			
 	AlertOutput("\n\nCEASING FIRE"); 
 }
@@ -375,11 +375,23 @@ public void Main(string argument, UpdateType updateSource) {
 			break;
 		
 		case "fire":
+			try{
 			VolleyFire();
+			}
+			catch(Exception e){
+				Output("TIMER BLOCK(S) DAMAGED OR NOT EXISTING:\n");
+				Output(e.Message);   
+			}
 			break;
 		
 		case "stop":
+			try{
 			CeaseFire();
+			}
+			catch(Exception e){
+				Output("TIMER BLOCK(S) DAMAGED OR NOT EXISTING:\n");
+				Output(e.Message);    
+			}
 			break;
 		
 		case "LUN":
@@ -417,12 +429,13 @@ public void Main(string argument, UpdateType updateSource) {
 		case "AF":
 			AccelControl("all", true);
 			break;
-		
-		case "TEST1":
-			List<IMyGravityGenerator> Accelerators = getAccelerators();
-			foreach(IMyGravityGenerator g in Accelerators){
-					Output(g.CustomName);
-			}
+			
+		case "HO":
+			setDoors(true);
+			break;
+			
+		case "HC":
+			setDoors(false);
 			break;
 			
 		default: AlertOutput("UNKNOWN COMMAND"); 
