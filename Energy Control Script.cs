@@ -281,7 +281,7 @@ public void Main(string argument, UpdateType updateSource) {
 			rech = false;
 		}      
         switch(argument){
-            case "0":
+            case "auto":
  			if(aut==true){
         		Output("\n AUTO MODE");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Auto Timer")		as IMyTimerBlock;
@@ -290,7 +290,7 @@ public void Main(string argument, UpdateType updateSource) {
 			}
             break;
 
-            case "1":
+            case "standby":
  			if(stdby==true){
                 Output("\n\n\n\nSTANDING BY");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Standby Timer")		as IMyTimerBlock;
@@ -299,7 +299,7 @@ public void Main(string argument, UpdateType updateSource) {
 			 }
             break;
 
-            case "2":
+            case "normal":
  			if(norm==true){
                 Output("\n\n\n\nNORMAL MODE");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Normal Timer")		as IMyTimerBlock;
@@ -308,7 +308,7 @@ public void Main(string argument, UpdateType updateSource) {
 			 }
             break;
 
-            case "3":
+            case "combat":
  			if(comb==true){
                 Output("\n\n\n\nCOMBAT MODE");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Combat Timer")		as IMyTimerBlock;
@@ -317,7 +317,7 @@ public void Main(string argument, UpdateType updateSource) {
 			 }
             break;
 			
-			case "4":
+			case "recharge":
  			if(rech==true){
                 Output("\n\n\n\nRECHARGING");
         		IMyTimerBlock kwi		= GridTerminalSystem.GetBlockWithName("#Recharge Timer")	as IMyTimerBlock;
