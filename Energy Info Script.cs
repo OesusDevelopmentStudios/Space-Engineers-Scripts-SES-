@@ -14,6 +14,7 @@ public String printEnergyInfo()
     float ShipsStoredPower = 0;
     float ShipsMaxPower = 0;
     float MaxShipOutput = 0;
+    float CurrentBatteryOutput = 0;
     float CurrentShipOutput = 0;
     int Online = 0;
     int Recharging = 0;
@@ -42,7 +43,10 @@ public String printEnergyInfo()
 
             ShipsStoredPower += B.CurrentStoredPower;
             ShipsMaxPower += B.MaxStoredPower;
+	    CurrentBatteryOutput += B.CurrentOutput;	
             CurrentShipOutput -= B.CurrentInput;
+	    CurrentBatteryOutput -= B.CurrentInput;
+		
 
             if (B.CurrentStoredPower == 0) Empty++;
             else if (!(B.IsWorking)) Offline++;
@@ -60,7 +64,7 @@ public String printEnergyInfo()
     toPercent(ShipsStoredPower, ShipsMaxPower) + "%)";
     output += "\n Current Output: " + CurrentShipOutput.ToString("0.00") + "/" + MaxShipOutput.ToString("0.0") +
     " kWs (" + toPercent(CurrentShipOutput, MaxShipOutput) + "%)";
-    float remainingTime = (ShipsStoredPower * 1000) / CurrentShipOutput;
+    float remainingTime = (ShipsStoredPower * 1000) / CurrentBatteryOutput;
     output += "\n Will last for       ";
     if (remainingTime > 3600)
     {
@@ -76,6 +80,9 @@ public String printEnergyInfo()
         remainingTime = remainingTime % 60;
         output += remainingTime.ToString("0.") + " s";
     }
+    else if(remainingTime <= 0){
+	output += "all of eternity.";    
+    }	    
     else
     {
         output += remainingTime.ToString("0.") + " s";
