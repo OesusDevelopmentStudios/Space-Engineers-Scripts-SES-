@@ -69,7 +69,12 @@ public String printEnergyInfo()
     toPercent(ShipsStoredPower, ShipsMaxPower) + "%)";
     output += "\n Current Output: " + CurrentShipOutput.ToString("0.00") + "/" + MaxShipOutput.ToString("0.0") +
     " kWs (" + toPercent(CurrentShipOutput, MaxShipOutput) + "%)";
-    float remainingTime = (ShipsStoredPower * 1000) / CurrentBatteryOutput;
+	
+	if(CurrentBatteryOutput == 0){
+		output += "\n Batteries in equilibrium.";
+	}
+	else{
+    	float remainingTime = (ShipsStoredPower * 1000) / CurrentBatteryOutput;
 	if(remainingTime < 0){
 		output += "\n Recharged in     ";
 		remainingTime *= -1;
@@ -114,6 +119,7 @@ public String printEnergyInfo()
         		output += remainingTime.ToString("0.") + " s";
     		}
     	}
+	}
 
     if (RNominal > 0 || ROff > 0) output += "\n Cores Online:    " + RNominal + "/" + (RNominal + ROff);
     else output += "\n No power cores present!";
