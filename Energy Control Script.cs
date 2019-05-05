@@ -49,6 +49,7 @@ public bool getProduction (){
         return false;
 }
 
+
 public void setH2 (bool set){
         List<IMyPowerProducer>   Producers  = new List<IMyPowerProducer>();
         GridTerminalSystem.GetBlocksOfType<IMyPowerProducer> (Producers);
@@ -64,6 +65,28 @@ public bool getH2 (){
             if(!(P is IMyReactor)&&!(P is IMyBatteryBlock)) if(P.Enabled==false) return false;
         }
         return true;
+}
+
+public double getMedH2Capacity(){	
+	List<IMyGasTank> temp = new List<IMyGasTank>();
+	List<IMyGasTank> tank = new List<IMyGasTank>();
+	int counter = 0;
+	double output = 0;
+	GridTerminalSystem.GetBlocksOfType<IMyGasTank> (temp);
+	foreach(IMyGasTank t in temp){
+		if(t.Capacity>100000f) {
+			tank.Add(t);
+			counter++;
+		}
+	}
+	if (counter == 0) return 0D;
+	else{
+		Double tempo = Convert.ToDouble(counter);
+		foreach(IMyGasTank t in temp){
+			output += t.FilledRatio;
+		}
+		return (output/tempo);
+	}
 }
 
 public void setReactors (bool set){
@@ -169,47 +192,52 @@ public void Combat(){
 
 public void Auto(){
 	IMyTextPanel ControlScreen = GridTerminalSystem.GetBlockWithName("#EnergyControl") as IMyTextPanel;
-    if(getOutputPercent() > (float)90 || getPowerPercent() < (float)10){
-        if(getBatteries() == false){
-            setBatteries(true);
-            enableBatteries(true);
-            ControlScreen.WriteText("\nBatteries turned on", true);
-        }
-        else
-        if(getH2() == false){
-            setH2(true);
-            ControlScreen.WriteText("\nPower cores turned on", true);
-        }
-        else
-        if(getProduction() == true){
-            setProduction(false);
-            ControlScreen.WriteText("\nProduction blocks\nturned off", true);
-        }
-    }
-    else
-    if(getOutputPercent() < (float)10){
-        if(getReactors()==true){
-            setReactors(false);
-            ControlScreen.WriteText("\nReactors turned off", true);
-        }
-        else
-        if(getProduction()==false){
-            setProduction(true);
-            ControlScreen.WriteText("\nProduction turned\nback online", true);
-        }
-        else
-        if(getH2()==true && getBatteries()==true){
-            setH2(false);
-            ControlScreen.WriteText("\nPower Cores\nare offline", true);
-        }
-        else{
-            if(getOutputPercent() < (float)3){
-                setH2(true);
-                setBatteries(false);
-                ControlScreen.WriteText("\nRecharging Batteries", true);
-            }
-        }
-    }
+    	if(getOutputPercent() > 90f || getPowerPercent() < 10f){
+        	if(getBatteries() == false){
+            		setBatteries(true);
+            		enableBatteries(true);
+            		ControlScreen.WriteText("\nBatteries turned on", true);
+		}
+        	else
+        	if(getH2() == false){
+            		setH2(true);
+            		ControlScreen.WriteText("\nPower cores turned on", true);
+        	}
+        	else
+        	if(getProduction() == true){
+            		setProduction(false);
+            		ControlScreen.WriteText("\nProduction blocks\nturned off", true);
+        	}
+		else
+		if(getReactors() == false){
+			setReactors(true);
+            		ControlScreen.WriteText("\nReactors\nturned on", true);
+		}
+    	}
+    	else
+    	if(getOutputPercent() < 10f && getPowerPercent() > 10f){
+        	if(getReactors()==true){
+            		setReactors(false);
+            		ControlScreen.WriteText("\nReactors turned off", true);
+       		}
+        	else
+        	if(getProduction()==false){
+            		setProduction(true);
+            		ControlScreen.WriteText("\nProduction turned\nback online", true);
+        	}
+        	else
+        	if(getH2()==true && getBatteries()==true){
+            		setH2(false);
+            		ControlScreen.WriteText("\nPower Cores\nare offline", true);
+        	}
+        	else{
+            		if(getOutputPercent() < (float)3 && getMedH2Capacity() > 0.85D){
+                		setH2(true);
+                		setBatteries(false);
+                		ControlScreen.WriteText("\nRecharging Batteries", true);
+            		}
+        	}
+    	}
 }
 
 public void Output(String output){
@@ -331,3 +359,4 @@ public void Main(string argument, UpdateType updateSource) {
             break;
         }
 }
+
