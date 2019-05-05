@@ -1,3 +1,8 @@
+public bool isOnThisGrid(IMyCubeGrid G){
+	if (G == Me.CubeGrid) return true;
+	else return false;
+}
+
 public float getOutputPercent(){
     float CurrentShipOutput = 0, MaxShipOutput = 0;
     List<IMyPowerProducer>   Producers  = new List<IMyPowerProducer>();
@@ -35,7 +40,14 @@ public float getPowerPercent(){
 public void setProduction (bool set){
         List<IMyProductionBlock>   Producers  = new List<IMyProductionBlock>();
         GridTerminalSystem.GetBlocksOfType<IMyProductionBlock> (Producers);
-        foreach(IMyProductionBlock P in Producers){
+	
+	
+        List<IMyProductionBlock>   temp  = new List<IMyProductionBlock>();
+	foreach(IMyProductionBlock P in Producers){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+        }
+	
+        foreach(IMyProductionBlock P in temp){
             P.Enabled = set;
         }
 }
@@ -43,7 +55,14 @@ public void setProduction (bool set){
 public bool getProduction (){
         List<IMyProductionBlock>   Producers  = new List<IMyProductionBlock>();
         GridTerminalSystem.GetBlocksOfType<IMyProductionBlock> (Producers);
-        foreach(IMyProductionBlock P in Producers){
+	
+	
+        List<IMyProductionBlock>   temp  = new List<IMyProductionBlock>();
+	foreach(IMyProductionBlock P in Producers){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}
+	
+        foreach(IMyProductionBlock P in temp){
             if(P.Enabled==true) return true;
         }
         return false;
@@ -53,7 +72,13 @@ public bool getProduction (){
 public void setH2 (bool set){
         List<IMyPowerProducer>   Producers  = new List<IMyPowerProducer>();
         GridTerminalSystem.GetBlocksOfType<IMyPowerProducer> (Producers);
-        foreach(IMyPowerProducer P in Producers){
+	
+        List<IMyPowerProducer>   temp  = new List<IMyPowerProducer>();
+	foreach(IMyPowerProducer P in Producers){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}
+	
+        foreach(IMyPowerProducer P in temp){
             if(!(P is IMyReactor)&&!(P is IMyBatteryBlock)) P.Enabled = set;
         }
 }
@@ -61,7 +86,13 @@ public void setH2 (bool set){
 public bool getH2 (){
         List<IMyPowerProducer>   Producers  = new List<IMyPowerProducer>();
         GridTerminalSystem.GetBlocksOfType<IMyPowerProducer> (Producers);
-        foreach(IMyPowerProducer P in Producers){
+	
+        List<IMyPowerProducer>   temp  = new List<IMyPowerProducer>();
+	foreach(IMyPowerProducer P in Producers){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}	
+	
+        foreach(IMyPowerProducer P in temp){
             if(!(P is IMyReactor)&&!(P is IMyBatteryBlock)) if(P.Enabled==false) return false;
         }
         return true;
@@ -74,7 +105,7 @@ public double getMedH2Capacity(){
 	double output = 0;
 	GridTerminalSystem.GetBlocksOfType<IMyGasTank> (temp);
 	foreach(IMyGasTank t in temp){
-		if(t.Capacity>100000f) {
+		if(t.Capacity>100000f && isOnThisGrid(t.CubeGrid)) {
 			tank.Add(t);
 			counter++;
 		}
@@ -92,7 +123,13 @@ public double getMedH2Capacity(){
 public void setReactors (bool set){
         List<IMyReactor>   Reactors  = new List<IMyReactor>();
         GridTerminalSystem.GetBlocksOfType<IMyReactor> (Reactors);
-        foreach(IMyReactor P in Reactors){
+	
+        List<IMyReactor>   temp  = new List<IMyReactor>();
+	foreach(IMyReactor P in Reactors){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}
+	
+        foreach(IMyReactor P in temp){
             P.Enabled = set;
         }
 }
@@ -100,7 +137,13 @@ public void setReactors (bool set){
 public bool getReactors (){
         List<IMyReactor>   Reactors  = new List<IMyReactor>();
         GridTerminalSystem.GetBlocksOfType<IMyReactor> (Reactors);
-        foreach(IMyReactor P in Reactors){
+	
+        List<IMyReactor>   temp  = new List<IMyReactor>();
+	foreach(IMyReactor P in Reactors){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}
+	
+        foreach(IMyReactor P in temp){
             if(P.Enabled == false) return false;
         }
         return true;
@@ -109,7 +152,13 @@ public bool getReactors (){
 public void setBatteries (bool set){
         List<IMyBatteryBlock>   Batteries  = new List<IMyBatteryBlock>();
         GridTerminalSystem.GetBlocksOfType<IMyBatteryBlock> (Batteries);
-        foreach(IMyBatteryBlock B in Batteries){
+	
+        List<IMyBatteryBlock>   temp  = new List<IMyBatteryBlock>();
+	foreach(IMyBatteryBlock P in Batteries){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}
+	
+        foreach(IMyBatteryBlock B in temp){
             if(!set){
                 B.ChargeMode = ChargeMode.Recharge;
             }
@@ -140,7 +189,13 @@ public void Emergency(){
     setReactors(true);
     List<IMyFunctionalBlock> Everything = new List<IMyFunctionalBlock>();
     GridTerminalSystem.GetBlocksOfType<IMyFunctionalBlock> (Everything);
-    foreach(IMyFunctionalBlock A in Everything){
+	
+        List<IMyFunctionalBlock>   temp  = new List<IMyFunctionalBlock>();
+	foreach(IMyFunctionalBlock P in Everything){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}
+	
+    foreach(IMyFunctionalBlock A in temp){
         if(!(A is IMyReactor) && !(A is IMyShipConnector) && !(A is IMyShipMergeBlock) 
 		&& !(A is IMyTextPanel) && !(A is IMyUpgradeModule) && !(A is IMyTextSurface)
 		&& !(A is IMyProgrammableBlock) && !(A is IMyTimerBlock))
