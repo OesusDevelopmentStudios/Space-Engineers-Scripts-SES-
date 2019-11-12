@@ -68,7 +68,6 @@ public bool getProduction (){
         return false;
 }
 
-
 public void setH2 (bool set){
         List<IMyPowerProducer>   Producers  = new List<IMyPowerProducer>();
         GridTerminalSystem.GetBlocksOfType<IMyPowerProducer> (Producers);
@@ -113,7 +112,7 @@ public double getMedH2Capacity(){
 	if (counter == 0) return 0D;
 	else{
 		Double tempo = Convert.ToDouble(counter);
-		foreach(IMyGasTank t in temp){
+		foreach(IMyGasTank t in tank){
 			output += t.FilledRatio;
 		}
 		return (output/tempo);
@@ -205,6 +204,27 @@ public void Emergency(){
     }
 }
 
+public void ClearEmergency(){
+    
+    setReactors(true);
+    List<IMyFunctionalBlock> Everything = new List<IMyFunctionalBlock>();
+    GridTerminalSystem.GetBlocksOfType<IMyFunctionalBlock> (Everything);
+	
+        List<IMyFunctionalBlock>   temp  = new List<IMyFunctionalBlock>();
+	foreach(IMyFunctionalBlock P in Everything){
+            if(isOnThisGrid(P.CubeGrid)) temp.Add(P);
+	}
+	
+    foreach(IMyFunctionalBlock A in temp){
+        if(!(A is IMyReactor) && !(A is IMyShipConnector) && !(A is IMyShipMergeBlock) 
+		&& !(A is IMyTextPanel) && !(A is IMyUpgradeModule) && !(A is IMyTextSurface)
+		&& !(A is IMyProgrammableBlock) && !(A is IMyTimerBlock))
+        {
+            A.Enabled = true;
+        }
+    }
+}
+
 public void Recharge(){
     setProduction(false);
     setH2(true);
@@ -248,26 +268,31 @@ public void Combat(){
 public void Auto(){
 	IMyTextPanel ControlScreen = GridTerminalSystem.GetBlockWithName("#EnergyControl") as IMyTextPanel;
     	if(getOutputPercent() > 90f || getPowerPercent() < 10f){
-        	if(getBatteries() == false){
-            		setBatteries(true);
-            		enableBatteries(true);
-            		ControlScreen.WriteText("\nBatteries turned on", true);
-		}
-        	else
-        	if(getH2() == false){
-            		setH2(true);
+            if(getBatteries() == false){
+                setBatteries(true);
+                enableBatteries(true);
+                		ControlScreen.WriteText("\nBatteries turned on", true);
+		    }
+            else
+            if(getH2() == false){
+            	setH2(true);
             		ControlScreen.WriteText("\nPower cores turned on", true);
-        	}
-        	else
-        	if(getProduction() == true){
-            		setProduction(false);
+            }
+            else
+            if(getProduction() == true){
+            	setProduction(false);
             		ControlScreen.WriteText("\nProduction blocks\nturned off", true);
-        	}
-		else
-		if(getReactors() == false){
-			setReactors(true);
-            		ControlScreen.WriteText("\nReactors\nturned on", true);
-		}
+            }
+		    else
+		    if(getReactors() == false){
+		    	setReactors(true);
+                	ControlScreen.WriteText("\nReactors\nturned on", true);
+		    }
+		    //else
+		    //if(getPowerPercent() < 5f && getMedH2Capacity()<10f){
+		    //	Emergency();
+            //    	ControlScreen.WriteText("\nEmergency\nProtocol", true);
+		    //}
     	}
     	else
     	if(getOutputPercent() < 10f && getPowerPercent() > 10f){
@@ -317,7 +342,6 @@ public List<IMyTextPanel> getEnergyScreen(){
 	
 	return output;
 }
-
 
 public void Main(string argument, UpdateType updateSource) {
 		
@@ -414,4 +438,3 @@ public void Main(string argument, UpdateType updateSource) {
             break;
         }
 }
-
