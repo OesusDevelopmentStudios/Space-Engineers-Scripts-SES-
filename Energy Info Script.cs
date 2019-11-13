@@ -77,7 +77,7 @@ public String   printEnergyInfo(){
 	    }
     }
 
-    float convert = 1.0;//((float)10 / (float)36); //<- to jest w kWs
+    float convert = 1.0F;//((float)10 / (float)36); //<- to jest w kWs
 
     CurrentShipOutput = convert * CurrentShipOutput;
     MaxShipOutput = convert * MaxShipOutput;
@@ -138,7 +138,6 @@ public String   printEnergyInfo(){
     if (RNominal > 0 || ROff > 0) {
         double percent = getMedH2Capacity();
         output += "\n Cores Online:    " + RNominal + "/" + (RNominal + ROff);
-        output += "\n H2 Reserves at " + percent + "%";
     }
     else output += "\n No power cores present!";
 
@@ -155,7 +154,7 @@ public List<IMyTextPanel> getEnergyScreen(){
 	GridTerminalSystem.SearchBlocksOfName("#EnergyScreen", temp);
 	
 	foreach(IMyTerminalBlock b in temp){
-		if(b is IMyTextPanel) {
+		if(b is IMyTextPanel && isOnThisGrid(b.CubeGrid)) {
     		IMyTextPanel tempo = b as IMyTextPanel;
     		output.Add(tempo);
 		}
