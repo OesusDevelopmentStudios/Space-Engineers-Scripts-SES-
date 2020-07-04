@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Universal Receiver Script", "Universal Receiver Script.csproj", "{4D80DEE1-0C69-4A4B-A588-482BDE8ED3B6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4D80DEE1-0C69-4A4B-A588-482BDE8ED3B6}.Debug|x64.ActiveCfg = Debug|x64
+		{4D80DEE1-0C69-4A4B-A588-482BDE8ED3B6}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4858A8AE-873D-45ED-83EF-F6C104A61F31}
+	EndGlobalSection
+EndGlobal

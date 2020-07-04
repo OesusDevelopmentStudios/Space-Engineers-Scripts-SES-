@@ -20,9 +20,22 @@ using VRageMath;
 namespace IngameScript {
     partial class Program : MyGridProgram {
 
-        string  RadarCode   = "[RADAR]";
+        const string  
+            RadarCode   = "[RADAR]",
+            missileTag = "MISSILE-CHN", 
+            misCMDTag = "MISSILE_COMMAND-CHN";
+
+        readonly IMyBroadcastListener
+            misCMDListener;
+
         int     MAX_WAIT    = 900;
+        const int   MAX_TSLB = 5;
+
         float   currExt, currRPM;
+
+        Entry curTarget;
+
+        List<Job> schedule = new List<Job>();
 
         bool DetectPlayers        ;
         bool DetectFloatingObjects;
@@ -41,6 +54,25 @@ namespace IngameScript {
         List<IMyMotorStator> RadRots;
         List<IMyTextPanel> Screens;
 
+        public enum JobType {
+            OpenDoor,
+            Launch,
+            CloseDoor
+        }
+
+        public class Job {
+            public JobType  type;
+            public int      misNo, // set if the job is allocated to a specyfic missile
+                            TTJ; // "TicksToJob"
+
+
+            public Job(JobType type, int TTJ, int misNo) {
+                this.type   = type;
+                this.TTJ    = TTJ;
+                this.misNo  = misNo;
+            }
+        }
+
         public class Entry {
             public long id;
             public int timeNum;
@@ -48,9 +80,7 @@ namespace IngameScript {
             public MyDetectedEntityType type;
             public MyRelationsBetweenPlayerAndBlock relation;
 
-            public void Increment() {
-                this.timeNum++;
-            }
+            public void Increment() {this.timeNum++;}
 
             public Entry(MyDetectedEntityInfo entity) {
                 this.timeNum    = 0;
@@ -59,6 +89,16 @@ namespace IngameScript {
                 this.type       = entity.Type;
                 this.relation   = entity.Relationship;
             }
+
+            public Entry(Vector3D coords) : this(coords.X, coords.Y, coords.Z) { }
+            public Entry(double X, double Y, double Z) {
+                this.timeNum = 42044469;
+                this.id = -1;
+                this.location = new Vector3D(X, Y, Z);
+                this.type = MyDetectedEntityType.LargeGrid;
+                this.relation = MyRelationsBetweenPlayerAndBlock.Enemies;
+            }
+
         }
 
         public class Register {
@@ -69,6 +109,9 @@ namespace IngameScript {
             public static void SetMe(IMyProgrammableBlock Me) { Register.Me = Me;  }
             public static void SetMax(int MAX) { Register.MAX_WAIT = MAX; }
 
+
+            public static Entry Get(int index) {return content.Count > index ? content[index] : null;}
+
             public static void Add(MyDetectedEntityInfo entity) {
                 int current = 0, target = -1;
                 foreach (Entry ent in content) {
@@ -78,6 +121,8 @@ namespace IngameScript {
                 Entry temp = new Entry(entity);
                 if (target == -1) {content.Add(temp);}
                 else {content[target] = temp;}
+
+                content = content.OrderByDescending(o => o.relation).ThenBy(o => GetDistance(o.location)).ToList();
             }
 
             public static void IncrementAll() {
@@ -99,8 +144,12 @@ namespace IngameScript {
                 return output;
             }
 
+            static double GetDistance(Vector3D location) {
+                return Vector3D.Subtract(Me.CubeGrid.GetPosition(), location).Length();
+            }
+
             static string Convert(Vector3D location) {
-                double temporal = Vector3D.Subtract(Me.CubeGrid.GetPosition(), location).Length();
+                double temporal = GetDistance(location);
                 string output;
 
                 if (temporal >= 1000d) {
@@ -165,8 +214,13 @@ namespace IngameScript {
                 SetRadars(currExt, currRPM);
             }
             else SetRadars(8000f,3f);
-            GetScreens();
+            GetScreens(); 
+            misCMDListener = IGC.RegisterBroadcastListener(misCMDTag);
+            misCMDListener.SetMessageCallback();
         }
+
+        public void SendCoords(Vector3D vec) { SendCoords(vec.X, vec.Y, vec.Z); }
+        public void SendCoords(double X, double Y, double Z) { IGC.SendBroadcastMessage(missileTag, "TARSET;" + X + ";" + Y + ";" + Z); }
 
         bool IsOnThisGrid(IMyCubeBlock block) {
             if (block.CubeGrid.Equals(Me.CubeGrid)) 
@@ -180,14 +234,29 @@ namespace IngameScript {
             Register.SetMax(MAX_WAIT);
         }
 
+        int TSLB = 0;
+
         void Detect() {
             bool AllRight = true;
+            TSLB++;
             List<MyDetectedEntityInfo> Detected;
             foreach (IMySensorBlock rad in Radars) {
                 if (rad != null) {
                     Detected = new List<MyDetectedEntityInfo>();
                     rad.DetectedEntities(Detected);
-                    foreach (MyDetectedEntityInfo entity in Detected) Register.Add(entity);
+                    foreach (MyDetectedEntityInfo entity in Detected) {
+                        Register.Add(entity);
+                        if (curTarget != null) {
+                            if (entity.EntityId.Equals(curTarget.id) && curTarget.timeNum!= 42044469) {
+                                //TODO: BE VOCAL ABOUT IT
+                                curTarget = new Entry(entity);
+                                if (TSLB > (MAX_TSLB-1)) {
+                                    TSLB = 0;
+                                    SendCoords(entity.Position);
+                                }
+                            }
+                        }
+                    }
                 }
                 else AllRight = false;
             }
@@ -224,7 +293,7 @@ namespace IngameScript {
                 rot.Enabled = true;
             }
 
-            float detThcc = (2.5f * (float)(Math.PI) * detExt * tarRPM / 7200f);
+            float detThcc = (5f * (float)(Math.PI) * detExt * tarRPM / 7200f);
 
             foreach (IMySensorBlock rad in Radars) {
                 rad.BackExtend = detExt;
@@ -297,13 +366,13 @@ namespace IngameScript {
                 "Sensor range: "+currExt+" m Buoy RPM: "+currRPM;
         }
 
-        void Output(object input) {
+        void Output(object input, bool append = false) {
             bool AllRight = true;
             string message = input is string ? (string)input : input.ToString();
             foreach(IMyTextPanel screen in Screens) {
                 if (screen != null) {
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.WriteText(message);
+                    screen.WriteText(message,append);
                 }
                 else AllRight = false;
             }
@@ -311,11 +380,111 @@ namespace IngameScript {
             if (!AllRight) GetScreens();
         }
 
+        void PrepareForLaunch(int launchSize = -1) {
+            List<IMyProgrammableBlock> progList = new List<IMyProgrammableBlock>();
+            GridTerminalSystem.GetBlocksOfType(progList);
+            int maxMssle = 0;
+            foreach (IMyProgrammableBlock pb in progList) {
+                if (pb.CustomName.StartsWith("MISSILE-")) {
+                    string toParse = pb.CustomName.Substring(8);
+                    int missNo;
+                    try { missNo = int.Parse(toParse); }
+                    catch (Exception e) { missNo = 0; e.ToString(); }
+                    maxMssle = maxMssle > missNo ? maxMssle : missNo;
+                }
+            }
+
+            if (launchSize > 0 && launchSize < maxMssle) maxMssle = launchSize;
+
+            for(int i = 1; i<=maxMssle; i++) {
+                AddAJob(new Job(JobType.OpenDoor, i * 10, i));
+                AddAJob(new Job(JobType.Launch,200 + i * 10, i));
+                AddAJob(new Job(JobType.CloseDoor, 700 + i * 10, i));
+            }
+        }
+
+        void Abort(bool selfDestruct = false) {
+            schedule.Clear();
+            curTarget = null;
+        }
+
+        void PrepareGPSStrike(double X, double Y, double Z) {
+            curTarget = new Entry(X, Y, Z);
+            PrepareForLaunch();
+        }
+
+        void AddAJob(Job job) {
+            schedule.Add(job);
+            schedule = schedule.OrderBy(o => o.TTJ).ToList();
+        }
+
+        void DoYourJob() {
+            if (schedule.Count > 0 && schedule[0].TTJ <= 0) {
+                Job curr = schedule[0];
+                schedule.RemoveAt(0);
+                IMyAirtightHangarDoor siloDoor = GridTerminalSystem.GetBlockWithName("Silo Door " + curr.misNo) as IMyAirtightHangarDoor;
+                switch (curr.type) {
+                    case JobType.OpenDoor:
+                        if (siloDoor != null) siloDoor.OpenDoor();
+                        else Abort();
+                        break;
+
+                    case JobType.Launch:
+                        IMyProgrammableBlock missile = GridTerminalSystem.GetBlockWithName("MISSILE-" + curr.misNo) as IMyProgrammableBlock;
+                        if (curTarget == null || missile == null || siloDoor == null) {
+                            string message = "ABORTING LAUNCH: TAR:" + (curTarget == null) + " MSSL:" + (missile == null) + " DR:" + (siloDoor == null);
+                            Output(message, true); Echo(message);
+                            return;
+                        }
+                        missile.Enabled = false;
+                        missile.Enabled = true;
+                        missile.TryRun("prep " + curTarget.location.X + " " + curTarget.location.Y + " " + curTarget.location.Z);
+                        break;
+
+                    case JobType.CloseDoor:
+                        siloDoor.CloseDoor();
+                        break;
+                }
+            }
+        }
+
+        void IncrementAll() {
+            Register.IncrementAll();
+            foreach (Job job in schedule) job.TTJ--;
+        }
+
+        //try { } catch(Exception e) { e.ToString(); return; }
         public void Main(string argument, UpdateType updateSource) {
             if((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0) {
                 Detect();
                 Output(PrintOut() + "\n" + Register.PrintOut());
-                Register.IncrementAll();
+                DoYourJob();
+                IncrementAll();
+            }
+            else
+            if ((updateSource & UpdateType.IGC) > 0) {
+                if (misCMDListener != null && misCMDListener.HasPendingMessage) {
+                    MyIGCMessage message = misCMDListener.AcceptMessage();
+                    if (message.Tag.Equals(misCMDTag)) {
+                        string data = (string)message.Data;
+                        string[] bits = data.Split(';');
+
+                        if (bits.Length <= 0) return;
+                        switch (bits[0].ToUpper()) {
+                            case "SALVO":
+                                if (bits.Length > 3) {
+                                    curTarget = new Entry(float.Parse(bits[1]), float.Parse(bits[2]), float.Parse(bits[3]));
+                                    PrepareForLaunch();
+                                }
+                                break;
+
+                            case "ABORT":
+                                IGC.SendBroadcastMessage(missileTag, "ABORT");
+                                break;
+                        }
+                    }
+                }
+                return;
             }
             else {
                 if (argument.Length > 0) {
@@ -341,6 +510,41 @@ namespace IngameScript {
                             try { tarRPM = args.Length > 2 ? float.Parse(args[2]) : 3f; }   catch (Exception e) { e.ToString(); }
                             Echo("set: " + detExt + " " + tarRPM);
                             SetRadars(detExt, tarRPM);
+                            break;
+
+                        case "gpsstrike":
+                        case "gpstrike":
+                        case "gps":
+                            double X, Y, Z;
+                            try { X = double.Parse(args[1]); } catch (Exception e) { e.ToString(); return; }
+                            try { Y = double.Parse(args[2]); } catch (Exception e) { e.ToString(); return; }
+                            try { Z = double.Parse(args[3]); } catch (Exception e) { e.ToString(); return; }
+
+                            PrepareGPSStrike(X, Y, Z);
+                            break;
+
+                        case "attack":
+                        case "fire":
+                            if (args.Length < 2) {
+                                if (curTarget != null) PrepareForLaunch();
+                            }
+                            else {
+                                int index, magnitude = -1;
+                                try { index = int.Parse(args[1]) - 1; } catch (Exception e) { e.ToString(); return; }
+                                Entry target = Register.Get(index); if (target == null) return;
+                                curTarget = target;
+
+                                if (args.Length > 2) {
+                                    try { magnitude = int.Parse(args[2]); } catch (Exception e) { e.ToString(); magnitude = -1; }
+                                }
+                                PrepareForLaunch(magnitude);
+                            }
+
+                            break;
+
+                        case "abort":
+                            Abort(); 
+                            IGC.SendBroadcastMessage(missileTag, "ABORT");
                             break;
 
                         case "detect":
@@ -378,7 +582,8 @@ namespace IngameScript {
 
                                     case "asteroids":
                                     case "comets":
-                                        DetectAsteroids = true;
+                                        Output("\nChyba Cię coś generalnie popierdoliło, byku XD", true);
+                                        //DetectAsteroids = true;
                                         break;
 
                                     case "own":

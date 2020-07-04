@@ -70,6 +70,7 @@ namespace IngameScript {
                 gravMode = false,
                 contrFine = false,
                 aborting = false,
+                ordersGot = false,
                 chngTarg = false,
                 throttle   = false,
                 mbOrbital  = false;
@@ -154,8 +155,6 @@ namespace IngameScript {
                     useMNV = false;
                     if (contrFine) SHIP_CONTROLLER.DampenersOverride = false;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
-                    missileListener = IGC.RegisterBroadcastListener(missileTag);
-                    missileListener.SetMessageCallback();
                     break;
 
                 case MISSILE_STATE.DAMPENING:
@@ -163,12 +162,20 @@ namespace IngameScript {
                     if (THRUSTERS.TryGetValue(1, out group)) MoveAGroupThrusters(group, 0f);
                     if (contrFine) SHIP_CONTROLLER.DampenersOverride = true;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
+                    if (missileListener == null) {
+                        missileListener = IGC.RegisterBroadcastListener(missileTag);
+                        missileListener.SetMessageCallback();
+                    }
                     break;
 
                 case MISSILE_STATE.DUMB_APP_TARGET:
                     if (contrFine) SHIP_CONTROLLER.DampenersOverride = false;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
                     useMNV = false;
+                    if(missileListener==null){
+                        missileListener = IGC.RegisterBroadcastListener(missileTag);
+                        missileListener.SetMessageCallback();
+                    }
                     break;
 
                 case MISSILE_STATE.MANUAL:
@@ -193,9 +200,11 @@ namespace IngameScript {
         }
 
         void ChangeState(string state) {
-            Output("Changing mode from " + CurrentState + " to " + state.ToString() + ".");
+            Output("Changing mode from " + CurrentState + " to " + state + ".");
             switch (state.ToUpper()) {
                 case "INIT":    ChangeState(MISSILE_STATE.INIT); break;
+
+                case "DAMP":    ChangeState(MISSILE_STATE.DAMPENING); break;
 
                 default:        Output("Function 'ChangeState': Undefined input value."); break;
             }
@@ -827,8 +836,7 @@ namespace IngameScript {
         }
 
         void MoveAllGyros(float Yaw, float Pitch, float Roll) {
-            List<IMyGyro> gyros = new List<IMyGyro>();
-            GridTerminalSystem.GetBlocksOfType<IMyGyro>(gyros);
+            List<IMyGyro> gyros = GetGyros();
             foreach (IMyGyro gyro in gyros) {
                 MoveGyroInAWay(gyro, Yaw, Pitch, Roll);
             }
@@ -1185,15 +1193,23 @@ namespace IngameScript {
             if ((updateSource & UpdateType.IGC) > 0) {
                 if (missileListener != null && missileListener.HasPendingMessage) {
                     MyIGCMessage message = missileListener.AcceptMessage();
-                    if (message.Tag.Equals(missileTag)) {
                         string data = (string)message.Data;
                         string[] bits = data.Split(';');
 
                         if (bits.Length > 3 && bits[0].ToUpper().Equals("TARSET")) {
-                            TARGET = new Vector3D(float.Parse(bits[0]), float.Parse(bits[1]), float.Parse(bits[2])); return;
+                            Vector3D oldTar = TARGET;
+                            ordersGot = true;
+
+                            try { TARGET = new Vector3D(double.Parse(bits[0]), double.Parse(bits[1]), double.Parse(bits[2])); }
+                            catch(Exception e) {
+                                e.ToString();
+                                TARGET = oldTar;
+                                ordersGot = false;
+                            }
+                                return;
                         }
                         else
-                        if (bits.Length > 0 && bits[0].ToUpper().Equals("ABORT")) {
+                        if (data.Equals("ABORT")||(bits.Length > 0 && bits[0].ToUpper().Equals("ABORT"))) {
                             aborting = true;
                             MoveAllGyros(0, 0, 0);
                             OverrideGyros(false);
@@ -1204,7 +1220,6 @@ namespace IngameScript {
                             selfDestruct();
                             ChangeState(MISSILE_STATE.INIT);
                         }
-                    }
                 }
             }
             else {
@@ -1216,14 +1231,17 @@ namespace IngameScript {
                         }
                         else {
                             throttle = true;
-                            if (timeNR%10==0 && CurrentState >= MISSILE_STATE.DAMPENING) {
-                                Vector3D tango = GetTarget();
-                                if (!tango.Equals(NOTHING)) {
-                                    TARGET = tango;
-                                    chngTarg = true;
+                            if (ordersGot) ordersGot = false;
+                            else { 
+                                if (timeNR % 10 == 0 && CurrentState >= MISSILE_STATE.DAMPENING) {
+                                    Vector3D tango = GetTarget();
+                                    if (!tango.Equals(NOTHING)) {
+                                        TARGET = tango;
+                                        chngTarg = true;
+                                    }
+                                    else
+                                        chngTarg = false;
                                 }
-                                else
-                                    chngTarg = false;
                             }
                             ReactToState();
                         }
@@ -1278,6 +1296,8 @@ namespace IngameScript {
                 }
                 string status = "";
                 status += Me.CustomName + " " + string.Format("{0:0.##}", currELV) + "m " + CurrentState.ToString() + " " + timeNR + " " + (gravMode ? "- In Gravity" : "- In SPACE");
+                if (ordersGot) status = "ORDGOT" + status;
+                else
                 if (chngTarg) status = "TARCHNG" + status;
                 else {
                     //double distance;*/
