@@ -1,0 +1,2 @@
+C:\Users\Marcin\source\repos\Missile-Control-Script\obj\x64\Debug\Missile-Control-Script.csprojAssemblyReference.cache
+C:\Users\Marcin\source\repos\Missile-Control-Script\obj\x64\Debug\Missile-Control-Script.exe.config

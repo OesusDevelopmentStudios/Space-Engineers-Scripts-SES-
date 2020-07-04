@@ -1,0 +1,2 @@
+C:\Users\Marcin\source\repos\Ship-Control-Script\obj\x64\Debug\Ship-Control-Script.csprojAssemblyReference.cache
+C:\Users\Marcin\source\repos\Ship-Control-Script\obj\x64\Debug\Ship-Control-Script.exe.config

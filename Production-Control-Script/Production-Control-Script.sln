@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Production-Control-Script", "Production-Control-Script.csproj", "{36AE6143-B34F-4DF3-92B4-6090F0A0F3F7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{36AE6143-B34F-4DF3-92B4-6090F0A0F3F7}.Debug|x64.ActiveCfg = Debug|x64
+		{36AE6143-B34F-4DF3-92B4-6090F0A0F3F7}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {96D032E4-780B-45A1-B89D-396545677147}
+	EndGlobalSection
+EndGlobal

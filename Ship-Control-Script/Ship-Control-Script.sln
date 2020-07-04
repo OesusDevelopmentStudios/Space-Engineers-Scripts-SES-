@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ship-Control-Script", "Ship-Control-Script.csproj", "{E2119252-49F1-4287-9479-A847AEBD9045}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E2119252-49F1-4287-9479-A847AEBD9045}.Debug|x64.ActiveCfg = Debug|x64
+		{E2119252-49F1-4287-9479-A847AEBD9045}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A651221B-4553-463C-BFAC-E5E1568F1CCB}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Red Alert Script", "Red Alert Script.csproj", "{36CD3301-503B-4A9D-A6CB-994C48AD9A4B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{36CD3301-503B-4A9D-A6CB-994C48AD9A4B}.Debug|x64.ActiveCfg = Debug|x64
+		{36CD3301-503B-4A9D-A6CB-994C48AD9A4B}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A61A5F4F-3613-45A9-A2B9-BB86887A76E4}
+	EndGlobalSection
+EndGlobal

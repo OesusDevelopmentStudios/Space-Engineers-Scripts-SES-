@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ship-Renaming-Script", "Ship-Renaming-Script.csproj", "{5BC5BF41-5271-4765-9923-41A6BD4CB712}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5BC5BF41-5271-4765-9923-41A6BD4CB712}.Debug|x64.ActiveCfg = Debug|x64
+		{5BC5BF41-5271-4765-9923-41A6BD4CB712}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DDE77D07-7616-49B4-90C2-545613BD15F6}
+	EndGlobalSection
+EndGlobal

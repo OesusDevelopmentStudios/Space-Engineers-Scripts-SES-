@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Energy-Control-Script", "Energy-Control-Script.csproj", "{1BB087D8-DC82-4900-81D0-353DF170257C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1BB087D8-DC82-4900-81D0-353DF170257C}.Debug|x64.ActiveCfg = Debug|x64
+		{1BB087D8-DC82-4900-81D0-353DF170257C}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F4FFC0D4-EAD7-4BD9-82CC-A7427D417591}
+	EndGlobalSection
+EndGlobal

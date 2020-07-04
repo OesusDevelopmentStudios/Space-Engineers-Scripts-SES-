@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ship_Sensors_Script", "Ship_Sensors_Script.csproj", "{03507CC4-05E7-43C7-9E9A-8C7799A4A156}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{03507CC4-05E7-43C7-9E9A-8C7799A4A156}.Debug|x64.ActiveCfg = Debug|x64
+		{03507CC4-05E7-43C7-9E9A-8C7799A4A156}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DC073D5E-71AC-469B-9E9A-88AAFE8C1BB6}
+	EndGlobalSection
+EndGlobal
