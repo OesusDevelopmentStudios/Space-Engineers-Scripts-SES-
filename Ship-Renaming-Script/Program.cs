@@ -49,8 +49,8 @@ namespace IngameScript {
 
             foreach (IMyGasTank tank in tanks) {
                 if (!thisOnly || IsOnThisGrid(tank)) { 
-                    if (tank.Capacity > 100000f) {
-                        if(tank.Capacity > 1000000f)
+                    if (tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
+                        if(tank.BlockDefinition.SubtypeName.Contains("LargeHydrogenTank"))
                             tank.CustomName = ShipName+"/H2 Tank "+ GetAlphabet(H2Tanks++);
                         else
                             tank.CustomName = ShipName + "/Small H2 Tank " + GetAlphabet(smolH2++);
@@ -74,7 +74,7 @@ namespace IngameScript {
 
             foreach (IMyGasTank tank in tanks) {
                 if (!thisOnly || IsOnThisGrid(tank)) {
-                    if (tank.Capacity <= 100000f) {
+                    if (!tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
                         tank.CustomName = ShipName + "/Oxygen Tank " + GetAlphabet(OxyTanks++);
                         tank.ShowInInventory = true;
                         tank.ShowInTerminal = false;
@@ -90,7 +90,7 @@ namespace IngameScript {
 
             foreach (IMyGasTank tank in tanks) {
                 if (!thisOnly || IsOnThisGrid(tank)) {
-                    if (tank.Capacity > 100000f) {
+                    if (tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
                         tank.CustomName = ShipName + "/Hydrogen Tank " + GetAlphabet(increm++);
                         tank.ShowInInventory = true;
                         tank.ShowInTerminal = false;
@@ -135,6 +135,13 @@ namespace IngameScript {
                         case "LargeBlockSmallContainer":
                             cont.CustomName = ShipName + "/Cargo Entry Point";
                             cont.ShowInInventory = true;
+                            cont.ShowInTerminal = false;
+                            cont.ShowInToolbarConfig = false;
+                            break;
+
+                        default:
+                            // trash.
+                            cont.ShowInInventory = false;
                             cont.ShowInTerminal = false;
                             cont.ShowInToolbarConfig = false;
                             break;
@@ -298,9 +305,23 @@ namespace IngameScript {
 
             foreach (IMyAssembler item in items) {
                 if (!thisOnly || IsOnThisGrid(item)) {
-                    item.CustomName = ShipName + "/Assembler";
-                    item.ShowInTerminal = false;
-                    item.ShowInToolbarConfig = false;
+                    if (item.BlockDefinition.SubtypeName.Contains("Assembler")) {
+                        if (item.BlockDefinition.SubtypeName.Contains("Large")) {
+                            item.CustomName = ShipName + "/Assembler";
+                            item.ShowInTerminal = false;
+                            item.ShowInToolbarConfig = false;
+                        }
+                        else {
+                            item.CustomName = ShipName + "/Basic Assembler";
+                            item.ShowInTerminal = false;
+                            item.ShowInToolbarConfig = false;
+                        }
+                    }
+                    else {
+                        item.CustomName = ShipName + "/Survival Kit";
+                        item.ShowInTerminal = false;
+                        item.ShowInToolbarConfig = false;
+                    }
                 }
             }
         }
@@ -414,9 +435,23 @@ namespace IngameScript {
             }
         }
         //================================================
+        public void CockpitTrash(bool thisOnly = true) {
+            List<IMyCockpit> items = new List<IMyCockpit>();
+            GridTerminalSystem.GetBlocksOfType(items);
 
+            foreach (IMyCockpit item in items) {
+                if (!thisOnly || IsOnThisGrid(item)) {
+                    if (!item.BlockDefinition.SubtypeName.Contains("Cockpit")) {
+                        item.ShowInInventory = false;
+                        item.ShowInTerminal = false;
+                        item.ShowInToolbarConfig = false;
+                    }
+                }
+            }
+        }
+        //================================================
         //IMyUpgradeModule
-        
+
         public bool IsOnThisGrid(IMyCubeBlock block) {
             if (block != null && block.CubeGrid.Equals(Me.CubeGrid))
                 return true;
@@ -448,6 +483,7 @@ namespace IngameScript {
 
                 case 10:
                     Antennas(notAll);
+                    CockpitTrash(notAll);
                     break;
 
                 case 12:
@@ -511,7 +547,7 @@ namespace IngameScript {
             if (eval[0].Equals("name") || eval[0].Equals("rename")) {
                 string arg = eval.Length > 1 ? eval[1] : "all";
                 notAll = eval.Length > 2 ? (eval[2].Equals("unlimited")||eval[2].Equals("all") ? false:true) : true;
-                switch (eval[1]) {
+                switch (arg) {
                     case "all":
                     case "ship":
                         allInc = 0;

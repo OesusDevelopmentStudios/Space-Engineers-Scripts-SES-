@@ -21,9 +21,9 @@ namespace IngameScript {
     partial class Program : MyGridProgram {
 
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
-
         /// Constants
 
+        const string SCRIPT_VERSION = "v2.15";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 300f;
         const double maxDeviation = 0.02d;
@@ -76,7 +76,7 @@ namespace IngameScript {
                 mbOrbital  = false;
 
 
-        List<IMyShipController> ControlList = new List<IMyShipController>();
+        List<IMyShipController> ControlList= new List<IMyShipController>();
         List<IMyShipMergeBlock> MergerList = new List<IMyShipMergeBlock>();
         List<IMyShipConnector>  ConnecList = new List<IMyShipConnector>();
         List<IMyBatteryBlock>   BattryList = new List<IMyBatteryBlock>();
@@ -216,9 +216,8 @@ namespace IngameScript {
         public Program() {
             Runtime.UpdateFrequency
                             = UpdateFrequency.Update10;
-            string name = Me.CubeGrid.CustomName;
-            string[] split = name.Split(' ');
             TARGET = NOTHING;
+            SayMyName(SCRIPT_VERSION);
 
             List<IMyShipController> controls = new List<IMyShipController>();
             ControlList = new List<IMyShipController>();
@@ -226,6 +225,14 @@ namespace IngameScript {
             foreach (IMyShipController cont in controls) { if (isOnThisGrid(cont) && cont.IsWorking) ControlList.Add(cont); }
 
             ChangeState(MISSILE_STATE.INIT);
+        }
+
+        void SayMyName(string ScriptName, float textSize = 10f) {
+            IMyTextSurface surface = Me.GetSurface(1);
+            surface.Alignment = TextAlignment.CENTER;
+            surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.FontSize = textSize;
+            surface.WriteText(ScriptName);
         }
 
         Vector3D CutVector(Vector3D vector) { return CutVector(vector, 3); }
@@ -948,7 +955,7 @@ namespace IngameScript {
 
         double  distance = 0,
                 currSPD,
-                disToTarget = 1000d;
+                disToTarget = 2000d;
 
         int culprit;
         float thrOv;
@@ -1032,15 +1039,15 @@ namespace IngameScript {
                     bool abortNormal = false;
                     if (!gravMode) {
                         if (currSPD >= strtSPD + 30d) {
-                            for (culprit = 0; culprit < 3; culprit++) {
+                            for (culprit = 0; culprit < 4; culprit++) {
                                 if (prompts[culprit].dirInt == 1) abortNormal = true;
                             }
                         }
                     }
                     else addSPDNeed = 9999;
 
+                    disToTarget = Vector3D.Distance(initPos, TARGET);
                     if (strtELV != -1 && currELV != -1) {
-                        disToTarget = Vector3D.Distance(initPos, TARGET);
                         double addELV = disToTarget >= 2000 ? disToTarget / 20 : 100d;
                         if (addELV > 500) addELV = 500;
                         if (strtELV + addELV <= currELV) abortNormal = true;
@@ -1274,6 +1281,9 @@ namespace IngameScript {
                             if  (eval.Length > 3) {
                                 TARGET = new Vector3D(float.Parse(eval[1]), float.Parse(eval[2]), float.Parse(eval[3]));
                                 ChangeState(MISSILE_STATE.PREP_LNCH);
+                                if(eval.Length>4) {
+
+                                }
                             }
                         } 
                         else if (eval[0].Equals("AUTO")) {
