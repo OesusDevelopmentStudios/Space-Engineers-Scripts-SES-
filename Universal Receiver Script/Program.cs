@@ -34,7 +34,7 @@ namespace IngameScript {
                     MyIGCMessage message = universalListener.AcceptMessage();
                     List<IMyTextPanel> panels = new List<IMyTextPanel>();
                     GridTerminalSystem.GetBlocksOfType(panels);
-                    if (panels.Count > 0) panels[0].WriteText(message.Tag +" "+message.Source+" "+message.Data+"\n", true);
+                    if (panels.Count > 0) panels[0].WriteText(message.Tag +" "+message.Source+" "+message.Data+"\n", false);
                 }
             }
             else {

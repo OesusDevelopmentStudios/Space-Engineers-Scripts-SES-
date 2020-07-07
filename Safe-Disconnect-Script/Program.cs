@@ -51,10 +51,9 @@ namespace IngameScript {
 
             IMyShipController SHIP_CONTROLLER = null;
             foreach (IMyShipController controler in controls) {
-                if (controler.IsMainCockpit) {
-                    if (controler.IsWorking) {
-                        SHIP_CONTROLLER = controler;
-                    }
+                if (IsOnThisGrid(controler) && controler.IsWorking) {
+                    SHIP_CONTROLLER = controler;
+                    if (controler.IsMainCockpit) break;
                 }
             }
 

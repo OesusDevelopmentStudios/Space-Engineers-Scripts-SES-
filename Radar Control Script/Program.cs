@@ -220,7 +220,9 @@ namespace IngameScript {
         }
 
         public void SendCoords(Vector3D vec) { SendCoords(vec.X, vec.Y, vec.Z); }
-        public void SendCoords(double X, double Y, double Z) { IGC.SendBroadcastMessage(missileTag, "TARSET;" + X + ";" + Y + ";" + Z); }
+        public void SendCoords(Vector3D vec, Vector3D vec2) { SendCoords(vec.X, vec.Y, vec.Z, vec2.X, vec2.Y, vec2.Z); }
+
+        public void SendCoords(double X1, double Y1, double Z1, double X2=0, double Y2=0, double Z2=0) { IGC.SendBroadcastMessage(missileTag, "TARSET;" + X1 + ";" + Y1 + ";" + Z1 + ";" + X2 + ";" + Y2 + ";" + Z2); }
 
         bool IsOnThisGrid(IMyCubeBlock block) {
             if (block.CubeGrid.Equals(Me.CubeGrid)) 
@@ -252,7 +254,7 @@ namespace IngameScript {
                                 curTarget = new Entry(entity);
                                 if (TSLB > (MAX_TSLB-1)) {
                                     TSLB = 0;
-                                    SendCoords(entity.Position);
+                                    SendCoords(entity.Position,entity.Velocity);
                                 }
                             }
                         }
@@ -307,6 +309,7 @@ namespace IngameScript {
                 rad.DetectFloatingObjects   = DetectFloatingObjects;
                 rad.DetectSmallShips        = DetectSmallShips;
                 rad.DetectLargeShips        = DetectLargeShips;
+                rad.DetectStations          = DetectStations;
                 rad.DetectSubgrids          = DetectSubgrids;
                 rad.DetectAsteroids         = DetectAsteroids;
 

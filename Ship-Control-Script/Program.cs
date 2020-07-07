@@ -783,7 +783,7 @@ namespace IngameScript {
                     break;
 
                 case PROGRAM_STATE.LND_INFO:
-                    Runtime.UpdateFrequency = UpdateFrequency.Once;
+                    Runtime.UpdateFrequency = UpdateFrequency.Update10;
                     OverrideThrusters(false);
                     OverrideGyros(false);
                     break;
