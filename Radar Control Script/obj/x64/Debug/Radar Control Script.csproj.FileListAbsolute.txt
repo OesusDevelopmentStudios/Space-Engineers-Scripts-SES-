@@ -1,0 +1,2 @@
+C:\Users\Marcin\source\repos\Radar Control Script\obj\x64\Debug\Radar Control Script.csprojAssemblyReference.cache
+C:\Users\Marcin\source\repos\Radar Control Script\obj\x64\Debug\Radar Control Script.exe.config

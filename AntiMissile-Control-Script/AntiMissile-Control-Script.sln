@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AntiMissile-Control-Script", "AntiMissile-Control-Script.csproj", "{6EB42B42-0806-4A64-9C9C-171468D7B948}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6EB42B42-0806-4A64-9C9C-171468D7B948}.Debug|x64.ActiveCfg = Debug|x64
+		{6EB42B42-0806-4A64-9C9C-171468D7B948}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5DF9D8E5-537A-4388-B9DC-C28D5ADA39FC}
+	EndGlobalSection
+EndGlobal
