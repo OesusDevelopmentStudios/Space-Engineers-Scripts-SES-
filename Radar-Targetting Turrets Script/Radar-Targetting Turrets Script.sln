@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Radar-Targetting Turrets Script", "Radar-Targetting Turrets Script.csproj", "{4F30F4DB-13B2-47C3-A383-C6D4F7843EE7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4F30F4DB-13B2-47C3-A383-C6D4F7843EE7}.Debug|x64.ActiveCfg = Debug|x64
+		{4F30F4DB-13B2-47C3-A383-C6D4F7843EE7}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8161BDDC-562D-4D82-8743-1A9A76A3522E}
+	EndGlobalSection
+EndGlobal

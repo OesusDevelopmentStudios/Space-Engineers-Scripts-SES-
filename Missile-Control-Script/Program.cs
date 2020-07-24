@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v3.11";
+        const string SCRIPT_VERSION = "v3.14";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 300f;
         const double maxDeviation = 0.02d;
@@ -43,7 +43,8 @@ namespace IngameScript {
                   ALK_CMD = new Vector3D(0, 0, -1),
 
                   NOTHING = new Vector3D(44, 44, 44),
-                  TARGET;
+                  TARGET,
+                  CAMTAR;
 
         const int FW_VAL = 2,
                   UP_VAL = 6,
@@ -403,47 +404,46 @@ namespace IngameScript {
                 return GetTarget(++camIndx);
             }
             Vector3D
-                rayTG,
+                rayTG = CAMTAR,
                 addition;
             switch (camIndx) {
                 case 0:
-                    rayTG = TARGET;
                     break;
                 case 1:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Right, 50d);
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 case 2:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Down, 50d);
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 case 3:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Left, 50d);
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 case 4:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Up, 50d);
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 case 5:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Right, 35d);
                     addition = Vector3D.Add(addition, Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Up, 35d));
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 case 6:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Right, 35d);
                     addition = Vector3D.Add(addition, Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Down, 35d));
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 case 7:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Left, 35d);
                     addition = Vector3D.Add(addition, Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Down, 35d));
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 case 8:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Left, 35d);
                     addition = Vector3D.Add(addition, Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Up, 35d));
-                    rayTG = Vector3D.Add(TARGET, addition);
+                    rayTG = Vector3D.Add(rayTG, addition);
                     break;
                 default:
                     rayTG = NOTHING;
@@ -459,7 +459,7 @@ namespace IngameScript {
                    ((target.Type == MyDetectedEntityType.LargeGrid || target.Type == MyDetectedEntityType.SmallGrid)
                    && target.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies)) {
                     Output("\nFOUND YA");
-
+                    CAMTAR = target.Position;
                     return applyTarSpd(target.Position,target.Velocity);
                 }
                 else {
@@ -494,7 +494,7 @@ namespace IngameScript {
             MyDetectedEntityInfo target = cam.Raycast(3000);
             if (target.IsEmpty() || target.Relationship != MyRelationsBetweenPlayerAndBlock.Enemies ||
                 (target.Type != MyDetectedEntityType.LargeGrid && target.Type != MyDetectedEntityType.SmallGrid)) return NOTHING;
-            else return target.Position + target.Velocity;
+            else return applyTarSpd(target.Position, target.Velocity);
         }
 
         IMyCameraBlock GetRdyCam(double distance = 3000d) {
@@ -878,7 +878,7 @@ namespace IngameScript {
             if (SHIP_CONTROLLER.TryGetPlanetPosition(out planet)) {
                 gravMode = true;
                 useMNV = true;
-                maxSpeed = 300d;
+                maxSpeed = 340d;
                 addSPDNeed = 100d;
                 maxSPDDev = 100d;
             }
@@ -1164,18 +1164,112 @@ namespace IngameScript {
             Echo(message);
         }
 
+        double InterCosine(Vector3D first, Vector3D second) {
+            double 
+                scalarProduct   = first.X * second.X + first.Y * second.Y + first.Z * second.Z,
+                productOfLengths   = first.Length() * second.Length();
+
+            return scalarProduct / productOfLengths;
+        }
+
+        Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos) {
+            /// do not enter if enSpeed is a "0" vector, or if our speed is 0
+            
+            Vector3D
+                A = enPos,
+                B = myPos;
+            
+            double
+                t = enSpeed.Length() / maxSpeed,         //t -> b = a*t
+                projPath,                               //b
+                dist = Vector3D.Distance(A, B),  //c
+                cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
+
+                delta = 4 * dist * dist * ((1 / t) + cos * cos - 1);
+
+
+            if (delta < 0) {
+                return NOTHING;
+            }
+            else
+            if (delta == 0) {
+                if (t == 0) {
+                    return NOTHING;
+                }
+                projPath = -1 * (2 * dist * cos) / (2 - (2 / t * t));
+            }
+            else {
+                if (t == 0) {
+                    return NOTHING;
+                }
+                else
+                if (t == 1) {
+                    projPath = (dist) / (2 * cos);
+                }
+                else {
+                    projPath = (t * t * dist * (cos + Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1));
+                    if (projPath < 0) {
+                        projPath = (t * t * dist * (cos - Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1));
+                    }
+                }
+
+            }
+
+            enSpeed = Vector3D.Normalize(enSpeed);
+            enSpeed = Vector3D.Multiply(enSpeed, projPath);
+
+            return Vector3D.Add(enPos, enSpeed);
+        }
+        /*
+        IMyTextPanel VerbosePanel;
+
+        /*
+        bool GetVerbosePanel() {
+            List<IMyTextPanel> panels = new List<IMyTextPanel>();
+            GridTerminalSystem.GetBlocksOfType(panels);
+            foreach(IMyTextPanel panel in panels) {
+                if(isOnThisGrid(panel) && panel.CustomName.Contains("[VERBOSE]")) {
+                    VerbosePanel = panel;
+                    return true;
+                }
+            }
+            return false;
+
+        }
+
+        /*
+        void VerboseOutput(object input, bool append = false) {
+            string message = input is string ? (string)input : input.ToString();
+
+            if (VerbosePanel == null && !GetVerbosePanel()) {
+                Echo(message);
+            }
+            else
+                VerbosePanel.WriteText(message, append);
+        }
+        /**/
+        
         Vector3D applyTarSpd(Vector3D position, Vector3D speed) {
             double
                 mySpeed = SHIP_CONTROLLER.GetShipVelocities().LinearVelocity.Length(),
                 enSpeed = speed.Length(),
+                multiplier;
                 
-                multiplier = (mySpeed!=0 && enSpeed!=0)? (enSpeed/mySpeed):0;
+            if(enSpeed > 0) {
+                Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition());
+                if (!output.Equals(NOTHING)) {
+                    return output;
+                }
+            }
+
+            multiplier = (mySpeed!=0 && enSpeed!=0)? (enSpeed/mySpeed):0;
 
             Vector3D
                 addition = Vector3D.Multiply(speed, multiplier);
 
             return Vector3D.Add(position, addition);
         }
+
 
         public void Main(string argument, UpdateType updateSource) {
             if (SHIP_CONTROLLER == null || !SHIP_CONTROLLER.IsWorking)
@@ -1190,7 +1284,10 @@ namespace IngameScript {
                     string[] bits = data.Split(';');
 
                     if (bits[0].ToUpper().Equals("TARSET")) {
-                        Vector3D oldTar = TARGET;
+                        Vector3D 
+                            oldTar = TARGET,
+                            olCaTa = CAMTAR;
+                            
                         ordersGot = true;
                         if (bits.Length > 3) {
                             if (bits.Length > 6) {
@@ -1199,22 +1296,26 @@ namespace IngameScript {
                                     pos = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
                                     vel = new Vector3D(double.Parse(bits[4]), double.Parse(bits[5]), double.Parse(bits[6]));
                                     TARGET = applyTarSpd(pos,vel);
+                                    CAMTAR = pos;
                                 }
                                 catch (Exception e) {
                                     Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
                                     Me.GetSurface(0).WriteText(e.ToString());
                                     TARGET = oldTar;
+                                    CAMTAR = olCaTa;
                                     ordersGot = false;
                                 }
                             }
                             else {
                                 try {
                                     TARGET = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
+                                    CAMTAR = TARGET;
                                 }
                                 catch (Exception e) {
                                     Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
                                     Me.GetSurface(0).WriteText(e.ToString());
                                     TARGET = oldTar;
+                                    CAMTAR = olCaTa;
                                     ordersGot = false;
                                 }
                             }
@@ -1309,10 +1410,6 @@ namespace IngameScript {
                         }
                         else if (eval[0].Equals("LAUNCHABORT")) {
                             ChangeState(MISSILE_STATE.INIT);
-                        }
-                        else if (eval[0].Equals("BARK")) {
-                            IMySoundBlock sound = GridTerminalSystem.GetBlockWithName("[SOUND]") as IMySoundBlock;
-                            if (sound != null) sound.Play();
                         }
                         else
                             ChangeState(argument.ToUpper());

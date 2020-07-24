@@ -26,6 +26,7 @@ namespace IngameScript {
                         control;
         IMyMotorStator  XROT;
         IMyMotorStator  YROT;
+        IMyMotorStator  YROTA;
         IMyCameraBlock  camera;
         IMySoundBlock   soundBlock;
 
@@ -54,6 +55,7 @@ namespace IngameScript {
             control     = GridTerminalSystem.GetBlockWithName(shipId + "Targetting Ray/Remote"       ) as IMyRemoteControl;
             XROT        = GridTerminalSystem.GetBlockWithName(shipId + "Targetting Ray/Yaw Rotor"    ) as IMyMotorStator;
             YROT        = GridTerminalSystem.GetBlockWithName(shipId + "Targetting Ray/Pitch Rotor"  ) as IMyMotorStator;
+            YROTA       = GridTerminalSystem.GetBlockWithName(shipId + "Targetting Ray/Anti Pitch Rotor"  ) as IMyMotorStator;
             camera      = GridTerminalSystem.GetBlockWithName(shipId + "Targetting Ray/Camera"       ) as IMyCameraBlock;
             soundBlock  = GridTerminalSystem.GetBlockWithName(shipId + "Targetting Ray/Sound Block"  ) as IMySoundBlock;
             if (camera != null && camera.EnableRaycast == false) camera.EnableRaycast = true;
@@ -81,10 +83,13 @@ namespace IngameScript {
 
         public void Main(string argument, UpdateType updateSource) {
             if ((updateSource & UpdateType.Update1) > 0) {
-                if (control == null || XROT == null || YROT == null || camera == null) setUp();
+                if (control == null || XROT == null || YROT == null || YROTA == null || camera == null) setUp();
 
-                    YROT.UpperLimitDeg = 210;
-                    YROT.LowerLimitDeg = 90;
+                    YROT.UpperLimitDeg = 30;
+                    YROT.LowerLimitDeg = -210;
+
+                    YROTA.UpperLimitDeg = 210;
+                    YROTA.LowerLimitDeg = -30;
 
                 if (control!=null&&control.IsUnderControl) {
                     XROT.UpperLimitDeg = float.MaxValue;
@@ -92,15 +97,18 @@ namespace IngameScript {
 
                     XROT.TargetVelocityRPM = 0;
                     YROT.TargetVelocityRPM = 0;
+                    YROTA.TargetVelocityRPM = 0;
 
                     float X = control == null ? 0f : control.RotationIndicator.Y;
                     float Y = control == null ? 0f : control.RotationIndicator.X;
 
                     XROT.RotorLock = false;
                     YROT.RotorLock = false;
+                    YROTA.RotorLock = false;
 
-                    if (XROT != null) XROT.TargetVelocityRPM = -(X / 5f);
-                    if (YROT != null) YROT.TargetVelocityRPM = -(Y / 5f);
+                    if (XROT != null) XROT.TargetVelocityRPM =  (X / 5f);
+                    if (YROT != null) YROT.TargetVelocityRPM =  (Y / 5f);
+                    if (YROTA != null) YROTA.TargetVelocityRPM = -(Y / 5f);
                 }
                 else {
                     XROT.UpperLimitDeg =  1;
@@ -117,15 +125,19 @@ namespace IngameScript {
                         XROT.RotorLock = false;
                     }
 
-                    if (YROT.Angle > 208 && YROT.Angle < 212) {
+                    if (YROT.Angle > -2 && YROT.Angle < 2) {
                         if (!YROT.RotorLock) {
                             YROT.TargetVelocityRPM = 0;
+                            YROTA.TargetVelocityRPM= 0;
                             YROT.RotorLock = true;
+                            YROTA.RotorLock = true;
                         }
                     }
                     else {
-                        YROT.TargetVelocityRPM = 10;
+                        YROT.TargetVelocityRPM = +10;
+                        YROTA.TargetVelocityRPM =-10;
                         YROT.RotorLock = false;
+                        YROTA.RotorLock = false;
                     }
                 }
             }
