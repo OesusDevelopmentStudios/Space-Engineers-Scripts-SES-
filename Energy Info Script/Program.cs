@@ -308,6 +308,7 @@ namespace IngameScript
             foreach (IMyTextPanel EnergyScreen in getEnergyScreen()) {
                 EnergyScreen.FontSize = (float)1.8;
                 EnergyScreen.WriteText(output, false);
+                EnergyScreen.ContentType = ContentType.TEXT_AND_IMAGE;
             }
         }
 

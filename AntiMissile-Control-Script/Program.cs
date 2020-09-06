@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v3.3";
+        const string SCRIPT_VERSION = "v4.2.17";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 100f;
         const double maxDeviation = 0.02d;
@@ -41,6 +41,7 @@ namespace IngameScript {
                  RIG_CMD = new Vector3D(1, 0, 0),
                  CLK_CMD = new Vector3D(0, 0, 1),
                  ALK_CMD = new Vector3D(0, 0, -1),
+                 ZRO_CMD = new Vector3D(0,0,0),
 
                  NOTHING = new Vector3D(44, 44, 44),
                  TARGET,
@@ -55,7 +56,7 @@ namespace IngameScript {
 
         /// END OF CONSTANTS
 
-        int timeNR = 0,
+        int     timeNR = 0,
                 myNumber = 0;
 
         double strtSPD = -1d,
@@ -69,7 +70,8 @@ namespace IngameScript {
         const double
                 maxSpeed = 100;
 
-        bool useMNV = false,
+        bool    
+            //useMNV = false,
                 gravMode = false,
                 contrFine = false,
                 aborting = false,
@@ -120,6 +122,13 @@ namespace IngameScript {
             else return false;
         }
 
+        double Difference(double d1, double d2){
+            double first = d1 > d2 ? d1 : d2,
+                   second = d1 < d2 ? d1 : d2;
+
+            return first - second;
+        }
+
         bool isAlmostSame(double d1, double d2) {
             if (d1 == d2) return true;
             double first = d1 > d2 ? d1 : d2,
@@ -156,7 +165,7 @@ namespace IngameScript {
                     break;
 
                 case MISSILE_STATE.GRAV_ALGN:
-                    useMNV = false;
+                    //useMNV = false;
                     if (contrFine) SHIP_CONTROLLER.DampenersOverride = false;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
                     break;
@@ -175,7 +184,7 @@ namespace IngameScript {
                 case MISSILE_STATE.DUMB_APP_TARGET:
                     if (contrFine) SHIP_CONTROLLER.DampenersOverride = false;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
-                    useMNV = false;
+                    //useMNV = false;
                     if (missileListener == null) {
                         missileListener = IGC.RegisterBroadcastListener(missileTag);
                         missileListener.SetMessageCallback();
@@ -290,6 +299,111 @@ namespace IngameScript {
             return "ANTIMISSILE-" + index;
         }
 
+        Vector3D CulpritToMove(int culprit, float deviation){
+            if (deviation < 0.002f) return ZRO_CMD;
+
+            deviation = deviation > 1 ? deviation*deviation*deviation : (float)Math.Sqrt((double)deviation);
+            /**/
+            if (culprit <= 4) {
+                if (culprit % 2 == 0) {
+                    return  Vector3D.Multiply(RIG_CMD,(double)deviation);
+                }
+                else{
+                    return Vector3D.Multiply(LFT_CMD,(double)deviation);
+                }
+            }
+            else {
+                if (culprit % 2 == 0) {
+                    return Vector3D.Multiply(DWN_CMD,(double)deviation);
+                }
+                else {
+                    return Vector3D.Multiply(UPP_CMD,(double)deviation);
+                }
+            }
+            /**/
+        }
+
+
+        /*/
+            ship = SHIP_CONTROLLER.GetPosition();
+            sub = TARGET == null ? ship : CutVector(Vector3D.Normalize(Vector3D.Subtract(TARGET, ship)));
+            curr = NOTHING;
+            planet = checkIfGrav();
+
+            distance = 0;
+            currSPD = contrFine ? GetSpeed() : strtSPD;
+
+            if (CurrentState > MISSILE_STATE.INIT) timeNR++;
+
+            prompts = new List<NavPrompt>();
+            group = new List<IMyThrust>();
+
+            if (CurrentState > MISSILE_STATE.PREP_LNCH) {
+                curr = Vector3D.Subtract(CutVector(DirintToVec(1)), sub);
+                distance = Vector3D.Subtract(TARGET, ship).Length();
+                for (int i = 3; i < 7; i++)
+                    prompts.Add(new NavPrompt(i, Vector3D.Subtract(CutVector(DirintToVec(i)), sub)));
+                prompts = prompts.OrderBy(o => o.vLength).ToList();
+
+                culprit1 = prompts[0];
+                culprit2 = prompts[1];
+            }
+        /**/
+
+        void CorrectionManeuvers() {
+
+            Vector3D
+                culpritTrap = Me.GetPosition()+SHIP_CONTROLLER.GetShipVelocities().LinearVelocity;
+
+            sub = TARGET == null ? ship : CutVector(Vector3D.Normalize(Vector3D.Subtract(culpritTrap, ship)));
+
+            prompts = new List<NavPrompt>();
+            curr = Vector3D.Subtract(CutVector(DirintToVec(1)), sub);
+
+            for (int i = 3; i < 7; i++)
+                prompts.Add(new NavPrompt(i, Vector3D.Subtract(CutVector(DirintToVec(i)), sub)));
+            prompts = prompts.OrderBy(o => o.vLength).ToList();
+
+            culprit1 = prompts[0];
+            culprit2 = prompts[1];
+
+            float
+                OR1 = (float)Difference(culprit1.vLength, 1.4142d),
+                OR2 = (float)Difference(culprit2.vLength, 1.4142d);
+
+            OR1 = OR1 < 0.002f ? 0 : 1;
+            OR2 = OR2 < 0.002f ? 0 : 1;
+
+            //OR1 = OR1 > 1 ? 1 : ((OR1 < 0.005) ? 0 : OR1);
+            //OR2 = OR2 > 1 ? 1 : ((OR2 < 0.005) ? 0 : OR2);
+
+            int
+                TC1 = culprit1.dirInt, 
+                TC2 = culprit2.dirInt;
+
+            if (TC1 == 5) TC1 = 6;
+            else
+            if (TC1 == 6) TC1 = 5;
+
+            if (TC2 == 5) TC2 = 6;
+            else
+            if (TC2 == 6) TC2 = 5;
+
+            ResetThrust();
+
+            List<IMyThrust> thrusters = new List<IMyThrust>();
+
+            if(THRUSTERS.TryGetValue(TC1, out thrusters)) {
+                MoveAGroupThrusters(thrusters, OR1);
+            }
+            if(THRUSTERS.TryGetValue(TC2, out thrusters)) {
+                MoveAGroupThrusters(thrusters, OR2);
+            }
+            /**/
+        }
+
+        Vector3D DoubleCTM(int C1, double VL1, int C2, double VL2) {return Vector3D.Add(CulpritToMove(C1, (float)Difference(VL1,1.4142d)), CulpritToMove(C2, (float)Difference(VL2, 1.4142d)));}
+
         Vector3D DirToCmd(int lndDir, int culprit) {
             if (lndDir <= 2) {
                 if (culprit <= 4) {
@@ -323,6 +437,7 @@ namespace IngameScript {
             }
         }
 
+        /**
         void DirToMnv(int lndDir, int culprit) { DirToMnv(lndDir, culprit, 1f); }
 
         void DirToMnv(int lndDir, int culprit, float ovrPrc) {
@@ -336,6 +451,7 @@ namespace IngameScript {
                 if (THRUSTERS.TryGetValue(culprit, out manThr)) { MoveAGroupThrusters(manThr, ovrPrc); return; }
             }
         }
+        /**/
 
         Vector3D DirintToVec(int dirint) {
             switch (dirint) {
@@ -886,13 +1002,13 @@ namespace IngameScript {
 
             if (SHIP_CONTROLLER.TryGetPlanetPosition(out planet)) {
                 gravMode = true;
-                useMNV = true;
+                //useMNV = true;
                 addSPDNeed = 100d;
                 maxSPDDev = 100d;
             }
             else {
                 gravMode = false;
-                useMNV = false;
+                //useMNV = false;
                 addSPDNeed = 100d;
                 maxSPDDev = 30d;
             }
@@ -903,6 +1019,8 @@ namespace IngameScript {
         Vector3D
                 ship, sub, curr, algn, alVec,
                 planet, command, initPos;
+
+        NavPrompt culprit1, culprit2;
 
         double distance = 0,
                 currSPD,
@@ -972,9 +1090,13 @@ namespace IngameScript {
             if (CurrentState > MISSILE_STATE.PREP_LNCH) {
                 curr = Vector3D.Subtract(CutVector(DirintToVec(1)), sub);
                 distance = Vector3D.Subtract(TARGET, ship).Length();
-                for (int i = 1; i < 7; i++)
+                if (Double.IsNaN(distance)) selfDestruct();
+                for (int i = 3; i < 7; i++)
                     prompts.Add(new NavPrompt(i, Vector3D.Subtract(CutVector(DirintToVec(i)), sub)));
                 prompts = prompts.OrderBy(o => o.vLength).ToList();
+
+                culprit1 = prompts[0];
+                culprit2 = prompts[1];
             }
 
             switch (CurrentState) {
@@ -1006,9 +1128,7 @@ namespace IngameScript {
                     bool abortNormal = false;
                     if (!gravMode) {
                         if (currSPD >= strtSPD + 30d) {
-                            for (culprit = 0; culprit < 5; culprit++) {
-                                if (prompts[culprit].dirInt == 1) abortNormal = true;
-                            }
+                            if (new NavPrompt(1, Vector3D.Subtract(CutVector(DirintToVec(1)), sub)).vLength<=1.4143) abortNormal = true;
                         }
                     }
                     else addSPDNeed = 9999;
@@ -1057,14 +1177,22 @@ namespace IngameScript {
                         Runtime.UpdateFrequency = UpdateFrequency.Update1;
                     }
 
+
+                    /*/
                     for (culprit = 0; culprit < 3; culprit++) {
                         if (prompts[culprit].dirInt != 1 && prompts[culprit].dirInt != 2) break;
                     }
                     culprit = prompts[culprit].dirInt;
 
                     command = DirToCmd(2, culprit);
-                    MoveAllGyros((float)(command.X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
-                    DirToMnv(2, culprit, 0.3F);
+                    /**/
+
+                    //MoveAllGyros((float)(command.X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
+
+                    command = DoubleCTM(culprit1.dirInt, culprit1.vLength, culprit2.dirInt, culprit2.vLength);
+
+                    MoveAllGyros((float)(command.X), (float)(command.Y), (float)(command.Z));
+                    CorrectionManeuvers();
 
                     break;
 
@@ -1103,7 +1231,8 @@ namespace IngameScript {
                 case MISSILE_STATE.DUMB_APP_TARGET:
 
                     if (curr.Length() <= maxDeviation) {
-                        useMNV = true;
+                        //useMNV = true;
+                        SHIP_CONTROLLER.DampenersOverride = true;
                         Runtime.UpdateFrequency = UpdateFrequency.Update1;
                         if (THRUSTERS.TryGetValue(1, out group)) MoveAGroupThrusters(group, 1f);
                     }
@@ -1130,19 +1259,23 @@ namespace IngameScript {
                         /**/
                     }
 
+
+                    command = DoubleCTM(culprit1.dirInt, culprit1.vLength, culprit2.dirInt, culprit2.vLength);
+                    /*/
                     for (culprit = 0; culprit < 3; culprit++) {
                         if (prompts[culprit].dirInt != 1 && prompts[culprit].dirInt != 2) break;
                     }
                     culprit = prompts[culprit].dirInt;
 
                     command = DirToCmd(2, culprit);
+                    /**/
                     float mnvAmm = (distance >= 10000) ? (float)curr.Length() * 20f : 1f;
 
                     if (gravMode && !mbOrbital) {
-                        if (culprit == 5)
+                        if (culprit1.dirInt == 5)
                             mnvAmm = 1f;
                         else
-                        if (culprit == 6) {
+                        if (culprit1.dirInt == 6) {
                             if (distance > 4000d)
                                 mnvAmm = 0f;
                             else
@@ -1150,13 +1283,15 @@ namespace IngameScript {
                         }
                     }
 
-                    if (useMNV) DirToMnv(2, culprit, mnvAmm);
-                    MoveAllGyros((float)(command.X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
+                    //if (useMNV) DirToMnv(2, culprit1.dirInt, mnvAmm);
+                    CorrectionManeuvers();
+                    //MoveAllGyros((float)(command.X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
+                    MoveAllGyros((float)(command.X), (float)(command.Y), (float)(command.Z));
 
                     if (distance >= 4000d && gravMode && currELV <= 1000) if (THRUSTERS.TryGetValue(5, out group)) MoveAGroupThrusters(group, 1f);
                     lastDist = distance;
 
-                    Echo(" " + distance + " ");
+                    Echo("distance: " + distance + " ");
                     break;
 
                 case MISSILE_STATE.MANUAL:
@@ -1186,7 +1321,7 @@ namespace IngameScript {
                 B = myPos;
 
             double
-                t = enSpeed.Length() / maxSpeed,         //t -> b = a*t
+                t = enSpeed.Length() / mySpeed,         //t -> b = a*t
                 projPath,                               //b
                 dist = Vector3D.Distance(A, B),  //c
                 cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
@@ -1213,9 +1348,19 @@ namespace IngameScript {
                     projPath = (dist) / (2 * cos);
                 }
                 else {
+                    double 
+                        proj1 = (t * t * dist * (cos + Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1)), 
+                        proj2 = (t * t * dist * (cos - Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1));
+                    /*/
                     projPath = (t * t * dist * (cos + Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1));
                     if (projPath < 0) {
                         projPath = (t * t * dist * (cos - Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1));
+                    }
+                    /**/
+                    projPath = proj1 > proj2? proj2:proj1;
+                    if (projPath < 0) {
+                        projPath = proj1 < proj2 ? proj2 : proj1;
+                        if (projPath < 0) return NOTHING;
                     }
                 }
 
@@ -1233,12 +1378,12 @@ namespace IngameScript {
                 enSpeed = speed.Length();
 
             if (enSpeed > 0) {
-                Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition());
+                Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition()/**/, SHIP_CONTROLLER.GetShipSpeed()/**/);
                 if (!output.Equals(NOTHING)) {
                     return output;
                 }
             }
-
+            Echo("TO MA RAKA");
             return position;
         }
 
@@ -1387,6 +1532,13 @@ namespace IngameScript {
                         }
                         else if (eval[0].Equals("THRTEST")) {
                             FindThrusters(true);
+                            List<IMyThrust> thrusters = new List<IMyThrust>();
+                            if (THRUSTERS.TryGetValue(6, out thrusters)) {
+                                Echo("done!");
+                                IMyThrust thruster = thrusters[0];
+                                thruster.Enabled = false;
+                                thruster.ThrustOverridePercentage = 1f;
+                            }
                         }
                         else
                             ChangeState(argument.ToUpper());

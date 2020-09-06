@@ -28,6 +28,7 @@ namespace IngameScript {
                 ShipName = "Ship";
         }
 
+        const string IGNORE = "[NO-RENAME]";
         string   ShipName   = "";
         string[] Alphabet   = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"};
 
@@ -48,6 +49,7 @@ namespace IngameScript {
                 smolH2   = 0;
 
             foreach (IMyGasTank tank in tanks) {
+                if (tank.CustomName.Contains(IGNORE)) continue;
                 if (!thisOnly || IsOnThisGrid(tank)) { 
                     if (tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
                         if(tank.BlockDefinition.SubtypeName.Contains("LargeHydrogenTank"))
@@ -73,6 +75,7 @@ namespace IngameScript {
             int OxyTanks = 0;
 
             foreach (IMyGasTank tank in tanks) {
+                if (tank.CustomName.Contains(IGNORE)) continue;
                 if (!thisOnly || IsOnThisGrid(tank)) {
                     if (!tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
                         tank.CustomName = ShipName + "/Oxygen Tank " + GetAlphabet(OxyTanks++);
@@ -89,6 +92,7 @@ namespace IngameScript {
             int increm = 0;
 
             foreach (IMyGasTank tank in tanks) {
+                if (tank.CustomName.Contains(IGNORE)) continue;
                 if (!thisOnly || IsOnThisGrid(tank)) {
                     if (tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
                         tank.CustomName = ShipName + "/Hydrogen Tank " + GetAlphabet(increm++);
@@ -105,6 +109,7 @@ namespace IngameScript {
             int increm = 0;
             GridTerminalSystem.GetBlocksOfType(gens);
             foreach (IMyGasGenerator gen in gens) {
+                if (gen.CustomName.Contains(IGNORE)) continue;
                 if (!thisOnly || IsOnThisGrid(gen)) {
                     gen.CustomName = ShipName + "/H2 Generator " + GetAlphabet(increm++);
                     gen.ShowInInventory = true;
@@ -120,6 +125,7 @@ namespace IngameScript {
             int Cont = 0;
 
             foreach (IMyCargoContainer cont in conts) {
+                if (cont.CustomName.Contains(IGNORE)) continue;
                 if (!thisOnly || IsOnThisGrid(cont)) {
                     switch (cont.BlockDefinition.SubtypeName) {
                         case "LargeBlockLargeContainer":
@@ -157,6 +163,9 @@ namespace IngameScript {
             int BatteryNo = 0;
 
             foreach (IMyPowerProducer prod in prods) {
+                if (prod.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(prod)) {
                     if(prod is IMyReactor) {
                         prod.CustomName = ShipName + "/Nuclear Reactor " + GetAlphabet(reactorNo++);
@@ -192,6 +201,9 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(bats);
             int BatteryNo = 0;
             foreach (IMyBatteryBlock bat in bats) {
+                if (bat.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(bat)) {
                     bat.CustomName = ShipName + "/Battery "+ ++BatteryNo;
                     bat.ShowInInventory = false;
@@ -206,6 +218,9 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(gyros);
             int GyroNo = 0;
             foreach (IMyGyro gyro in gyros) {
+                if (gyro.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(gyro)) {
                     gyro.CustomName = ShipName + "/Gyroscope " + ++GyroNo;
                     gyro.ShowInTerminal = false;
@@ -224,6 +239,9 @@ namespace IngameScript {
                 PDT = 0;
 
             foreach (IMyUserControllableGun wep in weps) {
+                if (wep.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(wep)) {
                     if (wep is IMyLargeGatlingTurret) {
                         wep.CustomName = ShipName + "/Anti-Ship Gun " + GetAlphabet(ASG++);
@@ -266,6 +284,9 @@ namespace IngameScript {
             List<IMyBeacon> becs = new List<IMyBeacon>();
             GridTerminalSystem.GetBlocksOfType(becs);
             foreach (IMyBeacon bec in becs) {
+                if (bec.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(bec)) {
                     bec.CustomName = ShipName + "/Beacon";
                     bec.HudText = ShipName;
@@ -277,6 +298,9 @@ namespace IngameScript {
             List<IMyRadioAntenna> ants = new List<IMyRadioAntenna>();
             GridTerminalSystem.GetBlocksOfType(ants);
             foreach (IMyRadioAntenna ant in ants) {
+                if (ant.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(ant)) {
                     ant.CustomName = ShipName + "/Antenna";
                     ant.HudText = ShipName;
@@ -291,6 +315,9 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(items);
 
             foreach (IMyShipConnector item in items) {
+                if (item.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(item)) {
                     item.CustomName = ShipName + "/Connector";
                     item.ShowInTerminal = false;
@@ -304,6 +331,9 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(items);
 
             foreach (IMyAssembler item in items) {
+                if (item.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(item)) {
                     if (item.BlockDefinition.SubtypeName.Contains("Assembler")) {
                         if (item.BlockDefinition.SubtypeName.Contains("Large")) {
@@ -331,6 +361,9 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(items);
 
             foreach (IMyRefinery item in items) {
+                if (item.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(item)) {
                     item.CustomName = ShipName + "/Refinery";
                     item.ShowInTerminal = false;
@@ -344,6 +377,9 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(items);
 
             foreach (IMyGravityGeneratorBase item in items) {
+                if (item.CustomName.Contains(IGNORE))
+                    continue;
+
                 if (!thisOnly || IsOnThisGrid(item)) {
                     item.CustomName = ShipName + "/Gravity Generator";
                     item.ShowInTerminal = false;
@@ -359,6 +395,8 @@ namespace IngameScript {
             int cryoNo = 0;
 
             foreach (IMyCryoChamber item in items) {
+
+                if (tank.CustomName.Contains(IGNORE)) continue;
                 if (!thisOnly || IsOnThisGrid(item)) {
                     if (item.BlockDefinition.SubtypeName.Contains("BlockCryoChamber")) {
                         item.CustomName = ShipName + "/Cryo Chamber " + GetAlphabet(cryoNo++);

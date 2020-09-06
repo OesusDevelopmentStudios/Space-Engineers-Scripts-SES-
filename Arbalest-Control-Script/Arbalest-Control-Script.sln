@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30413.136
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arbalest-Control-Script", "Arbalest-Control-Script.csproj", "{4F4A8704-818F-463E-9C24-6F89F37F23DA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4F4A8704-818F-463E-9C24-6F89F37F23DA}.Debug|x64.ActiveCfg = Debug|x64
+		{4F4A8704-818F-463E-9C24-6F89F37F23DA}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E569305B-4C44-4124-98A9-A98DF5FEF79A}
+	EndGlobalSection
+EndGlobal
