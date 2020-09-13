@@ -37,6 +37,8 @@ namespace IngameScript {
         class LauncherSegment {
             IMyShipMergeBlock           merger;
 
+            public bool                 busy;
+
             bool                        accelEnabled;
 
             List<IMyGravityGenerator>   accelerators;
@@ -44,13 +46,19 @@ namespace IngameScript {
 
             public LauncherSegment(IMyShipMergeBlock merger = null, List<IMyGravityGenerator> accelerators = null, List<IMyShipWelder> constructors = null) {
                 this.merger = merger;
+                this.accelEnabled = true;
+                this.busy   = false;
                 if (accelerators != null) this.accelerators = accelerators; else this.accelerators = new List<IMyGravityGenerator>();
                 if (constructors != null) this.constructors = constructors; else this.constructors = new List<IMyShipWelder>();
             }
 
-            public void enableMerger(bool enable) {this.merger.Enabled = enable;}
+            public void EnableMerger(bool enable) {this.merger.Enabled = enable;}
 
-            public void switchAccels() {
+            public void EnableAccels(bool enable) {
+                if (this.accelEnabled != enable) SwitchAccels();
+            }
+
+            public void SwitchAccels() {
                 this.accelEnabled = !this.accelEnabled;
                 if (this.accelEnabled) {
                     foreach(IMyGravityGenerator accel in accelerators) {
@@ -66,18 +74,27 @@ namespace IngameScript {
                 }
             }
 
-            public void enableAccels(bool enable) {
-                if (this.accelEnabled != enable) switchAccels();
+            public void SetAccels(List<IMyGravityGenerator> accelerators) {
+                this.accelerators = new List<IMyGravityGenerator>();
+                this.accelerators.AddList(accelerators);
+                this.EnableAccels(true);
+                this.EnableAccels(false);
+            }
+
+            public void SetConstructors(List<IMyShipWelder> constructors) {
+                this.constructors = new List<IMyShipWelder>();
+                this.constructors.AddList(constructors);
             }
 
         }
 
         public Program() {
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
             launchers = new Dictionary<int, LauncherSegment>();
             doors = new List<IMyAirtightHangarDoor>();
         }
 
-        bool isOnSameGrid(IMyCubeBlock A, IMyCubeBlock B = null) {
+        bool IsOnSameGrid(IMyCubeBlock A, IMyCubeBlock B = null) {
             if (B == null) B = Me;
 
             if (A.CubeGrid.Equals(B.CubeGrid)) return true;
@@ -85,38 +102,105 @@ namespace IngameScript {
             return false;
         }
 
-        void findLaunchers(){
-            List<IMyShipMergeBlock> mergers = new List<IMyShipMergeBlock>();
-            GridTerminalSystem.GetBlocksOfType(mergers);
-            foreach(IMyShipMergeBlock merger in mergers) {
-                if(isOnSameGrid(merger) && merger.CustomName.StartsWith("[" + DEFAULT_ARBALEST_TAG + "-")) {
-                    int number=-1;
-                    if(int.TryParse(merger.CustomName.Substring(2+DEFAULT_ARBALEST_TAG.Length), out number)) {
-                    
+        List<IMyShipMergeBlock> GetMergers() {
+            List<IMyShipMergeBlock> 
+                temp    = new List<IMyShipMergeBlock>(), 
+                output  = new List<IMyShipMergeBlock>();
+
+            GridTerminalSystem.GetBlocksOfType(temp);
+
+            foreach(IMyShipMergeBlock merge in temp) {
+                if (IsOnSameGrid(merge) && merge.CustomName.StartsWith("[" + DEFAULT_ARBALEST_TAG + "-")) output.Add(merge);
+            }
+
+            return output;
+        }
+
+        List<IMyGravityGenerator> GetAccelerators(int num) {
+            List<IMyGravityGenerator>
+                temp = new List<IMyGravityGenerator>(),
+                output = new List<IMyGravityGenerator>();
+
+            GridTerminalSystem.GetBlocksOfType(temp);
+
+            foreach (IMyGravityGenerator gravGen in temp) {
+                if (IsOnSameGrid(gravGen) && gravGen.CustomName.StartsWith("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(gravGen);
+            }
+
+            return output;
+        }
+        List<IMyShipWelder> GetConstructors(int num) {
+            List<IMyShipWelder>
+                temp = new List<IMyShipWelder>(),
+                output = new List<IMyShipWelder>();
+
+            GridTerminalSystem.GetBlocksOfType(temp);
+
+            foreach (IMyShipWelder welder in temp) {
+                if (IsOnSameGrid(welder) && welder.CustomName.StartsWith("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(welder);
+            }
+
+            return output;
+        }
+
+        void FindLaunchers(){
+            List<IMyShipMergeBlock> mergers = GetMergers();
+            List<IMyShipWelder>    construc;
+            List<IMyGravityGenerator> accel;
+            foreach (IMyShipMergeBlock merger in mergers) {
+                int number=-1;
+                if (int.TryParse(merger.CustomName.Substring(2 + DEFAULT_ARBALEST_TAG.Length), out number)) {
+                    if (launchers.ContainsKey(number)) Log("There is more than one Launcher with number " + number);
+                    else {
+                        construc= GetConstructors(number);
+                        accel   = GetAccelerators(number);
+
+                        launchers.Add(number,new LauncherSegment(merger,accel,construc));
                     }
                 }
+                else Log("There was a parsing error in 'findLaunchers' function");
             }
         }
 
-        bool findScreens() {
+        bool FindScreens() {
             screens = new List<IMyTextPanel>();
             List<IMyTextPanel> temp = new List<IMyTextPanel>();
             GridTerminalSystem.GetBlocksOfType(temp);
             foreach(IMyTextPanel screen in temp) {
-                if (isOnSameGrid(screen) && screen.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "]")) screens.Add(screen);
+                if (IsOnSameGrid(screen) && screen.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "]")) screens.Add(screen);
             }
             if (screens.Count > 0) return true;
             return false;
+        }
+
+        void ChangeScreenColor() { ChangeScreenColor(Color.Black); }
+        void ChangeScreenColor(Color color) {
+            if (screens == null || screens.Count == 0)
+                if (!FindScreens()) return;
+
+            foreach (IMyTextPanel screen in screens) {
+                screen.BackgroundColor = color;
+            }
+        }
+
+        void Log(object input, bool error = true) {
+            string message = input is string ? (string)input : input.ToString();
+
+            if (error) ChangeScreenColor(Color.Red);
+
+            Me.CustomData += "\n" + message;
         }
 
         void Output(object input, bool append = false) {
             string message = input is string ? (string)input : input.ToString();
 
             if (screens == null || screens.Count == 0)
-                if (!findScreens()) return;
+                if (!FindScreens()) return;
 
             foreach(IMyTextPanel screen in screens) {
                 screen.WriteText(message, append);
+                screen.ContentType = ContentType.TEXT_AND_IMAGE;
+                ChangeScreenColor();
             }
         }
 
