@@ -187,11 +187,7 @@ namespace IngameScript
                 music.SelectedSound = "YELLOW_ALERT";
                 music.Play();
             }
-            //HangarDoors
-            foreach (IMyAirtightHangarDoor door in cannonDoor)
-            {
-                door.OpenDoor();
-            }            
+            //HangarDoors          
             foreach (IMyAirtightHangarDoor door in hangarbay)
             {
                 door.CloseDoor();
