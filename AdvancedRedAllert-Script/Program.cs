@@ -21,16 +21,16 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        private string NORMAL_ALLERT = "STATUS: NORMAL";
-        private string YELLOW_ALLERT = "STATUS: YELLOW";
-        private string RED_ALLERT = "RED ALERT";
+        private string NORMAL_ALERT = "STATUS: NORMAL";
+        private string YELLOW_ALERT = "STATUS: YELLOW";
+        private string RED_ALERT = "RED ALERT";
 
         private IMyProgrammableBlock EnergyControl;
 
         private List<IMyTextPanel> infoScreens;
 
         private List<IMyLightingBlock> primaryLights;
-        private List<IMyLightingBlock> mudLights;
+        private List<IMyLightingBlock> moodLights;
 
         private int ANIM_STATE = 0;
         private int SLOW = 0;
@@ -51,7 +51,7 @@ namespace IngameScript
 
             List<IMyLightingBlock> temp2 = new List<IMyLightingBlock>();
             primaryLights = new List<IMyLightingBlock>();
-            mudLights = new List<IMyLightingBlock>();
+            moodLights = new List<IMyLightingBlock>();
             GridTerminalSystem.GetBlocksOfType(temp2);
             foreach(IMyLightingBlock light in temp2)
             {
@@ -61,9 +61,9 @@ namespace IngameScript
                     {
                         primaryLights.Add(light);
                     }
-                    else if (light.CustomName.Contains("MUD_LIGHTS"))
+                    else if (light.CustomName.Contains("MOOD_LIGHTS"))
                     {
-                        mudLights.Add(light);
+                        moodLights.Add(light);
                     }
                 }
             }
@@ -83,14 +83,14 @@ namespace IngameScript
                 {
                     panel.BackgroundColor = Color.Black;
                     panel.FontColor = Color.Green;
-                    panel.WriteText(NORMAL_ALLERT);
+                    panel.WriteText(NORMAL_ALERT);
                 }
                 //Lights
                 foreach (IMyLightingBlock light in primaryLights)
                 {
                     light.Intensity = 10;
                 }
-                foreach (IMyLightingBlock light in mudLights)
+                foreach (IMyLightingBlock light in moodLights)
                 {
                     light.Color = Color.White;
                     light.BlinkIntervalSeconds = 0;
@@ -105,14 +105,14 @@ namespace IngameScript
                 //Text
                 panel.BackgroundColor = Color.Black;
                 panel.FontColor = Color.Yellow;
-                panel.WriteText(YELLOW_ALLERT);
+                panel.WriteText(YELLOW_ALERT);
             }
             //Lights
             foreach (IMyLightingBlock light in primaryLights)
             {
                 light.Intensity = 10;
             }
-            foreach (IMyLightingBlock light in mudLights)
+            foreach (IMyLightingBlock light in moodLights)
             {
                 light.Color = Color.Yellow;
                 light.BlinkIntervalSeconds = 2;
@@ -127,14 +127,14 @@ namespace IngameScript
             {
                 panel.BackgroundColor = Color.Red;
                 panel.FontColor = Color.Black;
-                panel.WriteText(">     " + RED_ALLERT + "     <");
+                panel.WriteText(">     " + RED_ALERT + "     <");
             }
             //Lights
             foreach (IMyLightingBlock light in primaryLights)
             {
                 light.Intensity = 4;
             }
-            foreach (IMyLightingBlock light in mudLights)
+            foreach (IMyLightingBlock light in moodLights)
             {
                 light.Color = Color.Red;
                 light.BlinkIntervalSeconds = 2;
@@ -152,7 +152,7 @@ namespace IngameScript
                 {
                     foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText(" >    " + RED_ALLERT + "    < ");
+                        panel.WriteText(" >    " + RED_ALERT + "    < ");
                     }
                     if (SLOW == 4) { ANIM_STATE = 1; SLOW = 0; }
                     SLOW++;
@@ -161,7 +161,7 @@ namespace IngameScript
                 {
                     foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("  >   " + RED_ALLERT + "   <  ");
+                        panel.WriteText("  >   " + RED_ALERT + "   <  ");
                     }
                     if (SLOW == 4) { ANIM_STATE = 2; SLOW = 0; }
                     SLOW++;
@@ -170,7 +170,7 @@ namespace IngameScript
                 {
                     foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("   >  " + RED_ALLERT + "  <   ");
+                        panel.WriteText("   >  " + RED_ALERT + "  <   ");
                     }
                     if (SLOW == 4) { ANIM_STATE = 3; SLOW = 0; }
                     SLOW++;
@@ -179,7 +179,7 @@ namespace IngameScript
                 {
                     foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("    > " + RED_ALLERT + " <    ");
+                        panel.WriteText("    > " + RED_ALERT + " <    ");
                     }
                     if (SLOW == 4) { ANIM_STATE = 4; SLOW = 0; }
                     SLOW++;
@@ -188,7 +188,7 @@ namespace IngameScript
                 {
                     foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("     >" + RED_ALLERT + "<     ");
+                        panel.WriteText("     >" + RED_ALERT + "<     ");
                     }
                     if (SLOW == 4) { ANIM_STATE = 5; SLOW = 0; }
                     SLOW++;
@@ -197,7 +197,7 @@ namespace IngameScript
                 {
                     foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText(">     " + RED_ALLERT + "     <");
+                        panel.WriteText(">     " + RED_ALERT + "     <");
                     }
                     if (SLOW == 4) { ANIM_STATE = 0; SLOW = 0; }
                     SLOW++;
