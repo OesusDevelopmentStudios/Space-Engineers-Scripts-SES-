@@ -32,6 +32,13 @@ namespace IngameScript
         private List<IMyLightingBlock> primaryLights;
         private List<IMyLightingBlock> moodLights;
 
+        private List<IMySoundBlock> woofers;
+
+        private List<IMyAirtightHangarDoor> hangarbay;
+        private List<IMyAirtightHangarDoor> cannonDoor;
+
+        private List<IMySensorBlock> sensorBlocks;
+
         private int ANIM_STATE = 0;
         private int SLOW = 0;
 
@@ -68,6 +75,47 @@ namespace IngameScript
                 }
             }
 
+            List<IMySoundBlock> temp3 = new List<IMySoundBlock>();
+            woofers = new List<IMySoundBlock>();
+            GridTerminalSystem.GetBlocksOfType(temp3);
+            foreach(IMySoundBlock music in temp3)
+            {
+                if (IsOnThisGrid(music) && music.CustomName.Contains("PARTY_HARD"))
+                {
+                    woofers.Add(music);
+                }
+            }
+
+            List<IMyAirtightHangarDoor> temp4 = new List<IMyAirtightHangarDoor>();
+            hangarbay = new List<IMyAirtightHangarDoor>();
+            cannonDoor = new List<IMyAirtightHangarDoor>();
+            GridTerminalSystem.GetBlocksOfType(temp4);
+            foreach(IMyAirtightHangarDoor door in temp4)
+            {
+                if(IsOnThisGrid(door))
+                {
+                    if(door.CustomName.Contains("ARBALEST_DOOR"))
+                    {
+                        cannonDoor.Add(door);
+                    }
+                    else if (door.CustomName.Contains("HANGAR_DOOR"))
+                    {
+                        hangarbay.Add(door);
+                    }
+                }
+            }
+
+            List<IMySensorBlock> temp5 = new List<IMySensorBlock>();
+            sensorBlocks = new List<IMySensorBlock>();
+            GridTerminalSystem.GetBlocksOfType(temp5);
+            foreach(IMySensorBlock sensor in temp5)
+            {
+                if (IsOnThisGrid(sensor) && sensor.CustomName.Contains("DOOR_SENSOR"))
+                {
+                    sensorBlocks.Add(sensor);
+                }
+            }
+
         }
 
         private bool IsOnThisGrid(IMyCubeBlock block)
@@ -78,23 +126,38 @@ namespace IngameScript
 
         private void NormalStatus()
         {
-                //Text
-                foreach (IMyTextPanel panel in infoScreens)
-                {
-                    panel.BackgroundColor = Color.Black;
-                    panel.FontColor = Color.Green;
-                    panel.WriteText(NORMAL_ALERT);
-                }
-                //Lights
-                foreach (IMyLightingBlock light in primaryLights)
-                {
-                    light.Intensity = 10;
-                }
-                foreach (IMyLightingBlock light in moodLights)
-                {
-                    light.Color = Color.White;
-                    light.BlinkIntervalSeconds = 0;
-                }
+            //Text
+            foreach (IMyTextPanel panel in infoScreens)
+            {
+                panel.BackgroundColor = Color.Black;
+                panel.FontColor = Color.Green;
+                panel.WriteText(NORMAL_ALERT);
+            }
+            //Lights
+            foreach (IMyLightingBlock light in primaryLights)
+            {
+                light.Intensity = 10;
+            }
+            foreach (IMyLightingBlock light in moodLights)
+            {
+                light.Color = Color.White;
+                light.BlinkIntervalSeconds = 0;
+            }
+            //Sound
+            foreach (IMySoundBlock music in woofers)
+            {
+                music.Stop();
+            }
+            //HangarDoors
+            foreach (IMyAirtightHangarDoor door in cannonDoor)
+            {
+                door.CloseDoor();
+            }
+            //Sensors
+            foreach (IMySensorBlock sensor in sensorBlocks)
+            {
+                sensor.Enabled = true;
+            }
         }
 
         private void YellowStatus()
@@ -118,6 +181,26 @@ namespace IngameScript
                 light.BlinkIntervalSeconds = 2;
                 light.BlinkLength = 50;
             }
+            //Sound
+            foreach (IMySoundBlock music in woofers)
+            {
+                music.SelectedSound = "YELLOW_ALERT";
+                music.Play();
+            }
+            //HangarDoors
+            foreach (IMyAirtightHangarDoor door in cannonDoor)
+            {
+                door.OpenDoor();
+            }            
+            foreach (IMyAirtightHangarDoor door in hangarbay)
+            {
+                door.CloseDoor();
+            }
+            //Sensors
+            foreach (IMySensorBlock sensor in sensorBlocks)
+            {
+                sensor.Enabled = true;
+            }
         }
 
         private void RedStatus()
@@ -139,6 +222,27 @@ namespace IngameScript
                 light.Color = Color.Red;
                 light.BlinkIntervalSeconds = 2;
                 light.BlinkLength = 50;
+            }
+            //Sound
+            foreach (IMySoundBlock music in woofers)
+            {
+                music.SelectedSound = "RED_ALERT";
+                music.LoopPeriod = 120;
+                music.Play();
+            }
+            //HangarDoors
+            foreach (IMyAirtightHangarDoor door in cannonDoor)
+            {
+                door.OpenDoor();
+            }
+            foreach (IMyAirtightHangarDoor door in hangarbay)
+            {
+                door.CloseDoor();
+            }
+            //Sensors
+            foreach (IMySensorBlock sensor in sensorBlocks)
+            {
+                sensor.Enabled = false;
             }
 
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
