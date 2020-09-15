@@ -39,6 +39,8 @@ namespace IngameScript
 
         private List<IMySensorBlock> sensorBlocks;
 
+        private List<IMyAirVent> airVents;
+
         private int ANIM_STATE = 0;
         private int SLOW = 0;
 
@@ -47,7 +49,7 @@ namespace IngameScript
             List<IMyTextPanel> temp = new List<IMyTextPanel>();
             infoScreens = new List<IMyTextPanel>();
             GridTerminalSystem.GetBlocksOfType(infoScreens);
-            foreach(IMyTextPanel panel in infoScreens)
+            foreach (IMyTextPanel panel in infoScreens)
             {
                 if (IsOnThisGrid(panel) && panel.CustomName.Contains("INFO_SCREEN"))
                 {
@@ -60,9 +62,9 @@ namespace IngameScript
             primaryLights = new List<IMyLightingBlock>();
             moodLights = new List<IMyLightingBlock>();
             GridTerminalSystem.GetBlocksOfType(temp2);
-            foreach(IMyLightingBlock light in temp2)
+            foreach (IMyLightingBlock light in temp2)
             {
-                if(IsOnThisGrid(light))
+                if (IsOnThisGrid(light))
                 {
                     if (light.CustomName.Contains("NORMAL_LIGHTS"))
                     {
@@ -78,7 +80,7 @@ namespace IngameScript
             List<IMySoundBlock> temp3 = new List<IMySoundBlock>();
             woofers = new List<IMySoundBlock>();
             GridTerminalSystem.GetBlocksOfType(temp3);
-            foreach(IMySoundBlock music in temp3)
+            foreach (IMySoundBlock music in temp3)
             {
                 if (IsOnThisGrid(music) && music.CustomName.Contains("PARTY_HARD"))
                 {
@@ -90,11 +92,11 @@ namespace IngameScript
             hangarbay = new List<IMyAirtightHangarDoor>();
             cannonDoor = new List<IMyAirtightHangarDoor>();
             GridTerminalSystem.GetBlocksOfType(temp4);
-            foreach(IMyAirtightHangarDoor door in temp4)
+            foreach (IMyAirtightHangarDoor door in temp4)
             {
-                if(IsOnThisGrid(door))
+                if (IsOnThisGrid(door))
                 {
-                    if(door.CustomName.Contains("ARBALEST_DOOR"))
+                    if (door.CustomName.Contains("ARBALEST_DOOR"))
                     {
                         cannonDoor.Add(door);
                     }
@@ -108,7 +110,7 @@ namespace IngameScript
             List<IMySensorBlock> temp5 = new List<IMySensorBlock>();
             sensorBlocks = new List<IMySensorBlock>();
             GridTerminalSystem.GetBlocksOfType(temp5);
-            foreach(IMySensorBlock sensor in temp5)
+            foreach (IMySensorBlock sensor in temp5)
             {
                 if (IsOnThisGrid(sensor) && sensor.CustomName.Contains("DOOR_SENSOR"))
                 {
@@ -116,6 +118,18 @@ namespace IngameScript
                 }
             }
 
+            List<IMyAirVent> temp6 = new List<IMyAirVent>();
+            airVents = new List<IMyAirVent>();
+            GridTerminalSystem.GetBlocksOfType(temp6);
+            foreach (IMyAirVent air in temp6)
+            {
+                if (IsOnThisGrid(air))
+                {
+                    airVents.Add(air);
+                }
+            }
+
+            GetECBlock();
         }
 
         private bool IsOnThisGrid(IMyCubeBlock block)
@@ -124,8 +138,27 @@ namespace IngameScript
             else return false;
         }
 
+        void GetECBlock()
+        {
+            List<IMyProgrammableBlock> Progs = new List<IMyProgrammableBlock>();
+            GridTerminalSystem.GetBlocksOfType(Progs);
+            foreach (IMyProgrammableBlock block in Progs)
+            {
+                if (IsOnThisGrid(block) && block.CustomName.Contains("[ENERGY CONTROL]"))
+                {
+                    EnergyControl = block;
+                    return;
+                }
+            }
+        }
+
         private void NormalStatus()
         {
+            //HangarDoors
+            foreach (IMyAirtightHangarDoor door in cannonDoor)
+            {
+                door.CloseDoor();
+            }
             //Text
             foreach (IMyTextPanel panel in infoScreens)
             {
@@ -148,16 +181,24 @@ namespace IngameScript
             {
                 music.Stop();
             }
-            //HangarDoors
-            foreach (IMyAirtightHangarDoor door in cannonDoor)
-            {
-                door.CloseDoor();
-            }
             //Sensors
             foreach (IMySensorBlock sensor in sensorBlocks)
             {
                 sensor.Enabled = true;
             }
+            //HangarDoors2
+            foreach (IMyAirtightHangarDoor door in cannonDoor)
+            {
+                while (door.Status == DoorStatus.Closing) { }
+                door.Enabled = false;
+            }
+            //AirVents
+            foreach (IMyAirVent air in airVents)
+            {
+                air.Depressurize = false;
+            }
+            //EnergyControl
+            if (EnergyControl != null) EnergyControl.TryRun("NORMAL");
         }
 
         private void YellowStatus()
@@ -190,13 +231,20 @@ namespace IngameScript
             //HangarDoors          
             foreach (IMyAirtightHangarDoor door in hangarbay)
             {
-                door.CloseDoor();
+                door.Enabled = true;
             }
             //Sensors
             foreach (IMySensorBlock sensor in sensorBlocks)
             {
                 sensor.Enabled = true;
             }
+            //AirVents
+            foreach (IMyAirVent air in airVents)
+            {
+                air.Depressurize = false;
+            }
+            //EnergyControl
+            if (EnergyControl != null) EnergyControl.TryRun("NORMAL");
         }
 
         private void RedStatus()
@@ -229,7 +277,7 @@ namespace IngameScript
             //HangarDoors
             foreach (IMyAirtightHangarDoor door in cannonDoor)
             {
-                door.OpenDoor();
+                door.Enabled = true;
             }
             foreach (IMyAirtightHangarDoor door in hangarbay)
             {
@@ -240,6 +288,13 @@ namespace IngameScript
             {
                 sensor.Enabled = false;
             }
+            //AirVents
+            foreach (IMyAirVent air in airVents)
+            {
+                air.Depressurize = true;
+            }
+            //EnergyControl
+            if (EnergyControl != null) EnergyControl.TryRun("COMBAT");
 
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
         }
@@ -249,59 +304,65 @@ namespace IngameScript
             switch (ANIM_STATE)
             {
                 case 0:
-                {
-                    foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText(" >    " + RED_ALERT + "    < ");
+                        foreach (IMyTextPanel panel in infoScreens)
+                        {
+                            panel.WriteText(" >    " + RED_ALERT + "    < ");
+                        }
+                        if (SLOW == 4) { ANIM_STATE = 1; SLOW = 0; }
+                        SLOW++;
                     }
-                    if (SLOW == 4) { ANIM_STATE = 1; SLOW = 0; }
-                    SLOW++;
-                } break;
+                    break;
                 case 1:
-                {
-                    foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("  >   " + RED_ALERT + "   <  ");
+                        foreach (IMyTextPanel panel in infoScreens)
+                        {
+                            panel.WriteText("  >   " + RED_ALERT + "   <  ");
+                        }
+                        if (SLOW == 4) { ANIM_STATE = 2; SLOW = 0; }
+                        SLOW++;
                     }
-                    if (SLOW == 4) { ANIM_STATE = 2; SLOW = 0; }
-                    SLOW++;
-                    } break;
+                    break;
                 case 2:
-                {
-                    foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("   >  " + RED_ALERT + "  <   ");
+                        foreach (IMyTextPanel panel in infoScreens)
+                        {
+                            panel.WriteText("   >  " + RED_ALERT + "  <   ");
+                        }
+                        if (SLOW == 4) { ANIM_STATE = 3; SLOW = 0; }
+                        SLOW++;
                     }
-                    if (SLOW == 4) { ANIM_STATE = 3; SLOW = 0; }
-                    SLOW++;
-                    } break;
+                    break;
                 case 3:
-                {
-                    foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("    > " + RED_ALERT + " <    ");
+                        foreach (IMyTextPanel panel in infoScreens)
+                        {
+                            panel.WriteText("    > " + RED_ALERT + " <    ");
+                        }
+                        if (SLOW == 4) { ANIM_STATE = 4; SLOW = 0; }
+                        SLOW++;
                     }
-                    if (SLOW == 4) { ANIM_STATE = 4; SLOW = 0; }
-                    SLOW++;
-                    } break;
+                    break;
                 case 4:
-                {
-                    foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText("     >" + RED_ALERT + "<     ");
+                        foreach (IMyTextPanel panel in infoScreens)
+                        {
+                            panel.WriteText("     >" + RED_ALERT + "<     ");
+                        }
+                        if (SLOW == 4) { ANIM_STATE = 5; SLOW = 0; }
+                        SLOW++;
                     }
-                    if (SLOW == 4) { ANIM_STATE = 5; SLOW = 0; }
-                    SLOW++;
-                    } break;
+                    break;
                 case 5:
-                {
-                    foreach (IMyTextPanel panel in infoScreens)
                     {
-                        panel.WriteText(">     " + RED_ALERT + "     <");
+                        foreach (IMyTextPanel panel in infoScreens)
+                        {
+                            panel.WriteText(">     " + RED_ALERT + "     <");
+                        }
+                        if (SLOW == 4) { ANIM_STATE = 0; SLOW = 0; }
+                        SLOW++;
                     }
-                    if (SLOW == 4) { ANIM_STATE = 0; SLOW = 0; }
-                    SLOW++;
-                    } break;
+                    break;
             }
         }
 
@@ -311,7 +372,7 @@ namespace IngameScript
             {
                 Runtime.UpdateFrequency = UpdateFrequency.None;
                 switch (argument)
-                {              
+                {
                     case "0": NormalStatus(); break;
                     case "1": YellowStatus(); break;
                     case "2": RedStatus(); break;

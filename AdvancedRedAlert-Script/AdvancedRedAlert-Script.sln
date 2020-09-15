@@ -3,20 +3,20 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30413.136
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdvancedRedAllert-Script", "AdvancedRedAllert-Script.csproj", "{66F07F5B-2E21-4335-BD12-E4A70463B177}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdvancedRedAlert-Script", "AdvancedRedAlert-Script.csproj", "{441CF0B9-C63B-4637-AC9F-87B0DD285196}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{66F07F5B-2E21-4335-BD12-E4A70463B177}.Debug|x64.ActiveCfg = Debug|x64
-		{66F07F5B-2E21-4335-BD12-E4A70463B177}.Debug|x64.Build.0 = Debug|x64
+		{441CF0B9-C63B-4637-AC9F-87B0DD285196}.Debug|x64.ActiveCfg = Debug|x64
+		{441CF0B9-C63B-4637-AC9F-87B0DD285196}.Debug|x64.Build.0 = Debug|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {25E9BC6C-B677-470D-8BED-43A99E271BF0}
+		SolutionGuid = {F179B9F8-ED25-4970-95E8-3C0CC861CC09}
 	EndGlobalSection
 EndGlobal
