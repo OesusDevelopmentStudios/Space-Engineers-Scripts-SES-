@@ -26,6 +26,8 @@ namespace IngameScript {
             ACCELERATORS_NOMINAL_NUMBER = 4,
             CONSTRUCTORS_NOMINAL_NUMBER = 4;
 
+        Color COLOR_BLACK = new Color(0, 0, 0);
+
         public const string
             DEFAULT_ARBALEST_TAG        = "AKC";
         /// 
@@ -33,6 +35,62 @@ namespace IngameScript {
         Dictionary<int, LauncherSegment>launchers;
         List<IMyAirtightHangarDoor>     doors;
         List<IMyTextPanel>              screens;
+
+        List<Job> schedule      = new List<Job>();
+
+        Color lastColor     =  new Color(0, 0, 0);
+
+        public enum JobType {
+            LOAD,       // MERGER ON , ACC OFF
+            MIDSTATE,   // MERGER OFF, ACC OFF
+            ACCELERATE, // MERGER OFF, ACC ON
+
+            OPEN_DOOR,
+            CLOSE_DOOR
+        }
+
+        class Job {
+            public JobType  type;
+            public bool     lnch;
+            public int      TTJ ;
+            public int      no  ;
+
+            public Job(JobType type, int TTJ, int no=-1) {
+                this.type   = type;
+                this.TTJ    = TTJ;
+                this.no     = no;
+                if (no == -1)   lnch = false;
+                else            lnch = true;
+            }
+        }
+
+        class Register {
+            static List<Job> schedule = new List<Job>();
+
+            public static void Initialize() {
+                schedule = new List<Job>();
+            }
+
+            public static void Add(Job job) {
+                schedule.Add(job);
+                if(schedule.Count>1) 
+                    schedule = schedule.OrderBy(o => o.TTJ).ToList();
+            }
+
+            public static Job Tick() {
+                if (schedule.Count <= 0) return null;
+
+                for (int i = 0; i < schedule.Count; i++) schedule[i].TTJ--;
+
+                if (schedule[0].TTJ <= 0) {
+                    Job current = schedule[0];
+                    schedule.RemoveAt(0);
+                    return current;
+                }
+
+                return null;
+            }
+        }
 
         class LauncherSegment {
             IMyShipMergeBlock           merger;
@@ -62,8 +120,8 @@ namespace IngameScript {
                 this.accelEnabled = !this.accelEnabled;
                 if (this.accelEnabled) {
                     foreach(IMyGravityGenerator accel in accelerators) {
-                        accel.GravityAcceleration = 9.81f;
-                        accel.FieldSize = new Vector3D(12.5d, 150d, 12.5d);
+                        accel.GravityAcceleration = 10f;
+                        accel.FieldSize = new Vector3D(14d, 150d, 14d);
                     }
                 }
                 else {
@@ -89,9 +147,12 @@ namespace IngameScript {
         }
 
         public Program() {
+            Me.CustomData = "";
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             launchers = new Dictionary<int, LauncherSegment>();
             doors = new List<IMyAirtightHangarDoor>();
+            FindLaunchers(); FindDoors();
+            Register.Initialize();
         }
 
         bool IsOnSameGrid(IMyCubeBlock A, IMyCubeBlock B = null) {
@@ -110,7 +171,7 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(temp);
 
             foreach(IMyShipMergeBlock merge in temp) {
-                if (IsOnSameGrid(merge) && merge.CustomName.StartsWith("[" + DEFAULT_ARBALEST_TAG + "-")) output.Add(merge);
+                if (IsOnSameGrid(merge) && merge.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG)) output.Add(merge);
             }
 
             return output;
@@ -124,7 +185,7 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(temp);
 
             foreach (IMyGravityGenerator gravGen in temp) {
-                if (IsOnSameGrid(gravGen) && gravGen.CustomName.StartsWith("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(gravGen);
+                if (IsOnSameGrid(gravGen) && gravGen.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(gravGen);
             }
 
             return output;
@@ -137,28 +198,48 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(temp);
 
             foreach (IMyShipWelder welder in temp) {
-                if (IsOnSameGrid(welder) && welder.CustomName.StartsWith("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(welder);
+                if (IsOnSameGrid(welder) && welder.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(welder);
             }
 
             return output;
         }
 
+        void FindDoors() {
+            List<IMyAirtightHangarDoor> 
+                temp    = new List<IMyAirtightHangarDoor>();
+                doors   = new List<IMyAirtightHangarDoor>();
+
+            GridTerminalSystem.GetBlocksOfType(temp);
+
+            foreach(IMyAirtightHangarDoor door in temp) {
+                if(IsOnSameGrid(door) && door.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "]")) {
+                    doors.Add(door);
+                }
+            }
+        }
+
         void FindLaunchers(){
-            List<IMyShipMergeBlock> mergers = GetMergers();
-            List<IMyShipWelder>    construc;
-            List<IMyGravityGenerator> accel;
+            List<IMyShipMergeBlock>     mergers = GetMergers();
+            List<IMyShipWelder>         construc;
+            List<IMyGravityGenerator>   accel;
             foreach (IMyShipMergeBlock merger in mergers) {
-                int number=-1;
-                if (int.TryParse(merger.CustomName.Substring(2 + DEFAULT_ARBALEST_TAG.Length), out number)) {
+                int     number=-1;
+                if (int.TryParse(merger.CustomData, out number)) {
                     if (launchers.ContainsKey(number)) Log("There is more than one Launcher with number " + number);
                     else {
                         construc= GetConstructors(number);
                         accel   = GetAccelerators(number);
 
-                        launchers.Add(number,new LauncherSegment(merger,accel,construc));
+                        LauncherSegment temp = new LauncherSegment(merger, accel, construc);
+
+                        launchers.Add(number, temp);
+                        temp.EnableAccels(false);
+                        //temp.EnableMerger(true);
+
+                        Log("A new Launcher found: "+number + " " + construc.Count + " " + accel.Count, false);
                     }
                 }
-                else Log("There was a parsing error in 'findLaunchers' function");
+                else Log("There was a parsing error in 'findLaunchers' function: "+ merger.CustomData);
             }
         }
 
@@ -173,7 +254,16 @@ namespace IngameScript {
             return false;
         }
 
-        void ChangeScreenColor() { ChangeScreenColor(Color.Black); }
+        const int STEP = 8;
+        void SetNextColor() {
+            int 
+                R = lastColor.R > STEP ? (lastColor.R - STEP) : 0, 
+                G = lastColor.G > STEP ? (lastColor.G - STEP) : 0, 
+                B = lastColor.B > STEP ? (lastColor.B - STEP) : 0;
+
+            ChangeScreenColor(new Color(R, G, B));
+        }
+        void ChangeScreenColor() { ChangeScreenColor(COLOR_BLACK); }
         void ChangeScreenColor(Color color) {
             if (screens == null || screens.Count == 0)
                 if (!FindScreens()) return;
@@ -181,6 +271,8 @@ namespace IngameScript {
             foreach (IMyTextPanel screen in screens) {
                 screen.BackgroundColor = color;
             }
+
+            lastColor = color;
         }
 
         void Log(object input, bool error = true) {
@@ -188,7 +280,7 @@ namespace IngameScript {
 
             if (error) ChangeScreenColor(Color.Red);
 
-            Me.CustomData += "\n" + message;
+            Me.CustomData += message + "\n";
         }
 
         void Output(object input, bool append = false) {
@@ -205,15 +297,114 @@ namespace IngameScript {
         }
 
         /*/
-        public void Save() {
-
+        public enum JobType {
+            LOAD,       // MERGER ON , ACC OFF
+            MIDSTATE,   // MERGER OFF, ACC OFF
+            ACCELERATE, // MERGER OFF, ACC ON
         }
         /**/
 
-        public void Main(string argument, UpdateType updateSource) {
+        void DoTheJob(Job job) {
+            if (job.lnch) {
+                LauncherSegment launcher;
+                if (!launchers.TryGetValue(job.no, out launcher)) return;
+                switch (job.type) {
+                    case JobType.LOAD:
+                        launcher.EnableAccels(false);
+                        launcher.EnableMerger(true);
+                        break;
 
+                    case JobType.MIDSTATE:
+                        launcher.EnableAccels(true);
+                        launcher.EnableMerger(true);
+                        break;
+
+                    case JobType.ACCELERATE:
+                        launcher.EnableAccels(true);
+                        launcher.EnableMerger(false);
+                        break;
+                }
+            }
+            else {
+                switch (job.type) {
+                    case JobType.OPEN_DOOR:
+                        foreach(IMyAirtightHangarDoor door in doors) {
+                            if( door.Status == DoorStatus.Closed || 
+                                door.Status == DoorStatus.Closing ) 
+                                door.OpenDoor();
+                        }
+                        break;
+
+                    case JobType.CLOSE_DOOR:
+                        foreach (IMyAirtightHangarDoor door in doors) {
+                            if( door.Status == DoorStatus.Open || 
+                                door.Status == DoorStatus.Opening ) 
+                                door.CloseDoor();
+                        }
+                        break;
+                }
+            }
         }
 
-    }
+        /*/
+        LOAD
+        MIDSTATE
+        ACCELERATE
+        OPEN_DOOR
+        CLOSE_DOOR
+        /**/
 
+        public void Main(string argument, UpdateType updateSource) {
+            if ((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0) {
+                if (!lastColor.Equals(COLOR_BLACK)) SetNextColor();
+                Job current = Register.Tick();
+                if (current != null) { DoTheJob(current); }
+            }
+            else
+            if ((updateSource & UpdateType.IGC) > 0) {
+
+            }
+            else {
+                if (argument.Length > 0) {
+                    string[] args = argument.ToLower().Split(' ');
+                    switch (args[0]) {
+                        case "open":
+                            Register.Add(new Job(JobType.OPEN_DOOR, 1));
+                            break;
+
+                        case "close":
+                            Register.Add(new Job(JobType.CLOSE_DOOR, 1));
+                            break;
+
+                        case "load":
+                            if (args.Length > 1) {
+                                int lnchNo;
+                                if(int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo)) {
+                                    Register.Add(new Job(JobType.LOAD, 1, lnchNo));
+                                }
+                            }
+                            break;
+
+                        case "mid":
+                            if (args.Length > 1) {
+                                int lnchNo;
+                                if (int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo)) {
+                                    Register.Add(new Job(JobType.MIDSTATE, 1, lnchNo));
+                                }
+                            }
+                            break;
+
+                        case "accel":
+                            if (args.Length > 1) {
+                                int lnchNo;
+                                if (int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo)) {
+                                    Register.Add(new Job(JobType.ACCELERATE, 1, lnchNo));
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+    }
 }
