@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{66F07F5B-2E21-4335-BD12-E4A70463B177}</ProjectGuid>
+    <ProjectGuid>{441CF0B9-C63B-4637-AC9F-87B0DD285196}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>IngameScript</RootNamespace>
-    <AssemblyName>AdvancedRedAllert-Script</AssemblyName>
+    <AssemblyName>AdvancedRedAlert-Script</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
