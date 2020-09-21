@@ -24,7 +24,10 @@ namespace IngameScript {
         /// CONSTANTS
         public const int 
             ACCELERATORS_NOMINAL_NUMBER = 4,
-            CONSTRUCTORS_NOMINAL_NUMBER = 4;
+            CONSTRUCTORS_NOMINAL_NUMBER = 4,
+            LAUNCH_SPACING = 3, ///ticks between launches in a salvo (6 being one second, apparently)
+            
+            MAINTEANCE_FREQUENCY = 60;
 
         Color COLOR_BLACK = new Color(0, 0, 0);
 
@@ -39,6 +42,9 @@ namespace IngameScript {
         List<Job> schedule      = new List<Job>();
 
         Color lastColor     =  new Color(0, 0, 0);
+
+        int     DECOLOR_STEP = 8,
+                MAINTEANCE_NUM = 0;
 
         public enum JobType {
             LOAD,       // MERGER ON , ACC OFF
@@ -55,7 +61,7 @@ namespace IngameScript {
             public int      TTJ ;
             public int      no  ;
 
-            public Job(JobType type, int TTJ, int no=-1) {
+            public Job(JobType type, int TTJ=1, int no=-1) {
                 this.type   = type;
                 this.TTJ    = TTJ;
                 this.no     = no;
@@ -76,6 +82,8 @@ namespace IngameScript {
                 if(schedule.Count>1) 
                     schedule = schedule.OrderBy(o => o.TTJ).ToList();
             }
+
+            public static int GetSize() {return schedule.Count;}
 
             public static Job Tick() {
                 if (schedule.Count <= 0) return null;
@@ -112,6 +120,8 @@ namespace IngameScript {
 
             public void EnableMerger(bool enable) {this.merger.Enabled = enable;}
 
+            public int AccelCount() { return this.accelerators.Count; }
+
             public void EnableAccels(bool enable) {
                 if (this.accelEnabled != enable) SwitchAccels();
             }
@@ -139,10 +149,30 @@ namespace IngameScript {
                 this.EnableAccels(false);
             }
 
+            public int ConstrCount() { return this.constructors.Count; }
+
             public void SetConstructors(List<IMyShipWelder> constructors) {
                 this.constructors = new List<IMyShipWelder>();
                 this.constructors.AddList(constructors);
             }
+            /**
+            public string GenerateDiagnostics() {
+                string output = "------------------------\nLauncher Diagnostics:";
+
+                for(int i=0; i<accelerators.Count; i++) {
+                    output += "\nAccelerator "+(i+1)+" - ("+accelerators[i].CustomName+") Functional: "+ accelerators[i].IsFunctional + " Enabled: "+ accelerators[i].Enabled;
+                }
+
+                output += "\n";
+
+                for (int i = 0; i < constructors.Count; i++) {
+                    output += "\nConstructor " + (i + 1) + " - (" + constructors[i].CustomName + ") Functional: " + constructors[i].IsFunctional + " Enabled: " + constructors[i].Enabled;
+                }
+
+
+                return output+"\n------------------------";
+            }
+            /**/
 
         }
 
@@ -154,6 +184,17 @@ namespace IngameScript {
             FindLaunchers(); FindDoors();
             Register.Initialize();
         }
+        /**
+        int GetDoorStatus() { /// it returns the number of ticks until the missile is o.k. to launch
+            float openness = 1f;
+            foreach(IMyAirtightHangarDoor door in doors) {
+                if (door != null) {
+
+                }
+            }
+
+        }
+        /**/
 
         bool IsOnSameGrid(IMyCubeBlock A, IMyCubeBlock B = null) {
             if (B == null) B = Me;
@@ -225,7 +266,7 @@ namespace IngameScript {
             foreach (IMyShipMergeBlock merger in mergers) {
                 int     number=-1;
                 if (int.TryParse(merger.CustomData, out number)) {
-                    if (launchers.ContainsKey(number)) Log("There is more than one Launcher with number " + number);
+                    if (launchers.ContainsKey(number)) Error("There is more than one Launcher with number " + number);
                     else {
                         construc= GetConstructors(number);
                         accel   = GetAccelerators(number);
@@ -236,10 +277,10 @@ namespace IngameScript {
                         temp.EnableAccels(false);
                         //temp.EnableMerger(true);
 
-                        Log("A new Launcher found: "+number + " " + construc.Count + " " + accel.Count, false);
+                        Log("A new Launcher found: "+number + " " + construc.Count + " " + accel.Count,false);
                     }
                 }
-                else Log("There was a parsing error in 'findLaunchers' function: "+ merger.CustomData);
+                else Error("There was a parsing error in 'findLaunchers' function: "+ merger.CustomData);
             }
         }
 
@@ -254,12 +295,11 @@ namespace IngameScript {
             return false;
         }
 
-        const int STEP = 8;
         void SetNextColor() {
             int 
-                R = lastColor.R > STEP ? (lastColor.R - STEP) : 0, 
-                G = lastColor.G > STEP ? (lastColor.G - STEP) : 0, 
-                B = lastColor.B > STEP ? (lastColor.B - STEP) : 0;
+                R = lastColor.R > DECOLOR_STEP ? (lastColor.R - DECOLOR_STEP) : 0, 
+                G = lastColor.G > DECOLOR_STEP ? (lastColor.G - DECOLOR_STEP) : 0, 
+                B = lastColor.B > DECOLOR_STEP ? (lastColor.B - DECOLOR_STEP) : 0;
 
             ChangeScreenColor(new Color(R, G, B));
         }
@@ -275,12 +315,125 @@ namespace IngameScript {
             lastColor = color;
         }
 
-        void Log(object input, bool error = true) {
+        void CheckAvailability() {
+            LauncherSegment launcher;
+            foreach (int key in launchers.Keys) {
+                if(launchers.TryGetValue(key,out launcher)) {
+                    launcher.SetAccels(GetAccelerators(key));
+                    launcher.SetConstructors(GetConstructors(key));
+                }
+            }
+        }
+
+        void Error(object input) {
             string message = input is string ? (string)input : input.ToString();
 
-            if (error) ChangeScreenColor(Color.Red);
+            ChangeScreenColor(Color.Red);
+
+            DECOLOR_STEP = 8;
 
             Me.CustomData += message + "\n";
+        }
+
+        void Log(object input, bool colorIt = true) {
+            string message = input is string ? (string)input : input.ToString();
+
+            if (colorIt) {
+                ChangeScreenColor(Color.Yellow);
+                DECOLOR_STEP = 16;
+            }
+
+            Me.CustomData += message + "\n";
+        }
+
+        string GenerateStatus() {
+            string output = "";
+            List<int> keys = new List<int>();
+
+            foreach(int key in launchers.Keys) {
+                keys.Add(key);
+            }
+            keys = keys.OrderBy(o => o).ToList();
+
+            for (int i = 0; i < keys.Count; i++) {
+                LauncherSegment launcher;
+                if (launchers.TryGetValue(keys[i], out launcher)) {
+
+                    if (i!=0) { output += "\n\n"; }
+
+                    output += 
+                        "Launcher " + keys[i] + " - "+ (launcher.busy? "BUSY":"STDBY") + 
+                        (launcher.ConstrCount() == CONSTRUCTORS_NOMINAL_NUMBER ? "" : ("\nCONSTR: " + launcher.ConstrCount() + "/" + CONSTRUCTORS_NOMINAL_NUMBER)) +
+                        (launcher.AccelCount()  == ACCELERATORS_NOMINAL_NUMBER ? "" : ("\nACCEL: " +  launcher.AccelCount()  + "/" + ACCELERATORS_NOMINAL_NUMBER));
+                }
+            }
+
+
+            return output;
+        }
+
+        int GetTimeTillFine() {
+            float openness = 1f;
+            FindDoors();
+            foreach (IMyAirtightHangarDoor door in doors) {
+                if (!door.IsFunctional) {
+                    Error("Error: One or more of the doors is not functional, which would make launch risky if not impossible.");
+                    Output("UNABLE TO COMPLY");
+                    return -1;
+                }
+                if(door.Status == DoorStatus.Closed || door.Status == DoorStatus.Closing) {
+                    door.OpenDoor();
+                }
+                if(door.Status != DoorStatus.Open) {if (openness > door.OpenRatio) openness = door.OpenRatio;}
+            }
+            if (openness == 0) return 36;
+            else 
+            if (openness < 0.5f) {
+                int TTO;
+
+                TTO = (int)(((0.5f - openness) / 0.5f) * 36);
+
+                return TTO;
+            }
+
+            return 0;
+        }
+
+        void PrepareSalvo() {
+            int timeTillLaunch = GetTimeTillFine(); if (timeTillLaunch < 0) return;
+
+            List<int> keys = new List<int>();
+
+            foreach (int key in launchers.Keys) {
+                keys.Add(key);
+            }
+            keys = keys.OrderBy(o => o).ToList();
+
+            for (int i=0; i<keys.Count; i++) {
+                ScheduleLaunch(keys[i], timeTillLaunch + (i * LAUNCH_SPACING));
+            }
+        }
+
+        void PrepareLaunch(int key) {
+            int timeTillLaunch = GetTimeTillFine(); if (timeTillLaunch < 0) return;
+
+            ScheduleLaunch(key, timeTillLaunch);
+        }
+
+        void ScheduleLaunch(int key, int TTL = 0) {
+            LauncherSegment launcher;
+            if (launchers.TryGetValue(key,out launcher)) {
+                if (launcher.busy) {
+                    Error("Error: One or more launchers was already on the Register.");
+                    return;
+                }
+                launcher.busy = true;
+
+                Register.Add(new Job(JobType.ACCELERATE, TTL, key));
+                Register.Add(new Job(JobType.LOAD, TTL+24, key));
+
+            }
+            else Log("Error: A launcher with a code '" + key + "' does not exist.");
         }
 
         void Output(object input, bool append = false) {
@@ -292,17 +445,8 @@ namespace IngameScript {
             foreach(IMyTextPanel screen in screens) {
                 screen.WriteText(message, append);
                 screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                ChangeScreenColor();
             }
         }
-
-        /*/
-        public enum JobType {
-            LOAD,       // MERGER ON , ACC OFF
-            MIDSTATE,   // MERGER OFF, ACC OFF
-            ACCELERATE, // MERGER OFF, ACC ON
-        }
-        /**/
 
         void DoTheJob(Job job) {
             if (job.lnch) {
@@ -312,11 +456,12 @@ namespace IngameScript {
                     case JobType.LOAD:
                         launcher.EnableAccels(false);
                         launcher.EnableMerger(true);
+                        launcher.busy = false;
                         break;
 
                     case JobType.MIDSTATE:
-                        launcher.EnableAccels(true);
-                        launcher.EnableMerger(true);
+                        launcher.EnableAccels(false);
+                        launcher.EnableMerger(false);
                         break;
 
                     case JobType.ACCELERATE:
@@ -346,19 +491,19 @@ namespace IngameScript {
             }
         }
 
-        /*/
-        LOAD
-        MIDSTATE
-        ACCELERATE
-        OPEN_DOOR
-        CLOSE_DOOR
-        /**/
-
         public void Main(string argument, UpdateType updateSource) {
             if ((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0) {
+                if (MAINTEANCE_NUM++ >= MAINTEANCE_FREQUENCY) {
+                    MAINTEANCE_NUM = 0;
+                    CheckAvailability();
+                }
                 if (!lastColor.Equals(COLOR_BLACK)) SetNextColor();
+                Output(GenerateStatus());
                 Job current = Register.Tick();
                 if (current != null) { DoTheJob(current); }
+                if (Register.GetSize() <= 0) {
+                    DoTheJob(new Job(JobType.CLOSE_DOOR));
+                }
             }
             else
             if ((updateSource & UpdateType.IGC) > 0) {
@@ -369,11 +514,11 @@ namespace IngameScript {
                     string[] args = argument.ToLower().Split(' ');
                     switch (args[0]) {
                         case "open":
-                            Register.Add(new Job(JobType.OPEN_DOOR, 1));
+                            Register.Add(new Job(JobType.OPEN_DOOR));
                             break;
 
                         case "close":
-                            Register.Add(new Job(JobType.CLOSE_DOOR, 1));
+                            Register.Add(new Job(JobType.CLOSE_DOOR));
                             break;
 
                         case "load":
@@ -392,6 +537,16 @@ namespace IngameScript {
                                     Register.Add(new Job(JobType.MIDSTATE, 1, lnchNo));
                                 }
                             }
+                            break;
+
+                        case "fire":
+                            if (args.Length > 1) {
+                                int lnchNo;
+                                if (int.TryParse(args[1], out lnchNo)) {
+                                    PrepareLaunch(lnchNo);
+                                }
+                            }
+                            else PrepareSalvo();
                             break;
 
                         case "accel":

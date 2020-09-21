@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v4.2.17";
+        const string SCRIPT_VERSION = "v4.2.21";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 100f;
         const double maxDeviation = 0.02d;
@@ -371,8 +371,8 @@ namespace IngameScript {
                 OR1 = (float)Difference(culprit1.vLength, 1.4142d),
                 OR2 = (float)Difference(culprit2.vLength, 1.4142d);
 
-            OR1 = OR1 < 0.002f ? 0 : 1;
-            OR2 = OR2 < 0.002f ? 0 : 1;
+            OR1 = OR1 < 0.01f ? 0 : 1;
+            OR2 = OR2 < 0.01f ? 0 : 1;
 
             //OR1 = OR1 > 1 ? 1 : ((OR1 < 0.005) ? 0 : OR1);
             //OR2 = OR2 > 1 ? 1 : ((OR2 < 0.005) ? 0 : OR2);
@@ -384,10 +384,18 @@ namespace IngameScript {
             if (TC1 == 5) TC1 = 6;
             else
             if (TC1 == 6) TC1 = 5;
+            else
+            if (TC1 == 3) TC1 = 4;
+            else
+            if (TC1 == 4) TC1 = 3;
 
             if (TC2 == 5) TC2 = 6;
             else
             if (TC2 == 6) TC2 = 5;
+            else
+            if (TC2 == 3) TC2 = 4;
+            else
+            if (TC2 == 4) TC2 = 3;
 
             ResetThrust();
 
@@ -1387,6 +1395,108 @@ namespace IngameScript {
             return position;
         }
 
+        void ProcessMessage(MyIGCMessage message) {
+            string data = (string)message.Data;
+            string[] bits = data.Split(';');
+
+            if (bits[0].ToUpper().Equals("TARSET")) {
+                Vector3D
+                    oldTar = TARGET,
+                    olCaTa = CAMTAR;
+
+
+                ordersGot = true;
+                if (bits.Length > 3) {
+                    if (bits.Length > 6) {
+                        Vector3D pos, vel;
+                        try {
+                            pos = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
+                            vel = new Vector3D(double.Parse(bits[4]), double.Parse(bits[5]), double.Parse(bits[6]));
+                            CAMTAR = pos;
+                            TARGET = applyTarSpd(pos, vel);
+                        }
+                        catch (Exception e) {
+                            Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
+                            Me.GetSurface(0).WriteText(e.ToString());
+                            TARGET = oldTar;
+                            CAMTAR = olCaTa;
+                            ordersGot = false;
+                        }
+                    }
+                    else {
+                        try {
+                            TARGET = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
+                            CAMTAR = TARGET;
+                        }
+                        catch (Exception e) {
+                            Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
+                            Me.GetSurface(0).WriteText(e.ToString());
+                            TARGET = oldTar;
+                            CAMTAR = olCaTa;
+                            ordersGot = false;
+                        }
+                    }
+                }
+                return;
+            }
+            else
+            if (data.Equals("ABORT") || (bits.Length > 0 && bits[0].ToUpper().Equals("ABORT"))) {
+                aborting = true;
+                MoveAllGyros(0, 0, 0);
+                OverrideGyros(false);
+                List<IMyThrust> group = new List<IMyThrust>();
+                GridTerminalSystem.GetBlocksOfType(group);
+                MoveAGroupThrusters(group, 0f);
+                if (contrFine) SHIP_CONTROLLER.DampenersOverride = false;
+                selfDestruct();
+                ChangeState(MISSILE_STATE.INIT);
+            }
+        }
+
+        /*
+         
+            string data = (string)message.Data;
+            string[] bits = data.Split(';');
+
+            if (bits[0].ToUpper().Equals("TARSET")) { 
+          
+        */
+
+        string MSGToTag(MyIGCMessage message) {
+            string data = (string)message.Data;
+            string[] bits = data.Split(';');
+
+            return (bits.Length > 0)? bits[0].ToUpper():"";
+        }
+
+        void CheckForMessages() {
+            /**
+            if (missileListener != null && missileListener.HasPendingMessage) {
+                MyIGCMessage message = missileListener.AcceptMessage();
+                ProcessMessage(message);
+            }
+            /**/
+            List<MyIGCMessage> messages = new List<MyIGCMessage>();
+            if (missileListener != null) {
+                while (missileListener.HasPendingMessage) 
+                    messages.Add(missileListener.AcceptMessage());
+
+                for(int i=0; i<messages.Count; i++) {
+                    if (MSGToTag(messages[i]).Equals("ABORT")) {
+                        ProcessMessage(messages[i]);
+                        return;
+                    }
+                }
+
+                for(int i=messages.Count-1; i>=0; i--) {
+                    if (MSGToTag(messages[i]).Equals("TARSET")) {
+                        ProcessMessage(messages[i]);
+                        return;
+                    }
+                }
+            }
+        }
+
         public void Main(string argument, UpdateType updateSource) {
             if (SHIP_CONTROLLER == null || !SHIP_CONTROLLER.IsWorking)
                 contrFine = GetControllingBlock();
@@ -1394,70 +1504,14 @@ namespace IngameScript {
             String[] eval = argument.ToUpper().Split(' ');
 
             if ((updateSource & UpdateType.IGC) > 0) {
-                if (missileListener != null && missileListener.HasPendingMessage) {
-                    MyIGCMessage message = missileListener.AcceptMessage();
-                    string data = (string)message.Data;
-                    string[] bits = data.Split(';');
-
-                    if (bits[0].ToUpper().Equals("TARSET")) {
-                        Vector3D 
-                            oldTar = TARGET,
-                            olCaTa = CAMTAR;
-
-
-                        ordersGot = true;
-                        if (bits.Length > 3) {
-                            if (bits.Length > 6) {
-                                Vector3D pos, vel;
-                                try {
-                                    pos = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
-                                    vel = new Vector3D(double.Parse(bits[4]), double.Parse(bits[5]), double.Parse(bits[6]));
-                                    CAMTAR = pos;
-                                    TARGET = applyTarSpd(pos, vel);
-                                }
-                                catch (Exception e) {
-                                    Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
-                                    Me.GetSurface(0).WriteText(e.ToString());
-                                    TARGET = oldTar;
-                                    CAMTAR = olCaTa;
-                                    ordersGot = false;
-                                }
-                            }
-                            else {
-                                try {
-                                    TARGET = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
-                                    CAMTAR = TARGET;
-                                }
-                                catch (Exception e) {
-                                    Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
-                                    Me.GetSurface(0).WriteText(e.ToString());
-                                    TARGET = oldTar;
-                                    CAMTAR = olCaTa;
-                                    ordersGot = false;
-                                }
-                            }
-                        }
-                        return;
-                    }
-                    else
-                    if (data.Equals("ABORT") || (bits.Length > 0 && bits[0].ToUpper().Equals("ABORT"))) {
-                        aborting = true;
-                        MoveAllGyros(0, 0, 0);
-                        OverrideGyros(false);
-                        List<IMyThrust> group = new List<IMyThrust>();
-                        GridTerminalSystem.GetBlocksOfType(group);
-                        MoveAGroupThrusters(group, 0f);
-                        if (contrFine) SHIP_CONTROLLER.DampenersOverride = false;
-                        selfDestruct();
-                        ChangeState(MISSILE_STATE.INIT);
-                    }
-                }
+                CheckForMessages();
             }
             else {
                 switch (argument.ToUpper()) {
                     case "":
                         if (throttle) {
                             throttle = false;
+                            //CheckForMessages();
                             //if(CurrentState > MISSILE_STATE.PREP_LNCH)IGC.SendBroadcastMessage(misCMDTag,"TARGET: ("+string.Format("{0:0.#}",TARGET.X)+"," + string.Format("{0:0.#}", TARGET.Y) + "," + string.Format("{0:0.#}", TARGET.Z) + ")");
                             return;
                         }
@@ -1507,7 +1561,7 @@ namespace IngameScript {
                                 TARGET = new Vector3D(float.Parse(eval[1]), float.Parse(eval[2]), float.Parse(eval[3]));
                                 ChangeState(MISSILE_STATE.PREP_LNCH);
                                 /**/
-                                if(eval.Length>4 && eval[4].Length>0) {
+                                if (eval.Length > 4 && eval[4].Length > 0) {
                                     missileTag = eval[4];
                                 }
                                 /**/
