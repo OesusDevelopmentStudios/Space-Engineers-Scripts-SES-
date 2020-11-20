@@ -395,8 +395,7 @@ namespace IngameScript {
             int cryoNo = 0;
 
             foreach (IMyCryoChamber item in items) {
-
-                if (tank.CustomName.Contains(IGNORE)) continue;
+                if (item.CustomName.Contains(IGNORE)) continue;
                 if (!thisOnly || IsOnThisGrid(item)) {
                     if (item.BlockDefinition.SubtypeName.Contains("BlockCryoChamber")) {
                         item.CustomName = ShipName + "/Cryo Chamber " + GetAlphabet(cryoNo++);

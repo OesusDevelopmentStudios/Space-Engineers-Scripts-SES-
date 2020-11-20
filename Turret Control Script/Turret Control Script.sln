@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30413.136
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Turret Control Script", "Turret Control Script.csproj", "{4EA970B8-56C2-4AFA-A050-1E4F01248E64}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4EA970B8-56C2-4AFA-A050-1E4F01248E64}.Debug|x64.ActiveCfg = Debug|x64
+		{4EA970B8-56C2-4AFA-A050-1E4F01248E64}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D0D16FB4-953D-4AB1-BDB8-CE2E32441FBE}
+	EndGlobalSection
+EndGlobal

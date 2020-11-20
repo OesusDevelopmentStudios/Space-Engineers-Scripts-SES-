@@ -17,6 +17,7 @@ using VRage.Game;
 using VRage;
 using VRageMath;
 using VRageRender.Utils;
+using System.Diagnostics;
 
 namespace IngameScript {
     partial class Program : MyGridProgram {
@@ -26,36 +27,115 @@ namespace IngameScript {
         Dictionary<int, Turret> turrets;
 
         const string
-            TURRET_BASE = "TRRT-";
+            TURRET_BASE = "TRRT-",
+            MY_PREFIX   = "RAD-TUR";
+
+        string LOG = "";
+
+        int TickNo = 0;
+
+        bool InfoGot = true;
 
         bool AreOnSameGrid(IMyCubeBlock one, IMyCubeBlock two) {
             return one.CubeGrid.Equals(two.CubeGrid);
         }
 
-        public class Entry {
+        void SayMyName(string ScriptName, float textSize = 2f) {
+            Me.CustomName = "[" + ScriptName + "] Script";
+            ScriptName = "\n\n" + ScriptName;
+            IMyTextSurface surface = Me.GetSurface(0);
+            surface.Alignment = TextAlignment.CENTER;
+            surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.FontSize = textSize;
+            surface.WriteText(ScriptName);
+        }
+
+        public class TarEntry {
+            public long    tarID;
+            public int     turID;
+
+            public TarEntry(long tarID, int turID) {
+                this.tarID = tarID;
+                this.turID = turID;
+            }
+
+            public bool Equals(TarEntry entry) {
+                if (this.tarID.Equals(entry.tarID) && this.turID.Equals(entry.turID)) return true;
+                return false;
+            }
+        }
+
+        public class TargetDistributor {
+            private static List<TarEntry> data = new List<TarEntry>();
+
+            public static void Add(TarEntry entry) {
+                foreach(TarEntry ent in data) {
+                    if (ent.Equals(entry)) {
+                        return;
+                    }
+                }
+                data.Add(entry);
+            }
+
+            public static void Distribute() {
+                if (data.Count <= 0) return;
+                data.Sort((a, b) => (a.tarID.CompareTo(b.tarID)));
+                long tar = data[0].tarID;
+                int  tur = data[0].turID;
+                TarEntry tarentry = new TarEntry(tar, 0), turentry = new TarEntry(tur, 0);
+                List <TarEntry> tarNums = new List<TarEntry>();
+                List <TarEntry> turNums = new List<TarEntry>();
+                for (int i=0; i<data.Count; i++) {
+                    if (tar.Equals(data[i].tarID)) tarentry.turID++;
+                    else {
+                        tarNums.Add(tarentry);
+                        tar = data[i].tarID;
+                        tarentry = new TarEntry(tar, 1);
+                    }
+                }
+
+                data.Sort((a, b) => (a.turID.CompareTo(b.turID)));
+                for (int i = 0; i < data.Count; i++) {
+                    if (tur.Equals(data[i].turID)) turentry.turID++;
+                    else {
+                        turNums.Add(turentry);
+                        tur = data[i].turID;
+                        turentry = new TarEntry(tur, 1);
+                    }
+                }
+            }
+        }
+
+        public class RegEntry {
             public Vector3D 
                 position,
                 velocity;
 
-            public Entry(Vector3D position, Vector3D velocity) {
-                this.position = position;
-                this.velocity = velocity;
+            public RegEntry(Vector3D position, Vector3D velocity) {
+                this.position   = position;
+                this.velocity   = velocity;
             }
 
-            public Entry(double px, double py, double pz, double vx, double vy, double vz) : this(new Vector3D(px,py,pz), new Vector3D(vx, vy, vz)) {
+            public RegEntry(double px, double py, double pz, double vx, double vy, double vz) : this(new Vector3D(px,py,pz), new Vector3D(vx, vy, vz)) {
 
             }
         }
 
 
         public class Register {
-            Dictionary<long, Entry> content = new Dictionary<long, Entry>();
+            private static Dictionary<long, RegEntry> content = new Dictionary<long, RegEntry>();
 
-            public bool Get(long id, out Entry ent) { return content.TryGetValue(id, out ent); }
+            public static bool Has  (long id) { return content.ContainsKey(id); }
 
-            public void Set(long id, Entry ent) { content.Add(id, ent); }
+            public static bool Get  (long id, out RegEntry ent) { return content.TryGetValue(id, out ent); }
 
-            public void Delet(long id) { content.Remove(id); }
+            public static void Set  (long id, RegEntry ent) { content.Add(id, ent); }
+
+            public static int Count() { return content.Count(); }
+
+            public static void Delet() { content.Clear(); }
+
+            public static void Delet(long id) { content.Remove(id); }
         }
 
         public class Turret {
@@ -75,7 +155,7 @@ namespace IngameScript {
                 YROT, 
                 YROTA;
 
-            IMyShipConnector
+            public IMyShipConnector
                 RLDCon,
                 BSDCon;
 
@@ -83,9 +163,12 @@ namespace IngameScript {
                 weaponry;
 
             Vector3D
-                currTarget;
+                targetCoords;
 
-            bool
+            public double
+                maxAngle;
+
+            public bool
                 hasTarget;
 
             State
@@ -99,12 +182,26 @@ namespace IngameScript {
                 this.RLDCon= RLDCon;
                 this.BSDCon= BSDCon;
                 ChangeState(State.STOW);
-                this.currTarget= new Vector3D(0,0,0);
+                SetAngle(BSDCon);
+                this.targetCoords = new Vector3D(0,0,0);
                 this.hasTarget = false;
                 if (weaponry != null)
                     this.weaponry = weaponry;
                 else
                     this.weaponry = new List<IMySmallGatlingGun>();
+            }
+
+            public void SetAngle(IMyShipConnector control) {
+                if (control == null) {
+                    maxAngle = 85;
+                    return;
+                }
+                else {
+                    double angle;
+                    if (double.TryParse(control.CustomData, out angle))
+                            maxAngle = 85 - angle;
+                    else    maxAngle = 85;
+                }
             }
 
             public void AddWeapon(IMySmallGatlingGun gun) { weaponry.Add(gun); }
@@ -122,7 +219,7 @@ namespace IngameScript {
             public void SetYROT (IMyMotorStator   YROT)     { this.YROT = YROT; }
             public void SetYROTA(IMyMotorStator   YROTA)    { this.YROTA = YROTA; }
             public void SetRLCon(IMyShipConnector RLDCon)   { this.RLDCon = RLDCon; }
-            public void SetBSCon(IMyShipConnector BSDCon)   { this.BSDCon = BSDCon; }
+            public void SetBSCon(IMyShipConnector BSDCon)   { this.BSDCon = BSDCon; SetAngle(BSDCon); }
 
             public void ChangeState(State state) {
                 if (this.weaponry !=null && this.weaponry.Count>0) this.Fire(false);
@@ -159,16 +256,34 @@ namespace IngameScript {
                 }
             }
 
+
+            public bool CanTarget(Vector3D target) {
+                Vector3D fwd = Vector3D.Add(this.CTRL.GetPosition(), Vector3D.Multiply(this.BSDCon.WorldMatrix.Forward, 1000d));
+                if (InterCosine(fwd, target) >= Math.Cos(maxAngle * (Math.PI / 180.0))) 
+                    return true;
+                    return false;
+            }
+
+            public void TrySetTarget(Vector3D target) {
+                if (CanTarget(target))
+                    SetTarget(target);
+                else 
+                    ClearTarget();
+            }
+
             public void SetTarget(double X, double Y, double Z) { SetTarget(new Vector3D(X, Y, Z)); }
 
             public void SetTarget(Vector3D target) {
-                this.currTarget = target;
+                this.targetCoords = target;
                 this.hasTarget = true;
 
                 ChangeState(State.TRACK);
             }
 
-            public void ClearTarget() {this.hasTarget = false;}
+            public void ClearTarget() {
+                this.hasTarget = false;
+                this.ChangeState(Turret.State.STOW);
+            }
 
             class NavPrompt {
                 public int dirInt;
@@ -226,13 +341,32 @@ namespace IngameScript {
             }
 
             public void Move(float X, float Y){
-                XROT.RotorLock = false;
-                YROT.RotorLock = false;
-                YROTA.RotorLock = false;
+                if (XROT != null)   XROT    .RotorLock = false;
+                if (YROT != null)   YROT    .RotorLock = false;
+                if (YROTA != null)  YROTA   .RotorLock = false;
 
-                if (XROT != null)   XROT.TargetVelocityRPM = 5*X;
-                if (YROT != null)   YROT.TargetVelocityRPM = 5*Y;
-                if (YROTA != null)  YROTA.TargetVelocityRPM = -5*Y;
+                if (XROT != null)   XROT    .TargetVelocityRPM = 5*X;
+                if (YROT != null)   YROT    .TargetVelocityRPM = 5*Y;
+                if (YROTA!= null)   YROTA   .TargetVelocityRPM =-5*Y;
+            }
+
+            public bool Evaluate(out string message) {
+                message = " ";
+                if (this.HasBSCon() && this.HasCTRL() && this.HasRLCon() && this.HasXROT() && !(!this.HasYROT() && !this.HasYROTA())) {
+                    if (!this.HasYROT())    message += "~YR";
+                    if (!this.HasYROTA())   message += "~YRA";
+                    if (!this.HasYROT() || !this.HasYROTA()) message += " ";
+                    return false;
+                }
+                else {
+                    if (!this.HasBSCon())   message += "~BS";
+                    if (!this.HasCTRL() )   message += "~CT";
+                    if (!this.HasRLCon())   message += "~RL";
+                    if (!this.HasXROT() )   message += "~XR";
+                    if (!this.HasYROT() )   message += "~YR";
+                    if (!this.HasYROTA())   message += "~YA";
+                    return true;
+                }
             }
 
             public void DoubleCTM(int C1, double VL1, int C2, double VL2) {Move(Vector2.Add(CulpritToMove(C1, (float)Difference(VL1,1.4142d)), CulpritToMove(C2, (float)Difference(VL2, 1.4142d))));}
@@ -261,8 +395,22 @@ namespace IngameScript {
                 /**/
             }
 
+            public static double InterCosine(Vector3D first, Vector3D second) {
+                double
+                    scalarProduct = first.X * second.X + first.Y * second.Y + first.Z * second.Z,
+                    productOfLengths = first.Length() * second.Length();
+
+                return scalarProduct / productOfLengths;
+            }
+
+            /// 24 (longest string in 'Status') 6 + 18
+            /// 
+
             public string DoYourJob() {
-                string output = "Status: ";
+                string output;
+                if(Evaluate(out output)) {
+                    return output;
+                }
                 if (CTRL.IsUnderControl) {
                     if (this.currState != State.MANUAL) ChangeState(State.MANUAL);
                     if (RLDCon.Enabled==true) RLDCon.Enabled = false;
@@ -283,7 +431,7 @@ namespace IngameScript {
 
 
                     Move(X/25,Y/25);
-                    return output+"Manually Controlled.";
+                    return output + "Manual Control";
                 }
                 else{
                     if (currState.Equals(State.IDLE)) {
@@ -298,10 +446,10 @@ namespace IngameScript {
                     else
                     if (currState.Equals(State.MANUAL)) {
                         ChangeState(State.STOW);
-                        return output + "Stowing back the Turret...";
+                        return output + "...";
                     }
                     Vector3D
-                        target  = currState.Equals(State.TRACK)?  currTarget:Vector3D.Add(BSDCon.GetPosition(),Vector3D.Multiply(BSDCon.WorldMatrix.Forward,100)),
+                        target  = currState.Equals(State.TRACK)? targetCoords : Vector3D.Add(BSDCon.GetPosition(),Vector3D.Multiply(BSDCon.WorldMatrix.Forward,100)),
                         me      = this.CTRL.GetPosition(),
                         
                         sub     = CutVector(Vector3D.Normalize(Vector3D.Subtract(target, me))),
@@ -318,7 +466,8 @@ namespace IngameScript {
 
                     Vector2I culprit = new Vector2I(sorted[0].dirInt,sorted[1].dirInt);
                     /**/
-                    /*///Old Culprit System
+                    //// Old Culprit System Below
+                    /**
                     int culprit;
 
                     for (int i = 1; i < 7; i++)
@@ -334,7 +483,6 @@ namespace IngameScript {
                         }
                     }
                     culprit = sorted[culprit].dirInt;
-
                     /**/
 
                     if (currState.Equals(State.STOW)){
@@ -348,21 +496,21 @@ namespace IngameScript {
                             //Move(CulpritToMove(culprit,(float)curr.Length()));
                             DoubleCTM(sorted[0].dirInt, sorted[0].vLength, sorted[1].dirInt, sorted[1].vLength);
                         }
-                        return output+"Stowing...";
+                        return output+"Stowing";
                     }
                     else
                     if(currState.Equals(State.TRACK)) {
                         if (this.RLDCon.Enabled == true) this.RLDCon.Enabled = false;
                         if (!this.hasTarget) {
                             ChangeState(State.STOW);
-                            return "Lost Target.";
+                            return "Lost Target";
                         }
                         //Move(CulpritToMove(culprit, (float)(curr.Length())));
                         DoubleCTM(sorted[0].dirInt, sorted[0].vLength, sorted[1].dirInt, sorted[1].vLength);
                         /**/
                         if(curr.Length() < 0.1f && Vector3D.Subtract(target,me).Length()<=800) { 
                             Fire(true);
-                            return output + ("Firing...");
+                            return output + ("Firing");
                         }
                         else { 
                             Fire(false);
@@ -377,6 +525,7 @@ namespace IngameScript {
 
         public Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
+            SayMyName(MY_PREFIX);
 
             GetTurrets();
         }
@@ -471,7 +620,7 @@ namespace IngameScript {
                             if (!turret.HasYROT()) {
                                 turret.SetYROT(rot);
                                 rot.CustomName = "["+TURRET_BASE+turNo+"] YROT";
-                                foreach (IMyShipConnector con in conns) if (AreOnSameGrid(rot, con)) { turret.SetBSCon(con); con.CustomName = "[" + TURRET_BASE + turNo + "] Base Con"; break; }
+                                if(!turret.HasBSCon()) foreach (IMyShipConnector con in conns) if (AreOnSameGrid(rot, con)) { turret.SetBSCon(con); con.CustomName = "[" + TURRET_BASE + turNo + "] Base Con"; break; }
                             }
                             else status += "\n475:There is a double-YROT situation going on: " + turNo;
                         }
@@ -483,6 +632,7 @@ namespace IngameScript {
                             if (!turret.HasYROTA()) {
                                 turret.SetYROTA(rot);
                                 rot.CustomName = "["+TURRET_BASE+turNo+"] YROTA";
+                                if (!turret.HasBSCon()) foreach (IMyShipConnector con in conns) if (AreOnSameGrid(rot, con)) { turret.SetBSCon(con); con.CustomName = "[" + TURRET_BASE + turNo + "] Base Con"; break; }
                             }
                             else status += "\n486:There is a double-YROTA situation going on: " + turNo;
                         }
@@ -492,6 +642,7 @@ namespace IngameScript {
                 }
             }
             Echo(status);
+            Me.CustomData = status;
         }
 
         public string DoOurJobs() {
@@ -499,7 +650,7 @@ namespace IngameScript {
             string output = "";
             foreach(int key in turrets.Keys) {
                 if(turrets.TryGetValue(key, out turret)) {
-                    output += TURRET_BASE+key+":\n"+ turret.DoYourJob()+"\n\n";
+                    output += " "+TURRET_BASE+key+(key < 10 ? " " : "")+":" + turret.DoYourJob()+"\n\n";
                 }
             }
             return output;
@@ -522,6 +673,8 @@ namespace IngameScript {
                 string[] args = argument.ToLower().Split(' ');
                 Turret turret;
                 if (args.Length > 0) {
+                    long    id;
+                    double  px, py, pz, sx, sy, sz;
                     switch (args[0]) {
                         case "tar":
                             if (args.Length > 3) {
@@ -531,7 +684,11 @@ namespace IngameScript {
                                         Y,
                                         Z;
 
-                                    if (Double.TryParse(args[1], out X) && Double.TryParse(args[2], out Y) && Double.TryParse(args[3], out Z)) turret.SetTarget(X,Y,Z);
+                                    if (Double.TryParse(args[1], out X) && Double.TryParse(args[2], out Y) && Double.TryParse(args[3], out Z)) {
+                                        Vector3D vec = new Vector3D(X, Y, Z);
+                                        turret.TrySetTarget(vec);
+                                        turret.RLDCon.CustomData = turret.CanTarget(vec).ToString();
+                                    }
                                     else {
                                         turret.ChangeState(Turret.State.STOW);
                                     }
@@ -543,13 +700,125 @@ namespace IngameScript {
                             }
                             break;
 
+                        case "tars":
+                            if (args.Length > 3) {
+                                foreach(int key in turrets.Keys)
+                                if (turrets.TryGetValue(key, out turret)) {
+                                    double
+                                        X,
+                                        Y,
+                                        Z;
+
+                                    if (Double.TryParse(args[1], out X) && Double.TryParse(args[2], out Y) && Double.TryParse(args[3], out Z)) {
+                                        Vector3D vec = new Vector3D(X, Y, Z);
+                                        turret.TrySetTarget(vec);
+                                        turret.RLDCon.CustomData = turret.CanTarget(vec).ToString();
+                                    }
+                                    else {
+                                        turret.ClearTarget();
+                                    }
+                                }
+                            }
+                            else {
+                                foreach (int key in turrets.Keys)
+                                if (turrets.TryGetValue(key, out turret))
+                                    turret.ClearTarget();
+                            }
+                            break;
+
+                        case "test":
+                            if (turrets.TryGetValue(1, out turret)) {
+                                Vector3D vec = turret.CTRL.GetPosition(), fwd = Vector3D.Add(Vector3D.Multiply(turret.BSDCon.WorldMatrix.Backward, -50d), Vector3D.Multiply(turret.BSDCon.WorldMatrix.Left, 450d));
+                                vec = Vector3D.Add(vec, fwd);
+                                Vector3D frwd = Vector3D.Add(turret.CTRL.GetPosition(), Vector3D.Multiply(turret.BSDCon.WorldMatrix.Forward, 1000d));
+                                turret.RLDCon.CustomData = turret.CanTarget(vec).ToString();
+
+                                turret.TrySetTarget(vec);
+                            }
+                            break;
+
+                        /*/
+                        reg 43535435435435;123;43;-21;41;251;23
+                        ID has 17-18 digits, and we will prepare for XYZ's in milions
+                        formula for maximum number of chars in string taken by those coords would be
+                        4 + X*(18+1+8+1+8+1+8+1+4+1+4+1+4) + (X-1)
+                        which translates to
+                        3 + X*61
+
+                        IF we 'step up' our game to a tenth of a meter precision, this should bring us up to
+                        4 + X*(18+1+9+1+9+1+9+1+5+1+5+1+5) + (X-1)
+                        3 + X*67
+                        /**/
+                        case "reg":
+                            string[] 
+                                registry = Me.CustomData.Split('\n'),
+                                row;
+                            RegEntry entry;
+                            Register.Delet();
+                            for (int i=0; i < registry.Length; i++) {
+                                row = registry[i].Split(';');
+                                int ind = 0;
+                                if (row     .Length > 6                 &&
+                                    long    .TryParse(row[ind++], out id)   &&
+
+                                    double  .TryParse(row[ind++], out px)   &&
+                                    double  .TryParse(row[ind++], out py)   &&
+                                    double  .TryParse(row[ind++], out pz)   &&
+
+                                    double  .TryParse(row[ind++], out sx)   &&
+                                    double  .TryParse(row[ind++], out sy)   &&
+                                    double  .TryParse(row[ind++], out sz)   ) {
+                                    entry = new RegEntry(new Vector3D(px/10, py/10, pz/10), new Vector3D(sx/10, sy/10, sz/10));
+                                    Register.Set(id, entry);
+                                }
+                            }
+
+                            break;
+
+                        case "add":
+                            if( args    .Length>7                   &&
+                                long    .TryParse(args[1],  out id) &&
+
+                                double  .TryParse(args[2],  out px) &&
+                                double  .TryParse(args[3],  out py) &&
+                                double  .TryParse(args[4],  out pz) &&
+
+                                double  .TryParse(args[5],  out sx) &&
+                                double  .TryParse(args[6],  out sy) &&
+                                double  .TryParse(args[7],  out sz)) {
+                                if (Register.Has(id)) {
+                                    //TODO: Stuff here
+                                }
+                                Register.Set(id, new RegEntry(new Vector3D(px,py,pz), new Vector3D(sx,sy,sz)));
+                            }
+                            break;
+
+                        case "del":
+                            if (long.TryParse(args[1], out id)) Register.Delet(id);
+                            break;
                     }
                 }
             }
             else {
-            /**/
-            Output(DoOurJobs());
-            /**/
+                Turret turret;
+                /**/
+                if (!InfoGot) {
+                    TickNo++;
+                    if (TickNo >= 10) {
+                        TickNo = 10;
+                        foreach (int key in turrets.Keys)
+                            if (turrets.TryGetValue(key, out turret) && turret.hasTarget)
+                                turret.ClearTarget();
+                    }
+                }
+                else {
+                    TickNo  = 0;
+                    InfoGot = false;
+                }
+                LOG = DoOurJobs();
+                Output(LOG);
+                Echo(""+Register.Count());
+                /**/
             }
             /**/
         }

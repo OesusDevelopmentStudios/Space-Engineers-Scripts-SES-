@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v4.2.21";
+        const string SCRIPT_VERSION = "v4.2.27";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 100f;
         const double maxDeviation = 0.02d;
@@ -68,7 +68,7 @@ namespace IngameScript {
                 maxSPDDev = 30d;
 
         const double
-                maxSpeed = 100;
+                maxSpeed = 340;
 
         bool    
             //useMNV = false,
@@ -351,11 +351,10 @@ namespace IngameScript {
         /**/
 
         void CorrectionManeuvers() {
+            //Vector3D
+            //    culpritTrap = Me.GetPosition()+SHIP_CONTROLLER.GetShipVelocities().LinearVelocity;
 
-            Vector3D
-                culpritTrap = Me.GetPosition()+SHIP_CONTROLLER.GetShipVelocities().LinearVelocity;
-
-            sub = TARGET == null ? ship : CutVector(Vector3D.Normalize(Vector3D.Subtract(culpritTrap, ship)));
+            sub = TARGET == null ? ship : CutVector(Vector3D.Normalize(SHIP_CONTROLLER.GetShipVelocities().LinearVelocity));
 
             prompts = new List<NavPrompt>();
             curr = Vector3D.Subtract(CutVector(DirintToVec(1)), sub);
@@ -371,16 +370,20 @@ namespace IngameScript {
                 OR1 = (float)Difference(culprit1.vLength, 1.4142d),
                 OR2 = (float)Difference(culprit2.vLength, 1.4142d);
 
-            OR1 = OR1 < 0.01f ? 0 : 1;
-            OR2 = OR2 < 0.01f ? 0 : 1;
+            //OR1 = OR1 < 0.003f ? 0 : 1;
+            //OR2 = OR2 < 0.003f ? 0 : 1;
 
-            //OR1 = OR1 > 1 ? 1 : ((OR1 < 0.005) ? 0 : OR1);
-            //OR2 = OR2 > 1 ? 1 : ((OR2 < 0.005) ? 0 : OR2);
+            OR1 = OR1 < 0.003f ? 0 : (OR1 < 0.005f ? 0.5f : 1);
+            OR2 = OR2 < 0.003f ? 0 : (OR2 < 0.005f ? 0.5f : 1);
 
             int
                 TC1 = culprit1.dirInt, 
                 TC2 = culprit2.dirInt;
 
+            TC1 = TC1 % 2 == 0 ? TC1 - 1 : TC1 + 1;
+            TC2 = TC2 % 2 == 0 ? TC2 - 1 : TC2 + 1;
+
+            /**
             if (TC1 == 5) TC1 = 6;
             else
             if (TC1 == 6) TC1 = 5;
@@ -396,6 +399,7 @@ namespace IngameScript {
             if (TC2 == 3) TC2 = 4;
             else
             if (TC2 == 4) TC2 = 3;
+            /**/
 
             ResetThrust();
 
@@ -1099,6 +1103,16 @@ namespace IngameScript {
                 curr = Vector3D.Subtract(CutVector(DirintToVec(1)), sub);
                 distance = Vector3D.Subtract(TARGET, ship).Length();
                 if (Double.IsNaN(distance)) selfDestruct();
+                else {
+                    if (distance <= 500) {
+                        Vector3D target = GetTarget();
+                        if (!target.Equals(NOTHING)) {
+                            TARGET = target;
+                            chngTarg = true;
+                            sub = TARGET == null ? ship : CutVector(Vector3D.Normalize(Vector3D.Subtract(TARGET, ship)));
+                        }
+                    }
+                }
                 for (int i = 3; i < 7; i++)
                     prompts.Add(new NavPrompt(i, Vector3D.Subtract(CutVector(DirintToVec(i)), sub)));
                 prompts = prompts.OrderBy(o => o.vLength).ToList();
@@ -1380,12 +1394,16 @@ namespace IngameScript {
             return Vector3D.Add(enPos, enSpeed);
         }
 
-        Vector3D applyTarSpd(Vector3D position, Vector3D speed) {
+        Vector3D applyTarSpd(Vector3D position, Vector3D speed, int addedTicks=0) {
             double
                 mySpeed = SHIP_CONTROLLER.GetShipVelocities().LinearVelocity.Length(),
                 enSpeed = speed.Length();
 
             if (enSpeed > 0) {
+                if (addedTicks != 0) {
+                    Vector3D addition = Vector3D.Multiply(speed,((double)addedTicks/60d));
+                    position = Vector3D.Add(position, addition);
+                }
                 Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition()/**/, SHIP_CONTROLLER.GetShipSpeed()/**/);
                 if (!output.Equals(NOTHING)) {
                     return output;
@@ -1583,6 +1601,16 @@ namespace IngameScript {
                         }
                         else if (eval[0].Equals("LAUNCHABORT")) {
                             ChangeState(MISSILE_STATE.INIT);
+                        }
+                        else if (eval[0].Equals("COMMCHECK")) {
+                            if (missileListener == null) {
+                                missileListener = IGC.RegisterBroadcastListener(missileTag);
+                                missileListener.SetMessageCallback();
+                                Echo("Listeners set now!");
+                            }
+                            else {
+                                Echo("Listeners already set!");
+                            }
                         }
                         else if (eval[0].Equals("THRTEST")) {
                             FindThrusters(true);

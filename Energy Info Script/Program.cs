@@ -62,6 +62,8 @@ namespace IngameScript
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
             surface.FontSize = textSize;
             surface.WriteText(ScriptName);
+
+            Me.CustomName = "[" + ScriptName + "] Script";
         }
 
         Program() {
