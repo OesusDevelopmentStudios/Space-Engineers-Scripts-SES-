@@ -25,6 +25,9 @@
     <LangVersion>6</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MDKAnalyzer">
+      <HintPath>..\..\..\AppData\Local\Microsoft\VisualStudio\16.0_f0d7aaa8\Extensions\uqtu12mu.0o2\Analyzers\MDKAnalyzer.dll</HintPath>
+    </Reference>
     <Reference Include="netstandard" />
     <Reference Include="System" />
     <Reference Include="System.Core" />

@@ -30,6 +30,10 @@ namespace IngameScript {
 
         List<IMyTextPanel> screens;
 
+        public void Save() {
+            Storage = hasTurret.ToString() + ";" + turIndx.ToString();
+        }
+
         public Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
             String[] data = Storage.Split(';');
@@ -38,8 +42,9 @@ namespace IngameScript {
             SetTurIndx(turIndx);
         }
 
+        string GetFullScriptName(string ScriptName) { return "[" + ScriptName + "] Script"; }
         void SayMyName(string ScriptName, float textSize = 2f) {
-            Me.CustomName = "[" + ScriptName + "] Script";
+            Me.CustomName = GetFullScriptName(ScriptName);
             ScriptName = "\n\n" + ScriptName;
             IMyTextSurface surface = Me.GetSurface(0);
             surface.Alignment = TextAlignment.CENTER;
@@ -89,7 +94,7 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(gatGuns);
             GridTerminalSystem.GetBlocksOfType(conns);
 
-            string status = "";
+            string status = "Turret "+turIndx+":";
             int turNo;
 
             turret = null;
@@ -180,10 +185,6 @@ namespace IngameScript {
             return true;
         }
 
-        public void Save() {
-            Storage = hasTurret.ToString() + ";" + turIndx.ToString();
-        }
-
         public void Output(object input, bool append = true) {
             string message = input is string ? (string)input : input.ToString();
             if (screens == null) {
@@ -225,7 +226,7 @@ namespace IngameScript {
                             break;
 
 
-                        case "reg":
+                        case "reg": // "you have been provided a fresh data package"
                             /**/
                             string[]
                                 registry = Me.CustomData.Split('\n'),
@@ -244,7 +245,10 @@ namespace IngameScript {
 
                                     double.TryParse(row[ind++], out sx) &&
                                     double.TryParse(row[ind++], out sy) &&
-                                    double.TryParse(row[ind++], out sz)) {
+                                    double.TryParse(row[ind++], out sz)) 
+                                {
+                                    /// dividing by 10, because the fire control provides data multiplied by 10 to aleviate the influence of the number limits on the accuracy of the data 
+                                    /// (that is, it ommits the dots in the data provided and multiplies by 10)
                                     entry = new Entry(new Vector3D(px / 10, py / 10, pz / 10), new Vector3D(sx / 10, sy / 10, sz / 10));
                                 }
                             }
@@ -255,6 +259,7 @@ namespace IngameScript {
             }
             else {
                 // Update1-100
+                // TODO: Make it so that the orders from the fire control expire after a period of time
                 if (hasTurret) {
                     string output = " " + TURRET_BASE + turIndx + (turIndx < 10 ? " " : "") + ":" + turret.DoYourJob() + "\n\n";
                     Output(output);
@@ -262,7 +267,6 @@ namespace IngameScript {
             }
             /**/
         }
-
 
         public class Turret {
             public enum State {
@@ -636,9 +640,7 @@ namespace IngameScript {
                 this.velocity = velocity;
             }
 
-            public Entry(double px, double py, double pz, double vx, double vy, double vz) : this(new Vector3D(px, py, pz), new Vector3D(vx, vy, vz)) {
-
-            }
+            public Entry(double px, double py, double pz, double vx, double vy, double vz) : this(new Vector3D(px, py, pz), new Vector3D(vx, vy, vz)) { }
 
             public Vector3D Estimate() {
 

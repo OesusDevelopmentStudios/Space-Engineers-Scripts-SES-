@@ -24,6 +24,7 @@ namespace IngameScript {
 
         const string
             RadarCode = "[RADAR]",
+            MY_PREFIX = "RADAR",
             missileTag = "MISSILE-CHN",
             misCMDTag = "MISSILE_COMMAND-CHN";
 
@@ -55,7 +56,7 @@ namespace IngameScript {
         List<IMyMotorStator> RadRots;
         List<IMyTextPanel> Screens;
 
-        IMyShipController Ship_Controller;
+        static IMyShipController Ship_Controller;
 
         IMyProgrammableBlock Turret_Controller;
 
@@ -69,7 +70,7 @@ namespace IngameScript {
             public JobType type;
             public string code;
             public bool anti;
-            public int misNo, // set if the job is allocated to a specyfic missile
+            public int misNo, // set if the job is allocated to a specific missile
                     TTJ; // "TicksToJob"
 
 
@@ -121,13 +122,13 @@ namespace IngameScript {
 
             public string Stringify() {
                 return 
-                    String.Format("{0:0.}", location.X * 10) + ";" + 
-                    String.Format("{0:0.}", location.Y * 10) + ";" + 
-                    String.Format("{0:0.}", location.Z * 10) + ";" + 
+                    String.Format("{0:0.}", Math.Round(location.X * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(location.Y * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(location.Z * 10)) + ";" + 
 
-                    String.Format("{0:0.}", velocity.X * 10) + ";" + 
-                    String.Format("{0:0.}", velocity.Y * 10) + ";" + 
-                    String.Format("{0:0.}", velocity.Z * 10);
+                    String.Format("{0:0.}", Math.Round(velocity.X * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(velocity.Y * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(velocity.Z * 10));
             }
 
             public Entry(Vector3D coords) : this(coords.X, coords.Y, coords.Z) { }
@@ -151,7 +152,6 @@ namespace IngameScript {
             public static void SetMe(IMyProgrammableBlock Me) { Register.Me = Me; }
             public static void SetMax(int MAX) { Register.MAX_WAIT = MAX; }
 
-
             public static Entry Get(int index) { return content.Count > index ? content[index] : null; }
 
             public static void Add(MyDetectedEntityInfo entity) {
@@ -167,6 +167,11 @@ namespace IngameScript {
                 content = content.OrderByDescending(o => o.relation).ThenBy(o => GetDistance(o.location)).ToList();
             }
 
+            public static List<Entry> GetRefList() {
+                List<Entry> output = new List<Entry>(Register.content);
+                return output;
+            }
+
             public static void IncrementAll() {
                 List<Entry> temp = new List<Entry>();
                 foreach (Entry ent in content) {
@@ -174,8 +179,10 @@ namespace IngameScript {
                     if (ent.timeNum < MAX_WAIT) {
                         temp.Add(ent);
                     }
+                    /*/
                     else
                         AEGIS.Remove(ent.id);
+                    /**/
                 }
                 content = new List<Entry>(temp);
             }
@@ -183,15 +190,18 @@ namespace IngameScript {
             public static string PrintOut() {
                 string output = "TARGETS:";
 
+                Vector3D
+                    position = Ship_Controller.GetPosition();
+
                 for (int i = 0; i < content.Count; i++) {
-                    output += "\n" + ((i + 1 < 10) ? " " + (i + 1) : "" + (i + 1)) + ") " + content[i].relation.ToString().Substring(0, 3).ToUpper() + " " + content[i].type.ToString().Substring(0, 5).ToUpper() + " " + Convert(content[i].location) + " " + String.Format("{0:0.#}", ((float)content[i].timeNum / 60f)) + "s";
+                    output += "\n" + ((i + 1 < 10) ? " " + (i + 1) : "" + (i + 1)) + ") " + RelationToLetter(content[i].relation) + " " + TypeToLetter(content[i].type) + " " + new Bearing(position, Ship_Controller.WorldMatrix, content[i].location).ToString() + " " + Convert(content[i].location);
                 }
 
                 return output;
             }
 
             static double GetDistance(Vector3D location) {
-                return Vector3D.Subtract(Me.CubeGrid.GetPosition(), location).Length();
+                return Vector3D.Subtract(Me.GetPosition(), location).Length();
             }
 
             static string Convert(Vector3D location) {
@@ -209,7 +219,7 @@ namespace IngameScript {
                 return output;
             }
         }
-
+        /*/
         public class AEGIS {
             private static Dictionary<long, Entry>
                 targets = new Dictionary<long, Entry>();
@@ -275,47 +285,56 @@ namespace IngameScript {
 
                 //return targets.ContainsKey(id);
             }
-            /**/
+            /// Threat system as for 30-11-2020 - binary, enough for one missle/target, but not for a multiturret system
+            public static bool IsAThreat(Vector3D entityCoords, Vector3D entitySpeed, Vector3D shipCoords, Vector3D shipSpeed) {
+                double
+                    sspeed = shipSpeed.Length(),
+                    espeed = entitySpeed.Length();
+
+                double
+                    SSValue = (sspeed == 0 || espeed == 0) ? 0d : (sspeed / espeed),
+                    deviation, revdev;
+
+                Vector3D ISBearing = Vector3D.Subtract(entityCoords, shipCoords);
+                if (ISBearing.Length() <= 1000) return true;
+                else
+                if (espeed < 10d) return false;
+
+                //else  if (entity.BoundingBox.Extents.AbsMax())
+
+                if (SSValue != 0) shipCoords = Vector3D.Add(shipCoords, Vector3D.Multiply(shipSpeed, SSValue));
+
+                ISBearing = Vector3D.Subtract(shipCoords, entityCoords);
+                Vector3D SIBearing = Vector3D.Subtract(shipCoords, entityCoords);
+
+                Vector3D
+                    NRMBearing = Vector3D.Normalize(ISBearing),
+                    NRMrevber = Vector3D.Normalize(SIBearing),
+                    NRMVel = Vector3D.Normalize(entitySpeed);
+
+                deviation = Vector3D.Subtract(NRMBearing, NRMVel).Length();
+                revdev = Vector3D.Subtract(NRMrevber, NRMVel).Length();
+                if (deviation <= 0.05D) return true;
+                return false;
+            }
             public static bool IsAThreat(MyDetectedEntityInfo entity, Vector3D shipCoords, Vector3D shipSpeed) {
                 if (
                     entity.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies
                     || entity.Relationship == MyRelationsBetweenPlayerAndBlock.Neutral
                     || entity.Relationship == MyRelationsBetweenPlayerAndBlock.NoOwnership
                 ) {
-
-                    double
-                        sspeed = shipSpeed.Length(),
-                        espeed = entity.Velocity.Length();
-
-                    double
-                        SSValue = (sspeed == 0 || espeed == 0) ? 0d : (sspeed / espeed),
-                        deviation, revdev;
-
-                    Vector3D ISBearing = Vector3D.Subtract(entity.Position, shipCoords);
-                    if (ISBearing.Length() <= 1000) return true;
-                    else
-                    if (espeed < 10d) return false;
-
-
-                    //else  if (entity.BoundingBox.Extents.AbsMax())
-
-                    if (SSValue != 0) shipCoords = Vector3D.Add(shipCoords, Vector3D.Multiply(shipSpeed, SSValue));
-
-                    ISBearing = Vector3D.Subtract(shipCoords, entity.Position);
-                    Vector3D SIBearing = Vector3D.Subtract(shipCoords, entity.Position);
-
-                    Vector3D
-                        NRMBearing = Vector3D.Normalize(ISBearing),
-                        NRMrevber = Vector3D.Normalize(SIBearing),
-                        NRMVel = Vector3D.Normalize(entity.Velocity);
-
-                    deviation = Vector3D.Subtract(NRMBearing, NRMVel).Length();
-                    revdev = Vector3D.Subtract(NRMrevber, NRMVel).Length();
-                    if (deviation <= 0.05D) return true;
+                    return IsAThreat(entity.Position, entity.Velocity, shipCoords, shipSpeed);
                 }
                 return false;
             }
-            /**/
+            public static bool IsAThreat(long id, Vector3D shipCoords, Vector3D shipSpeed) {
+                Entry entry;
+                if (AEGIS.TryGet(id, out entry)) {
+                    return IsAThreat(entry.location, entry.velocity, shipCoords, shipSpeed);
+                }
+                return false;
+            }
+
             public static bool Has(long id) { return targets.ContainsKey(id); }
 
             public static bool TryGet(long id, out Entry entry) {
@@ -324,6 +343,57 @@ namespace IngameScript {
                 else
                     return false;
             }
+        }
+        /**/
+
+
+
+        public class Bearing {
+            private double yaw, pitch;
+
+            public Bearing(double yaw, double pitch) {
+                this.yaw = yaw;
+                this.pitch = pitch;
+            }
+
+            public Bearing(Vector3D position, MatrixD matrix, Vector3D target) {
+                // "forward" and "right" are vectors relative to the starship. in order for our calculations to work, we need to create a relative position of the thing we are calculating bearing for
+                target = Vector3D.Subtract(target, position);
+                Vector3D X = new Vector3D(matrix.Forward.Y * matrix.Right.Z - matrix.Forward.Z * matrix.Right.Y, matrix.Forward.Z * matrix.Right.X - matrix.Forward.X * matrix.Right.Z, matrix.Forward.X * matrix.Right.Y - matrix.Forward.Y * matrix.Right.X);
+                double t = -1*(X.X*target.X+X.Y*target.Y+X.Z*target.Z)/(X.X*X.X+X.Y*X.Y+X.Z*X.Z);
+                Vector3D pointOnShipsPlane = new Vector3D((X.X*t)+target.X,(X.Y*t)+target.Y,(X.Z*t)+target.Z);
+
+                this.yaw = GetAngleBetweenVectors(matrix.Forward, pointOnShipsPlane, matrix.Right, matrix.Left);
+                this.pitch = GetAngleBetweenVectors(pointOnShipsPlane, target, matrix.Up, matrix.Down);
+            }
+
+            override
+            public string ToString() {
+                return string.Format("{0:0.}", yaw)+"-"+ string.Format("{0:0.}", pitch);
+            }
+        }
+
+        public static double GetAngleBetweenVectors(Vector3D first, Vector3D second, Vector3D fHalf, Vector3D sHalf) {
+            // since we want a full 0-360 result, we need to implement a vector which will tell us in which half of the full spectrum we are
+
+            double fl = first.Length(), sl = second.Length();
+            if (fl > sl) { Vector3D.Multiply(second, fl / sl); }
+            else
+            if (sl > fl) { Vector3D.Multiply(first, sl / fl); }
+
+            double angle = GetAngleBetweenVectors(first, second);
+
+            return (Vector3D.Distance(second, fHalf) < Vector3D.Distance(second, sHalf)) ? angle : (angle > 0.5 ? 360 - angle: angle);
+        }
+
+        public static double GetAngleBetweenVectors(Vector3D first, Vector3D second) {
+
+            double cos = first.Dot(second) / (first.Length()*second.Length());
+            double rad = Math.Acos(cos);
+
+            //Program.program.ErrorOutput(cos+" "+rad);
+
+            return 180*rad/Math.PI;
         }
 
         bool GetControllingBlock() {
@@ -340,64 +410,115 @@ namespace IngameScript {
             return output != null;
         }
 
+        public static string RelationToLetter(MyRelationsBetweenPlayerAndBlock relation) {
+            switch (relation) {
+                case MyRelationsBetweenPlayerAndBlock.Enemies:
+                    return "HOS";
+
+                case MyRelationsBetweenPlayerAndBlock.FactionShare:
+                case MyRelationsBetweenPlayerAndBlock.Friends:
+                case MyRelationsBetweenPlayerAndBlock.Owner:
+                    return "FRI";
+
+                default:
+                    return "NEU";
+            }
+        }
+
+        public static string TypeToLetter(MyDetectedEntityType type) {
+            switch (type) {
+                case MyDetectedEntityType.Planet:
+                case MyDetectedEntityType.Asteroid: 
+                    return "AST"; //astral
+                case MyDetectedEntityType.CharacterHuman:
+                case MyDetectedEntityType.CharacterOther:
+                    return "ORG"; //organic
+                case MyDetectedEntityType.LargeGrid: 
+                    return "LRG"; //large grid
+                case MyDetectedEntityType.Meteor:
+                case MyDetectedEntityType.Missile:
+                    return "PRJ"; //projectile
+                case MyDetectedEntityType.SmallGrid: 
+                    return "SML"; //small grid
+                case MyDetectedEntityType.FloatingObject:
+                case MyDetectedEntityType.Unknown:
+                case MyDetectedEntityType.None:
+                default:
+                    return "MSC"; //misc.
+            }
+        }
+
         public void Save() {
             Storage = currExt + ";" + currRPM + ";" +
             DetectPlayers + ";" + DetectFloatingObjects + ";" +
             DetectSmallShips + ";" + DetectLargeShips + ";" + DetectStations + ";" + DetectSubgrids + ";" + DetectAsteroids + ";" +
-            DetectOwner + ";" + DetectFriendly + ";" + DetectNeutral + ";" + DetectEnemy + ";" + AEGIS.isOnline;
+            DetectOwner + ";" + DetectFriendly + ";" + DetectNeutral + ";" + DetectEnemy + ";" 
+            //+ AEGIS.isOnline
+            ;
+        }
+
+        string GetFullScriptName(string ScriptName) {return "[" + ScriptName + "] Script";}
+        void SayMyName(string ScriptName, float textSize = 2f) {
+            Me.CustomName = GetFullScriptName(ScriptName);
+            ScriptName = "\n\n" + ScriptName;
+            IMyTextSurface surface = Me.GetSurface(0);
+            surface.Alignment = TextAlignment.CENTER;
+            surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.FontSize = textSize;
+            surface.WriteText(ScriptName);
         }
 
         public Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
             Register.SetMe(Me);
+            SayMyName(MY_PREFIX);
             ErrorOutput("", false);
             SetMax(900);
             GetRadars();
             GetControllingBlock();
-            GetTurretBlock();
+            GetTurretController();
             int i = 0;
             try {
-                string[] args = Storage.Split(';');
-                currExt = float.Parse(args[i++]);
-                currRPM = float.Parse(args[i++]);
+                string[] args           = Storage.Split(';');
+                currExt                 = float.Parse(args[i++]);
+                currRPM                 = float.Parse(args[i++]);
 
-                DetectPlayers = bool.Parse(args[i++]);
-                DetectFloatingObjects = bool.Parse(args[i++]);
-                DetectSmallShips = bool.Parse(args[i++]);
-                DetectLargeShips = bool.Parse(args[i++]);
-                DetectStations = bool.Parse(args[i++]);
-                DetectSubgrids = bool.Parse(args[i++]);
-                DetectAsteroids = bool.Parse(args[i++]);
+                DetectPlayers           = bool.Parse(args[i++]);
+                DetectFloatingObjects   = bool.Parse(args[i++]);
+                DetectSmallShips        = bool.Parse(args[i++]);
+                DetectLargeShips        = bool.Parse(args[i++]);
+                DetectStations          = bool.Parse(args[i++]);
+                DetectSubgrids          = bool.Parse(args[i++]);
+                DetectAsteroids         = bool.Parse(args[i++]);
 
-                DetectOwner = bool.Parse(args[i++]);
-                DetectFriendly = bool.Parse(args[i++]);
-                DetectNeutral = bool.Parse(args[i++]);
-                DetectEnemy = bool.Parse(args[i++]);
+                DetectOwner             = bool.Parse(args[i++]);
+                DetectFriendly          = bool.Parse(args[i++]);
+                DetectNeutral           = bool.Parse(args[i++]);
+                DetectEnemy             = bool.Parse(args[i++]);
 
-                AEGIS.isOnline = bool.Parse(args[i++]);
+                //AEGIS.isOnline          = bool.Parse(args[i++]);
             }
             catch (Exception e) {
                 e.ToString();
-                Me.CustomData = "A kwi: " + (--i);
                 int f = 0;
 
-                if (f++ >= i) currExt = 8000f;
-                if (f++ >= i) currRPM = 3f;
+                if (f++ >= i) currExt               = 8000f;
+                if (f++ >= i) currRPM               = 3f;
 
-                if (f++ >= i) DetectPlayers = false;
+                if (f++ >= i) DetectPlayers         = false;
                 if (f++ >= i) DetectFloatingObjects = false;
-                if (f++ >= i) DetectSmallShips = true;
-                if (f++ >= i) DetectLargeShips = true;
-                if (f++ >= i) DetectStations = true;
-                if (f++ >= i) DetectSubgrids = false;
-                if (f++ >= i) DetectAsteroids = false;
+                if (f++ >= i) DetectSmallShips      = true;
+                if (f++ >= i) DetectLargeShips      = true;
+                if (f++ >= i) DetectStations        = true;
+                if (f++ >= i) DetectSubgrids        = false;
+                if (f++ >= i) DetectAsteroids       = false;
 
-                if (f++ >= i) DetectOwner = false;
-                if (f++ >= i) DetectFriendly = false;
-                if (f++ >= i) DetectNeutral = true;
-                if (f++ >= i) DetectEnemy = true;
+                if (f++ >= i) DetectOwner           = false;
+                if (f++ >= i) DetectFriendly        = false;
+                if (f++ >= i) DetectNeutral         = true;
+                if (f++ >= i) DetectEnemy           = true;
 
-                if (f++ < i) AEGIS.isOnline = false;
+                //if (f++ < i) AEGIS.isOnline         = false;
             }
             SetRadars(currExt, currRPM);
             GetScreens();
@@ -449,8 +570,9 @@ namespace IngameScript {
                                 //}
                             }
                         }
+                        /*/
                         if (AEGIS.isOnline) {
-                            if (AEGIS.ShouldBC(entity.EntityId)) {
+                            if (AEGIS.missiles && AEGIS.ShouldBC(entity.EntityId)) {
                                 SendToAEGIS(entity);
                             }
                             else {
@@ -461,34 +583,35 @@ namespace IngameScript {
                                     else
                                         velocity = Ship_Controller.GetShipVelocities().LinearVelocity;
 
-                                    if (AEGIS.IsAThreat(entity, Me.CubeGrid.GetPosition(), velocity)) {
+                                    if (AEGIS.IsAThreat(entity, Me.GetPosition(), velocity)) {
                                         AEGIS.Add(new Entry(entity));
-                                        //ErrorOutput("THREAT - VEL: " + Format(entity.Velocity.Length()) + " DIST: " + Format(Vector3D.Distance(entity.Position,Me.CubeGrid.GetPosition())));
+                                        //ErrorOutput("THREAT - VEL: " + Format(entity.Velocity.Length()) + " DIST: " + Format(Vector3D.Distance(entity.Position,Me.GetPosition())));
                                         if (AEGIS.missiles && PrepareForAntiLaunch(1, entity.EntityId.ToString())) {
                                             AEGIS.launchAttempts++;
                                             ErrorOutput("TG:" + Format(Vector3D.Subtract(entity.BoundingBox.Min, entity.BoundingBox.Max).Length()));
                                         }
                                     }
-                                    //else ErrorOutput("NO THR - VEL: " + Format(entity.Velocity.Length()) + " DIST: " + Format(Vector3D.Distance(entity.Position, Me.CubeGrid.GetPosition())));
+                                    //else ErrorOutput("NO THR - VEL: " + Format(entity.Velocity.Length()) + " DIST: " + Format(Vector3D.Distance(entity.Position, Me.GetPosition())));
                                 }
                             }
                         }
+                        /**/
                     }
                 }
                 else AllRight = false;
             }
 
-            if (/*/AEGIS.turrets &&/**/ Turret_Controller != null) {
+            if (Turret_Controller != null) {
                 string output = "";
-                Dictionary<long, Entry> targets = AEGIS.GetTargetList();
-                Entry entry;
-                foreach (long key in targets.Keys) {
-                    if (targets.TryGetValue(key, out entry)) {
-                        output += key + ";" + entry.Stringify() + "\n";
-                    }
+                List<Entry> targets = Register.GetRefList();
+
+                foreach(Entry entry in targets) {
+                    output += 
+                        RelationToLetter(entry.relation) +
+                        entry.id + ";" + entry.Stringify() + "\n";
                 }
                 if (targets.Count > 0) { 
-                    Turret_Controller.CustomData = output;
+                    Me.CustomData = output;
                     //reg
                     //Turret_Controller.TryRun("reg");
                     Echo(targets.Count + " " + Turret_Controller.TryRun("reg") + "\n" + output);
@@ -507,11 +630,11 @@ namespace IngameScript {
             if (!AllRight) GetRadars();
         }
 
-        void GetTurretBlock() {
+        void GetTurretController() {
             List<IMyProgrammableBlock> blocks = new List<IMyProgrammableBlock>();
             GridTerminalSystem.GetBlocksOfType(blocks);
             foreach (IMyProgrammableBlock block in blocks) {
-                if(IsOnThisGrid(block) && block.CustomName.Contains("[RAD-TUR]")) {
+                if(IsOnThisGrid(block) && block.CustomName.Equals(GetFullScriptName("[CFC]"))) {
                     Turret_Controller = block;
                     return;
                 }
@@ -626,14 +749,16 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(temp);
             foreach (IMyTextPanel scr in temp) {
                 if (IsOnThisGrid(scr) && scr.CustomName.Contains(RadarCode)) Screens.Add(scr);
+                scr.Font = "Monospace";
+                scr.FontSize = 0.75f;
             }
         }
 
         string PrintOut() {
             return
-                "Radar no: " + Radars.Count + "   Screen no: " + Screens.Count + "\n" +
-                "Sensor range: " + currExt + " m Buoy RPM: " + currRPM + "\n" +
-                "AEGIS: " + (AEGIS.isOnline ? "ON, TRACKING " + AEGIS.GetTarNo() + " OBJECTS.\n " + AEGIS.launchAttempts + " LAUNCH ATTEMPTS SO FAR." : "OFF") + "\n"
+                "Radar no: " + Radars.Count + "   Screen no: " + Screens.Count + "\n"
+                + "Sensor range: " + currExt + " m Buoy RPM: " + currRPM + "\n"
+                //+ "AEGIS: " + (AEGIS.isOnline ? "ON, TRACKING " + AEGIS.GetTarNo() + " OBJECTS.\n " + AEGIS.launchAttempts + " LAUNCH ATTEMPTS SO FAR." : "OFF") + "\n"
 
                 + "\n";
         }
@@ -676,7 +801,6 @@ namespace IngameScript {
                 }
             }
         }
-
         bool PrepareForAntiLaunch(int launchSize = 0, string code = missileTag) {
             List<IMyProgrammableBlock> progList = new List<IMyProgrammableBlock>();
             GridTerminalSystem.GetBlocksOfType(progList);
@@ -724,12 +848,15 @@ namespace IngameScript {
         void Abort(bool selfDestruct = false) {
             schedule.Clear();
             if (selfDestruct) {
+                /*/
                 List<string> toAbort = AEGIS.AbortAEGIS();
                 Echo(toAbort.Count + " AEGIS missions aborted.");
-                IGC.SendBroadcastMessage(missileTag, "ABORT");
                 foreach (string tag in toAbort) {
                     IGC.SendBroadcastMessage(tag, "ABORT");
                 }
+                /**/
+
+                IGC.SendBroadcastMessage(missileTag, "ABORT");
             }
             AbortAllLaunches();
             curTarget = null;
@@ -793,6 +920,7 @@ namespace IngameScript {
                         }
                         else {
                             if (curr.anti) {
+                                /*/
                                 Entry target;
                                 long id;
 
@@ -813,6 +941,7 @@ namespace IngameScript {
                                         missile.TryRun("prep " + curTarget.location.X + " " + curTarget.location.Y + " " + curTarget.location.Z);
                                     return;
                                 }
+                                /**/
                             }
                             else {
                                 if (curTarget == null) {
@@ -828,6 +957,7 @@ namespace IngameScript {
                         }
                         break;
 
+
                     case JobType.CloseDoor:
                         if (!curr.anti) {
                             if (siloDoor != null) siloDoor.CloseDoor();
@@ -840,7 +970,7 @@ namespace IngameScript {
             }
         }
 
-        string Format(double input, int afterPoint = 1) {
+        static string Format(double input, int afterPoint = 1) {
             string addition = "";
 
             for (int i = 0; i < afterPoint; i++) addition += "#";
@@ -848,7 +978,7 @@ namespace IngameScript {
             return string.Format("{0:0." + addition + "}", input);
         }
 
-        string Format(float input, int afterPoint = 1) {
+        static string Format(float input, int afterPoint = 1) {
             string addition = "";
 
             for (int i = 0; i < afterPoint; i++) addition += "#";
@@ -856,13 +986,13 @@ namespace IngameScript {
             return string.Format("{0:0." + addition + "}", input);
         }
 
-        string Format(Vector3D input) {
+        static string Format(Vector3D input) {
             return "(" + Format(input.X) + "," + Format(input.Y) + "," + Format(input.Z) + ")";
         }
 
         void IncrementAll() {
             Register.IncrementAll();
-            AEGIS.IncrementAll();
+            //AEGIS.IncrementAll();
             if (curTarget != null) {
                 curTarget.Increment();
                 if (curTarget.TSB > 2 * MAX_WAIT) curTarget = null;
@@ -947,6 +1077,7 @@ namespace IngameScript {
                             PrepareGPSStrike(X, Y, Z);
                             break;
 
+                        /*
                         case "antifire":
                             if (args.Length < 2) {
                                 if (curTarget != null) PrepareForAntiLaunch(1);
@@ -959,6 +1090,7 @@ namespace IngameScript {
                                 PrepareForAntiLaunch(1);
                             }
                             break;
+                            /**/
 
                         case "get":
                             if (args.Length < 2) {
@@ -996,7 +1128,7 @@ namespace IngameScript {
                         case "abort":
                             Abort(true);
                             break;
-
+                        /*
                         case "aegis":
                             if (args.Length < 2)
                                 AEGIS.Set();
@@ -1019,6 +1151,7 @@ namespace IngameScript {
                                 }
                             }
                             break;
+                            /**/
 
                         case "detect":
                             if (args.Length > 1) {

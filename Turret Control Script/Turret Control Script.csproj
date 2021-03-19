@@ -25,6 +25,10 @@
     <LangVersion>6</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MDKUtilities, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\AppData\Local\Microsoft\VisualStudio\16.0_f0d7aaa8\Extensions\uqtu12mu.0o2\MDKUtilities.dll</HintPath>
+    </Reference>
     <Reference Include="netstandard" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -49,6 +53,9 @@
     <AdditionalFiles Include="Instructions.readme" />
     <AdditionalFiles Include="thumb.png" />
     <AdditionalFiles Include="MDK\whitelist.cache" />
+  </ItemGroup>
+  <ItemGroup>
+    <Analyzer Include="..\..\..\AppData\Local\Microsoft\VisualStudio\16.0_f0d7aaa8\Extensions\uqtu12mu.0o2\MDKUtilities.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="AfterBuild">
