@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v3.14";
+        const string SCRIPT_VERSION = "v4.00";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 300f;
         const double maxDeviation = 0.02d;
@@ -1172,21 +1172,19 @@ namespace IngameScript {
             return scalarProduct / productOfLengths;
         }
 
-        Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos) {
+        Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed) {
             /// do not enter if enSpeed is a "0" vector, or if our speed is 0
-            
             Vector3D
-                A = enPos,
-                B = myPos;
-            
+            A = enPos,
+            B = myPos;
+
             double
-                t = enSpeed.Length() / maxSpeed,         //t -> b = a*t
-                projPath,                               //b
-                dist = Vector3D.Distance(A, B),  //c
+                t = enSpeed.Length() / speed,        //t -> b = a*t  
+                projPath,//b
+                dist = Vector3D.Distance(A, B),         //c
                 cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
 
-                delta = 4 * dist * dist * ((1 / t) + cos * cos - 1);
-
+                delta = 4 * dist * dist * ((1 / (t * t)) + (cos * cos) - 1);
 
             if (delta < 0) {
                 return NOTHING;
@@ -1196,7 +1194,7 @@ namespace IngameScript {
                 if (t == 0) {
                     return NOTHING;
                 }
-                projPath = -1 * (2 * dist * cos) / (2 - (2 / t * t));
+                projPath = -1 * (2 * dist * cos) / (2 * (((t * t) - 1) / (t * t)));
             }
             else {
                 if (t == 0) {
@@ -1207,14 +1205,13 @@ namespace IngameScript {
                     projPath = (dist) / (2 * cos);
                 }
                 else {
-                    projPath = (t * t * dist * (cos + Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1));
+                    projPath = ((2 * dist * cos - Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
                     if (projPath < 0) {
-                        projPath = (t * t * dist * (cos - Math.Sqrt((1 / t) + cos - 1))) / ((t + 1) * (t - 1));
+                        projPath = ((2 * dist * cos + Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
                     }
                 }
 
             }
-
             enSpeed = Vector3D.Normalize(enSpeed);
             enSpeed = Vector3D.Multiply(enSpeed, projPath);
 
@@ -1256,7 +1253,7 @@ namespace IngameScript {
                 multiplier;
                 
             if(enSpeed > 0) {
-                Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition());
+                Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition(),mySpeed);
                 if (!output.Equals(NOTHING)) {
                     return output;
                 }

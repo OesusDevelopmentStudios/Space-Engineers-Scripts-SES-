@@ -58,6 +58,8 @@ namespace IngameScript {
 
         static IMyShipController Ship_Controller;
 
+        bool AEGIS;
+        const string TURRET_CONTROLLER_SCRIPT_NAME = "AEGIS";
         IMyProgrammableBlock Turret_Controller;
 
         public enum JobType {
@@ -179,10 +181,6 @@ namespace IngameScript {
                     if (ent.timeNum < MAX_WAIT) {
                         temp.Add(ent);
                     }
-                    /*/
-                    else
-                        AEGIS.Remove(ent.id);
-                    /**/
                 }
                 content = new List<Entry>(temp);
             }
@@ -194,7 +192,7 @@ namespace IngameScript {
                     position = Ship_Controller.GetPosition();
 
                 for (int i = 0; i < content.Count; i++) {
-                    output += "\n" + ((i + 1 < 10) ? " " + (i + 1) : "" + (i + 1)) + ") " + RelationToLetter(content[i].relation) + " " + TypeToLetter(content[i].type) + " " + new Bearing(position, Ship_Controller.WorldMatrix, content[i].location).ToString() + " " + Convert(content[i].location);
+                    output += "\n" + ((i + 1 < 10) ? " " + (i + 1) : "" + (i + 1)) + ") " + RelationToAbbreviation(content[i].relation) + " " + TypeToLetter(content[i].type) + " " + new Bearing(position, Ship_Controller.WorldMatrix, content[i].location).ToString() + " " + Convert(content[i].location);
                 }
 
                 return output;
@@ -219,134 +217,6 @@ namespace IngameScript {
                 return output;
             }
         }
-        /*/
-        public class AEGIS {
-            private static Dictionary<long, Entry>
-                targets = new Dictionary<long, Entry>();
-
-            public static bool
-                isOnline    = false,
-                missiles    = true,
-                turrets     = false;
-
-            public static int
-                launchAttempts = 0;
-
-            public static int GetTarNo() {
-                return targets.Count;
-            }
-
-            public static void Set() { Set(!isOnline); }
-            public static void Set(bool on) {
-                AEGIS.isOnline = on;
-                if (!isOnline) {
-                    AEGIS.Clear();
-                    Missiles(false);
-                    Turrets(false);
-                }
-            }
-
-            public static Dictionary<long, Entry> GetTargetList() {return targets;}
-
-            public static void Missiles(bool on) {
-                AEGIS.missiles = on;
-            }
-
-            public static void Turrets(bool on) {
-                AEGIS.turrets = on;
-            }
-
-            public static void Add(Entry entry) {
-                long id = entry.id;
-
-                //if (targets.ContainsKey(id)) targets.Remove(id);
-
-                targets.Add(id, entry);
-            }
-
-            public static List<string> AbortAEGIS() {
-                List<string> output = new List<string>();
-                foreach (Entry target in targets.Values) {
-                    output.Add(target.id.ToString());
-                }
-                return output;
-            }
-
-            public static void IncrementAll() { foreach (Entry target in targets.Values) { target.Increment(); } }
-
-            public static void Clear() { targets.Clear(); }
-
-            public static void Remove(long id) { targets.Remove(id); }
-
-            public static bool ShouldBC(long id) {
-                Entry entry;
-                if (targets.TryGetValue(id, out entry)) { return entry.ShouldBC(); }
-                return false;
-
-                //return targets.ContainsKey(id);
-            }
-            /// Threat system as for 30-11-2020 - binary, enough for one missle/target, but not for a multiturret system
-            public static bool IsAThreat(Vector3D entityCoords, Vector3D entitySpeed, Vector3D shipCoords, Vector3D shipSpeed) {
-                double
-                    sspeed = shipSpeed.Length(),
-                    espeed = entitySpeed.Length();
-
-                double
-                    SSValue = (sspeed == 0 || espeed == 0) ? 0d : (sspeed / espeed),
-                    deviation, revdev;
-
-                Vector3D ISBearing = Vector3D.Subtract(entityCoords, shipCoords);
-                if (ISBearing.Length() <= 1000) return true;
-                else
-                if (espeed < 10d) return false;
-
-                //else  if (entity.BoundingBox.Extents.AbsMax())
-
-                if (SSValue != 0) shipCoords = Vector3D.Add(shipCoords, Vector3D.Multiply(shipSpeed, SSValue));
-
-                ISBearing = Vector3D.Subtract(shipCoords, entityCoords);
-                Vector3D SIBearing = Vector3D.Subtract(shipCoords, entityCoords);
-
-                Vector3D
-                    NRMBearing = Vector3D.Normalize(ISBearing),
-                    NRMrevber = Vector3D.Normalize(SIBearing),
-                    NRMVel = Vector3D.Normalize(entitySpeed);
-
-                deviation = Vector3D.Subtract(NRMBearing, NRMVel).Length();
-                revdev = Vector3D.Subtract(NRMrevber, NRMVel).Length();
-                if (deviation <= 0.05D) return true;
-                return false;
-            }
-            public static bool IsAThreat(MyDetectedEntityInfo entity, Vector3D shipCoords, Vector3D shipSpeed) {
-                if (
-                    entity.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies
-                    || entity.Relationship == MyRelationsBetweenPlayerAndBlock.Neutral
-                    || entity.Relationship == MyRelationsBetweenPlayerAndBlock.NoOwnership
-                ) {
-                    return IsAThreat(entity.Position, entity.Velocity, shipCoords, shipSpeed);
-                }
-                return false;
-            }
-            public static bool IsAThreat(long id, Vector3D shipCoords, Vector3D shipSpeed) {
-                Entry entry;
-                if (AEGIS.TryGet(id, out entry)) {
-                    return IsAThreat(entry.location, entry.velocity, shipCoords, shipSpeed);
-                }
-                return false;
-            }
-
-            public static bool Has(long id) { return targets.ContainsKey(id); }
-
-            public static bool TryGet(long id, out Entry entry) {
-                if (targets.TryGetValue(id, out entry))
-                    return true;
-                else
-                    return false;
-            }
-        }
-        /**/
-
-
 
         public class Bearing {
             private double yaw, pitch;
@@ -410,7 +280,9 @@ namespace IngameScript {
             return output != null;
         }
 
-        public static string RelationToLetter(MyRelationsBetweenPlayerAndBlock relation) {
+        public static string RelationToLetter(MyRelationsBetweenPlayerAndBlock relation) {return RelationToAbbreviation(relation).Substring(0, 1);}
+
+        public static string RelationToAbbreviation(MyRelationsBetweenPlayerAndBlock relation) {
             switch (relation) {
                 case MyRelationsBetweenPlayerAndBlock.Enemies:
                     return "HOS";
@@ -496,7 +368,7 @@ namespace IngameScript {
                 DetectNeutral           = bool.Parse(args[i++]);
                 DetectEnemy             = bool.Parse(args[i++]);
 
-                //AEGIS.isOnline          = bool.Parse(args[i++]);
+                AEGIS                   = bool.Parse(args[i++]);
             }
             catch (Exception e) {
                 e.ToString();
@@ -518,7 +390,7 @@ namespace IngameScript {
                 if (f++ >= i) DetectNeutral         = true;
                 if (f++ >= i) DetectEnemy           = true;
 
-                //if (f++ < i) AEGIS.isOnline         = false;
+                if (f++ >= i) AEGIS                 = true;
             }
             SetRadars(currExt, currRPM);
             GetScreens();
@@ -533,8 +405,6 @@ namespace IngameScript {
         public void SendToAEGIS(Vector3D vec, Vector3D vec2, string tag) {
             SendCoords(vec.X, vec.Y, vec.Z, vec2.X, vec2.Y, vec2.Z, tag);
         }
-
-        //SendToAEGIS(entity.Position, entity.Velocity, entity.EntityId.ToString());
 
         public void SendCoords(Vector3D vec) { SendCoords(vec.X, vec.Y, vec.Z); }
         public void SendCoords(Vector3D vec, Vector3D vec2) { SendCoords(vec.X, vec.Y, vec.Z, vec2.X, vec2.Y, vec2.Z); }
@@ -570,38 +440,12 @@ namespace IngameScript {
                                 //}
                             }
                         }
-                        /*/
-                        if (AEGIS.isOnline) {
-                            if (AEGIS.missiles && AEGIS.ShouldBC(entity.EntityId)) {
-                                SendToAEGIS(entity);
-                            }
-                            else {
-                                if (!AEGIS.Has(entity.EntityId)) {
-                                    Vector3D velocity;
-                                    if (Ship_Controller == null && !GetControllingBlock())
-                                        velocity = new Vector3D(0, 0, 0);
-                                    else
-                                        velocity = Ship_Controller.GetShipVelocities().LinearVelocity;
-
-                                    if (AEGIS.IsAThreat(entity, Me.GetPosition(), velocity)) {
-                                        AEGIS.Add(new Entry(entity));
-                                        //ErrorOutput("THREAT - VEL: " + Format(entity.Velocity.Length()) + " DIST: " + Format(Vector3D.Distance(entity.Position,Me.GetPosition())));
-                                        if (AEGIS.missiles && PrepareForAntiLaunch(1, entity.EntityId.ToString())) {
-                                            AEGIS.launchAttempts++;
-                                            ErrorOutput("TG:" + Format(Vector3D.Subtract(entity.BoundingBox.Min, entity.BoundingBox.Max).Length()));
-                                        }
-                                    }
-                                    //else ErrorOutput("NO THR - VEL: " + Format(entity.Velocity.Length()) + " DIST: " + Format(Vector3D.Distance(entity.Position, Me.GetPosition())));
-                                }
-                            }
-                        }
-                        /**/
                     }
                 }
                 else AllRight = false;
             }
 
-            if (Turret_Controller != null) {
+            if (Turret_Controller != null && !AEGIS) {
                 string output = "";
                 List<Entry> targets = Register.GetRefList();
 
@@ -612,21 +456,10 @@ namespace IngameScript {
                 }
                 if (targets.Count > 0) { 
                     Me.CustomData = output;
-                    //reg
-                    //Turret_Controller.TryRun("reg");
                     Echo(targets.Count + " " + Turret_Controller.TryRun("reg") + "\n" + output);
                 }
             }
 
-            /*/
-            string status =
-                "AllRight: " + AllRight + "\n" +
-                "curTG null:" + (curTarget==null).ToString() + "\n";
-
-            if (curTarget != null) status += "curTG.TSB:" + curTarget.TSB;
-
-            ErrorOutput(status,false);
-            /**/
             if (!AllRight) GetRadars();
         }
 
@@ -634,7 +467,7 @@ namespace IngameScript {
             List<IMyProgrammableBlock> blocks = new List<IMyProgrammableBlock>();
             GridTerminalSystem.GetBlocksOfType(blocks);
             foreach (IMyProgrammableBlock block in blocks) {
-                if(IsOnThisGrid(block) && block.CustomName.Equals(GetFullScriptName("[CFC]"))) {
+                if(IsOnThisGrid(block) && block.CustomName.Equals(GetFullScriptName(TURRET_CONTROLLER_SCRIPT_NAME))) {
                     Turret_Controller = block;
                     return;
                 }
@@ -848,14 +681,6 @@ namespace IngameScript {
         void Abort(bool selfDestruct = false) {
             schedule.Clear();
             if (selfDestruct) {
-                /*/
-                List<string> toAbort = AEGIS.AbortAEGIS();
-                Echo(toAbort.Count + " AEGIS missions aborted.");
-                foreach (string tag in toAbort) {
-                    IGC.SendBroadcastMessage(tag, "ABORT");
-                }
-                /**/
-
                 IGC.SendBroadcastMessage(missileTag, "ABORT");
             }
             AbortAllLaunches();
@@ -919,31 +744,7 @@ namespace IngameScript {
                             return;
                         }
                         else {
-                            if (curr.anti) {
-                                /*/
-                                Entry target;
-                                long id;
-
-                                bool
-                                    one = curr.code.Length > 0,
-                                    two = long.TryParse(curr.code, out id),
-                                    three = AEGIS.TryGet(id, out target);
-                                if (curr.code.Length > 0 && long.TryParse(curr.code, out id) && AEGIS.TryGet(id, out target)) {
-                                    missile.TryRun("prep " + target.location.X + " " + target.location.Y + " " + target.location.Z + " " + curr.code);
-                                }
-                                else {
-                                    if (curTarget == null) {
-                                        string message = "ABORTING LAUNCH: ANTITARGET DOES NOT EXIST.\n" + one + " " + two + " " + three;
-                                        Abort();
-                                        ErrorOutput(message);
-                                    }
-                                    else
-                                        missile.TryRun("prep " + curTarget.location.X + " " + curTarget.location.Y + " " + curTarget.location.Z);
-                                    return;
-                                }
-                                /**/
-                            }
-                            else {
+                            if (!curr.anti) { 
                                 if (curTarget == null) {
                                     string message = "ABORTING LAUNCH: TARGET DOES NOT EXIST.";
                                     Abort();
@@ -992,7 +793,6 @@ namespace IngameScript {
 
         void IncrementAll() {
             Register.IncrementAll();
-            //AEGIS.IncrementAll();
             if (curTarget != null) {
                 curTarget.Increment();
                 if (curTarget.TSB > 2 * MAX_WAIT) curTarget = null;
@@ -1000,7 +800,6 @@ namespace IngameScript {
             foreach (Job job in schedule) job.TTJ--;
         }
 
-        //try { } catch(Exception e) { e.ToString(); return; }
         public void Main(string argument, UpdateType updateSource) {
             if ((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0) {
                 Detect();
@@ -1077,21 +876,6 @@ namespace IngameScript {
                             PrepareGPSStrike(X, Y, Z);
                             break;
 
-                        /*
-                        case "antifire":
-                            if (args.Length < 2) {
-                                if (curTarget != null) PrepareForAntiLaunch(1);
-                                else Echo("No target.");
-                            }
-                            else {
-                                try { index = int.Parse(args[1]) - 1; } catch (Exception e) { Echo(e.ToString()); return; }
-                                target = Register.Get(index); if (target == null) { Echo("No such target."); return; }
-                                curTarget = target;
-                                PrepareForAntiLaunch(1);
-                            }
-                            break;
-                            /**/
-
                         case "get":
                             if (args.Length < 2) {
                                 index = 0;
@@ -1128,30 +912,30 @@ namespace IngameScript {
                         case "abort":
                             Abort(true);
                             break;
-                        /*
+
                         case "aegis":
                             if (args.Length < 2)
-                                AEGIS.Set();
+                                AEGIS = !AEGIS;
                             else {
                                 switch (args[1]) {
                                     case "on":
                                     case "up":
                                     case "true":
-                                        AEGIS.Set(true);
+                                        AEGIS = true;
                                         break;
 
                                     case "off":
                                     case "down":
                                     case "false":
-                                        AEGIS.Set(false);
-                                        break;
-                                    case "":
-
+                                        AEGIS = false;
                                         break;
                                 }
                             }
+                            if (Turret_Controller != null) 
+                                Turret_Controller.TryRun(argument);
+                            else 
+                                Echo("Turret Controller cannot be reached.");
                             break;
-                            /**/
 
                         case "detect":
                             if (args.Length > 1) {
@@ -1188,7 +972,7 @@ namespace IngameScript {
 
                                     case "asteroids":
                                     case "comets":
-                                        Output("\nChyba Cię coś generalnie popierdoliło, byku XD", true);
+                                        // OJ NIE NIE BYCZQ -1
                                         //DetectAsteroids = true;
                                         break;
 
@@ -1231,6 +1015,10 @@ namespace IngameScript {
                                         DetectFriendly = false;
                                         DetectNeutral = true;
                                         DetectEnemy = true;
+                                        break;
+
+                                    default:
+                                        Echo("Term unknown: '" + args[1]+"'");
                                         break;
                                 }
                                 SetRadars();
@@ -1315,9 +1103,17 @@ namespace IngameScript {
                                         DetectNeutral = true;
                                         DetectEnemy = true;
                                         break;
+
+                                    default:
+                                        Echo("Term unknown: '" + args[1] + "'");
+                                        break;
                                 }
                                 SetRadars();
                             }
+                            break;
+
+                        default:
+                            Echo("Term unknown: '" + args[0] + "'");
                             break;
                     }
                 }

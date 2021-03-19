@@ -21,12 +21,12 @@ namespace IngameScript {
     partial class Program : MyGridProgram {
 
         string
-                TURRET_BASE = "TRRT-",
-                MY_PREFIX = "RAD-TUR";
+                TURRET_BASE = "AEG-",
+                MY_PREFIX   = "UNS-AEG";
 
         bool    hasTurret   = false;
         int     turIndx     = 0;
-        Turret  turret;
+        static Turret  turret;
 
         List<IMyTextPanel> screens;
 
@@ -59,7 +59,7 @@ namespace IngameScript {
                 hasTurret   = false;
                 turIndx     = 0;
                 Runtime.UpdateFrequency = UpdateFrequency.Update100;
-                MY_PREFIX = "RAD-TUR";
+                MY_PREFIX = "UNS-AEG";
             }
             else {
                 turIndx = index;
@@ -73,10 +73,14 @@ namespace IngameScript {
                     hasTurret = false;
                     turIndx = 0;
                     Runtime.UpdateFrequency = UpdateFrequency.Update100;
-                    MY_PREFIX = "RAD-TUR";
+                    MY_PREFIX = "UNS-AEG";
                 }
             }
             SayMyName(MY_PREFIX);
+        }
+
+        bool IsOnThisGrid(IMyCubeBlock one) {
+            return AreOnSameGrid(one, Me);
         }
 
         bool AreOnSameGrid(IMyCubeBlock one, IMyCubeBlock two) {
@@ -231,8 +235,8 @@ namespace IngameScript {
                             string[]
                                 registry = Me.CustomData.Split('\n'),
                                 row;
-                            Entry entry;
-                            List<Entry> entries = new List<Entry>();
+
+                            Vector3D target;
                             for (int i = 0; i < registry.Length; i++) {
                                 row = registry[i].Split(';');
                                 int ind = 0;
@@ -249,7 +253,11 @@ namespace IngameScript {
                                 {
                                     /// dividing by 10, because the fire control provides data multiplied by 10 to aleviate the influence of the number limits on the accuracy of the data 
                                     /// (that is, it ommits the dots in the data provided and multiplies by 10)
-                                    entry = new Entry(new Vector3D(px / 10, py / 10, pz / 10), new Vector3D(sx / 10, sy / 10, sz / 10));
+                                    target = new Entry(new Vector3D(px / 10, py / 10, pz / 10), new Vector3D(sx / 10, sy / 10, sz / 10)).EstimatePosition();
+                                    if (turret.CanTarget(target)) {
+                                        turret.SetTarget(target);
+                                        return;
+                                    }
                                 }
                             }
                             /**/
@@ -635,6 +643,9 @@ namespace IngameScript {
                 position,
                 velocity;
 
+            private static Vector3D NOTHING = new Vector3D(44, 44, 44);
+            private const double maxSpeed = 400d;
+
             public Entry(Vector3D position, Vector3D velocity) {
                 this.position = position;
                 this.velocity = velocity;
@@ -642,9 +653,83 @@ namespace IngameScript {
 
             public Entry(double px, double py, double pz, double vx, double vy, double vz) : this(new Vector3D(px, py, pz), new Vector3D(vx, vy, vz)) { }
 
-            public Vector3D Estimate() {
+            public Vector3D EstimatePosition() {
+                return applyTarSpd(position, velocity);
+            }
 
-                return new Vector3D(0, 0, 0);
+            double InterCosine(Vector3D first, Vector3D second) {
+                double
+                    scalarProduct = first.X * second.X + first.Y * second.Y + first.Z * second.Z,
+                    productOfLengths = first.Length() * second.Length();
+
+                return scalarProduct / productOfLengths;
+            }
+
+            Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos) {
+                /// do not enter if enSpeed is a "0" vector, or if our speed is 0
+                Vector3D
+                    A = enPos,
+                    B = myPos;
+
+                double
+                    t = enSpeed.Length() / maxSpeed,        //t -> b = a*t  
+                    projPath,//b
+                    dist = Vector3D.Distance(A, B),         //c
+                    cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
+
+                    delta = 4 * dist * dist * ((1 / (t * t)) + (cos * cos) - 1);
+
+                if (delta < 0) {
+                    return NOTHING;
+                }
+                else
+                if (delta == 0) {
+                    if (t == 0) {
+                        return NOTHING;
+                    }
+                    projPath = -1 * (2 * dist * cos) / (2 * (((t * t) - 1) / (t * t)));
+                }
+                else {
+                    if (t == 0) {
+                        return NOTHING;
+                    }
+                    else
+                    if (t == 1) {
+                        projPath = (dist) / (2 * cos);
+                    }
+                    else {
+                        projPath = ((2 * dist * cos - Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
+                        if (projPath < 0) {
+                            projPath = ((2 * dist * cos + Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
+                        }
+                    }
+
+                }
+                enSpeed = Vector3D.Normalize(enSpeed);
+                enSpeed = Vector3D.Multiply(enSpeed, projPath);
+
+                return Vector3D.Add(enPos, enSpeed);
+            }
+
+            Vector3D applyTarSpd(Vector3D position, Vector3D speed) {
+                double
+                    mySpeed = turret.CTRL.GetShipVelocities().LinearVelocity.Length(),
+                    enSpeed = speed.Length(),
+                    multiplier;
+
+                if (enSpeed > 0) {
+                    Vector3D output = GetProjectedPos(position, speed, turret.CTRL.GetPosition());
+                    if (!output.Equals(NOTHING)) {
+                        return output;
+                    }
+                }
+
+                multiplier = (mySpeed != 0 && enSpeed != 0) ? (enSpeed / mySpeed) : 0;
+
+                Vector3D
+                    addition = Vector3D.Multiply(speed, multiplier);
+
+                return Vector3D.Add(position, addition);
             }
         }
     }
