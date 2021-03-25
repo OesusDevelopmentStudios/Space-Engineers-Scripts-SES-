@@ -48,8 +48,8 @@ namespace IngameScript {
 
         const int FW_VAL = 2,
                   UP_VAL = 6,
-                  LF_VAL = 4,
-                  RT_VAL = 3,
+                  LF_VAL = 3,
+                  RT_VAL = 4,
                   BW_VAL = 1,
                   DW_VAL = 5;
 
@@ -1175,11 +1175,11 @@ namespace IngameScript {
         Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed) {
             /// do not enter if enSpeed is a "0" vector, or if our speed is 0
             Vector3D
-            A = enPos,
-            B = myPos;
+                A = enPos,
+                B = myPos;
 
             double
-                t = enSpeed.Length() / speed,        //t -> b = a*t  
+                t = enSpeed.Length() / maxSpeed,        //t -> b = a*t  
                 projPath,//b
                 dist = Vector3D.Distance(A, B),         //c
                 cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),

@@ -5,6 +5,12 @@ VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AntiMissile-Control-Script", "AntiMissile-Control-Script.csproj", "{6EB42B42-0806-4A64-9C9C-171468D7B948}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AEGIS Script", "..\AEGIS Script\AEGIS Script.csproj", "{EDF2041C-2ADF-4D96-878F-FCC519E6EC46}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Radar Control Script", "..\Radar Control Script\Radar Control Script.csproj", "{D7D22B62-3DE5-4470-ADFC-BEB875F824CB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Turret Control Script", "..\Turret Control Script\Turret Control Script.csproj", "{4EA970B8-56C2-4AFA-A050-1E4F01248E64}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -12,6 +18,12 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{6EB42B42-0806-4A64-9C9C-171468D7B948}.Debug|x64.ActiveCfg = Debug|x64
 		{6EB42B42-0806-4A64-9C9C-171468D7B948}.Debug|x64.Build.0 = Debug|x64
+		{EDF2041C-2ADF-4D96-878F-FCC519E6EC46}.Debug|x64.ActiveCfg = Debug|x64
+		{EDF2041C-2ADF-4D96-878F-FCC519E6EC46}.Debug|x64.Build.0 = Debug|x64
+		{D7D22B62-3DE5-4470-ADFC-BEB875F824CB}.Debug|x64.ActiveCfg = Debug|x64
+		{D7D22B62-3DE5-4470-ADFC-BEB875F824CB}.Debug|x64.Build.0 = Debug|x64
+		{4EA970B8-56C2-4AFA-A050-1E4F01248E64}.Debug|x64.ActiveCfg = Debug|x64
+		{4EA970B8-56C2-4AFA-A050-1E4F01248E64}.Debug|x64.Build.0 = Debug|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

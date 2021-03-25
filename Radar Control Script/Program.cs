@@ -89,6 +89,7 @@ namespace IngameScript {
             public long id;
             public int timeNum;
             public int TSB;
+            public double threat;
             public Vector3D location;
             public Vector3D velocity;
             public MyDetectedEntityType type;
@@ -374,23 +375,23 @@ namespace IngameScript {
                 e.ToString();
                 int f = 0;
 
-                if (f++ >= i) currExt               = 8000f;
-                if (f++ >= i) currRPM               = 3f;
+                if (++f >= i) currExt               = 8000f;
+                if (++f >= i) currRPM               = 3f;
 
-                if (f++ >= i) DetectPlayers         = false;
-                if (f++ >= i) DetectFloatingObjects = false;
-                if (f++ >= i) DetectSmallShips      = true;
-                if (f++ >= i) DetectLargeShips      = true;
-                if (f++ >= i) DetectStations        = true;
-                if (f++ >= i) DetectSubgrids        = false;
-                if (f++ >= i) DetectAsteroids       = false;
+                if (++f >= i) DetectPlayers         = false;
+                if (++f >= i) DetectFloatingObjects = false;
+                if (++f >= i) DetectSmallShips      = true;
+                if (++f >= i) DetectLargeShips      = true;
+                if (++f >= i) DetectStations        = true;
+                if (++f >= i) DetectSubgrids        = false;
+                if (++f >= i) DetectAsteroids       = false;
 
-                if (f++ >= i) DetectOwner           = false;
-                if (f++ >= i) DetectFriendly        = false;
-                if (f++ >= i) DetectNeutral         = true;
-                if (f++ >= i) DetectEnemy           = true;
+                if (++f >= i) DetectOwner           = false;
+                if (++f >= i) DetectFriendly        = false;
+                if (++f >= i) DetectNeutral         = true;
+                if (++f >= i) DetectEnemy           = true;
 
-                if (f++ >= i) AEGIS                 = true;
+                if (++f >= i) AEGIS                 = true;
             }
             SetRadars(currExt, currRPM);
             GetScreens();
@@ -445,14 +446,13 @@ namespace IngameScript {
                 else AllRight = false;
             }
 
-            if (Turret_Controller != null && !AEGIS) {
+            if (Turret_Controller != null && AEGIS) {
                 string output = "";
                 List<Entry> targets = Register.GetRefList();
 
                 foreach(Entry entry in targets) {
                     output += 
-                        RelationToLetter(entry.relation) +
-                        entry.id + ";" + entry.Stringify() + "\n";
+                       RelationToLetter(entry.relation) + entry.id + ";" + entry.Stringify() + "\n";
                 }
                 if (targets.Count > 0) { 
                     Me.CustomData = output;
@@ -591,6 +591,7 @@ namespace IngameScript {
             return
                 "Radar no: " + Radars.Count + "   Screen no: " + Screens.Count + "\n"
                 + "Sensor range: " + currExt + " m Buoy RPM: " + currRPM + "\n"
+                + "AEGIS: " + (AEGIS?"ON":"OFF")
                 //+ "AEGIS: " + (AEGIS.isOnline ? "ON, TRACKING " + AEGIS.GetTarNo() + " OBJECTS.\n " + AEGIS.launchAttempts + " LAUNCH ATTEMPTS SO FAR." : "OFF") + "\n"
 
                 + "\n";
@@ -633,28 +634,6 @@ namespace IngameScript {
                     pb.TryRun("LAUNCHABORT");
                 }
             }
-        }
-        bool PrepareForAntiLaunch(int launchSize = 0, string code = missileTag) {
-            List<IMyProgrammableBlock> progList = new List<IMyProgrammableBlock>();
-            GridTerminalSystem.GetBlocksOfType(progList);
-            int counter = 0;
-            foreach (IMyProgrammableBlock pb in progList) {
-                if (pb.CustomName.StartsWith("ANTIMISSILE-")) {
-                    string toParse = pb.CustomName.Substring(12);
-                    int missNo;
-                    try { missNo = int.Parse(toParse); }
-                    catch (Exception e) { missNo = 0; ErrorOutput("PrepareForAntiLaunch: " + e.ToString()); }
-                    if (missNo != 0) {
-                        pb.CustomName = "ANTI-" + missNo;
-                        AddAJob(new Job(JobType.OpenDoor, 10 + missNo * 10, missNo, true));
-                        AddAJob(new Job(JobType.Launch, /*200 +*/ missNo * 10, missNo, true, code));
-                        AddAJob(new Job(JobType.CloseDoor, 75 + missNo * 10, missNo, true));
-                    }
-                    else continue;
-                    if (launchSize != 0 && ++counter >= launchSize) return true;
-                }
-            }
-            return false;
         }
 
         void PrepareForLaunch(int launchSize = 0) {
@@ -927,6 +906,7 @@ namespace IngameScript {
                                     case "off":
                                     case "down":
                                     case "false":
+                                    case "terminate":
                                         AEGIS = false;
                                         break;
                                 }
