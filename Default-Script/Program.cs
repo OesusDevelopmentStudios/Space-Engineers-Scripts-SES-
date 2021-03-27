@@ -21,58 +21,21 @@ namespace IngameScript{
     partial class Program : MyGridProgram{
 
         public Program(){
-            Runtime.UpdateFrequency = UpdateFrequency.Update100;
+            Runtime.UpdateFrequency = UpdateFrequency.None;
         }
-
-        string Format(double input, int afterPoint = 1)
-        {
-            string addition = "";
-
-            for (int i = 0; i < afterPoint; i++) addition += "#";
-
-            return string.Format("{0:0." + addition + "}", input);
-        }
-
-        string Format(float input, int afterPoint = 1)
-        {
-            string addition = "";
-
-            for (int i = 0; i < afterPoint; i++) addition += "#";
-
-            return string.Format("{0:0." + addition + "}", input);
-        }
-
-        string Format(Vector3D input) {
-            return "(" + Format(input.X) + "," + Format(input.Y) + "," + Format(input.Z) + ")";
-        }
-
-        Vector3D GetCenterOfMass() {
-            List<IMyCubeBlock> cubes = new List<IMyCubeBlock>();
-            GridTerminalSystem.GetBlocksOfType(cubes);
-
-            Echo(cubes.Count.ToString());
-
-            double      finalMass = 0d;
-            Vector3D    finalVec = new Vector3D(0, 0, 0);
-            
-            foreach(IMyCubeBlock cube in cubes) {
-                finalMass += cube.Mass;
-                Vector3D.Add(finalVec,Vector3D.Multiply(cube.GetPosition(),cube.Mass));
-            }
-
-            return Vector3D.Multiply(finalVec, (1d / finalMass));
-        }
-
-        IMyTextPanel panel;
 
         public void Main() {
-            if (panel == null) {
-                panel = GridTerminalSystem.GetBlockWithName("Text Panel") as IMyTextPanel;
+            List<IMyProgrammableBlock> progList = new List<IMyProgrammableBlock>();
+            GridTerminalSystem.GetBlocksOfType(progList);
+            //int counter = 0;
+            foreach (IMyProgrammableBlock pb in progList) {
+                if (pb.CustomName.StartsWith("ANTIMISSILE-")) {
+                    string toParse = pb.CustomName.Substring(12);
+                    Echo(toParse + "\n");
+                }
             }
-            if (panel != null) {
-                panel.WriteText(Format(Me.CubeGrid.GetPosition()));
-                panel.WriteText("\n"+Format(GetCenterOfMass()),true);
-            }
+
+            //Echo(all + " " + those);
         }
     }
 }

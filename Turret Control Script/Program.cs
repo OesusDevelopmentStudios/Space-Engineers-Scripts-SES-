@@ -276,7 +276,7 @@ namespace IngameScript {
                 // Update1-100
                 // TODO: Make it so that the orders from the fire control expire after a period of time
                 if (hasTurret) {
-                    string output = " " + TURRET_BASE + turIndx + (turIndx < 10 ? " " : "") + ":" + turret.DoYourJob() + "\n\n";
+                    string output = "\n" + TURRET_BASE + turIndx + (turIndx < 10 ? " " : "") + ":" + turret.DoYourJob() + "\n\n";
                     Output(output);
                     Echo(output);
                 }
@@ -514,7 +514,7 @@ namespace IngameScript {
             public void DoubleCTM(int C1, double VL1, int C2, double VL2) { Move(Vector2.Add(CulpritToMove(C1, (float)Difference(VL1, 1.4142d)), CulpritToMove(C2, (float)Difference(VL2, 1.4142d)))); }
 
             public Vector2 CulpritToMove(int culprit, float deviation) {
-                if (deviation < 0.005f) return new Vector2(0, 0);
+                if (deviation < 0.002f) return new Vector2(0, 0);
 
                 /**/
                 if (culprit <= 4) {
@@ -527,11 +527,12 @@ namespace IngameScript {
                     }
                 }
                 else {
+                    deviation *= deviation > 0.05 ? 3 : 1;
                     if (culprit % 2 == 0) {
-                        return new Vector2(0, deviation*8);
+                        return new Vector2(0, deviation*3);
                     }
                     else {
-                        return new Vector2(0, -deviation*8);
+                        return new Vector2(0, -deviation*3);
                     }
                 }
                 /**/
@@ -632,7 +633,7 @@ namespace IngameScript {
                             distance = Vector3D.Distance(target, me), 
                             currlength = curr.Length();
 
-                        if (currlength < 0.1f && distance <= 800d) {
+                        if (currlength < 0.2f && distance <= 800d) {
                             Fire(true);
                             return output + ("Firing");
                         }
@@ -653,7 +654,7 @@ namespace IngameScript {
                 velocity;
 
             private static Vector3D NOTHING = new Vector3D(44, 44, 44);
-            private const double maxSpeed = 400d;
+            private const double maxSpeed = 100d;
 
             public Entry(Vector3D position, Vector3D velocity) {
                 this.position = position;
@@ -726,7 +727,7 @@ namespace IngameScript {
                     enSpeed = speed.Length(),
                     multiplier;
 
-                position = Vector3D.Add(position, Vector3D.Multiply(speed, 1 / 60));
+                //position = Vector3D.Add(position, Vector3D.Multiply(speed, 4 / 60));
 
                 if (enSpeed > 0) {
                     Vector3D output = GetProjectedPos(position, speed, turret.CTRL.GetPosition());
