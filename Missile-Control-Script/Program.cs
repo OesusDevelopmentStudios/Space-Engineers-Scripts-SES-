@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v4.00";
+        const string SCRIPT_VERSION = "v5.0";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 300f;
         const double maxDeviation = 0.02d;
@@ -33,7 +33,7 @@ namespace IngameScript {
 
         IMyBroadcastListener
                 missileListener;
-        string missileTag = "MISSILE-CHN", misCMDTag = "MISSILE_COMMAND-CHN";
+        readonly string missileTag = "MISSILE-CHN", misCMDTag = "MISSILE_COMMAND-CHN";
 
         Vector3D UPP_CMD = new Vector3D(0, -1, 0),
                   DWN_CMD = new Vector3D(0, 1, 0),
@@ -48,15 +48,15 @@ namespace IngameScript {
 
         const int FW_VAL = 2,
                   UP_VAL = 6,
-                  LF_VAL = 3,
-                  RT_VAL = 4,
+                  LF_VAL = 4,
+                  RT_VAL = 3,
                   BW_VAL = 1,
                   DW_VAL = 5;
 
         /// END OF CONSTANTS
 
-        int timeNR = 0,
-                myNumber = 0;
+        int timeNR = 0;
+        readonly int myNumber = 0;
 
         double strtSPD = -1d,
                 strtELV = -1d,
@@ -70,7 +70,6 @@ namespace IngameScript {
         bool    useMNV = false,
                 gravMode = false,
                 contrFine = false,
-                aborting = false,
                 ordersGot = false,
                 chngTarg = false,
                 throttle = false,
@@ -78,10 +77,10 @@ namespace IngameScript {
 
 
         List<IMyShipController> ControlList = new List<IMyShipController>();
-        List<IMyShipMergeBlock> MergerList = new List<IMyShipMergeBlock>();
-        List<IMyShipConnector>  ConnecList = new List<IMyShipConnector>();
-        List<IMyBatteryBlock>   BattryList = new List<IMyBatteryBlock>();
-        List<IMyGasTank>        HTankList = new List<IMyGasTank>();
+        readonly List<IMyShipMergeBlock> MergerList = new List<IMyShipMergeBlock>();
+        readonly List<IMyShipConnector>  ConnecList = new List<IMyShipConnector>();
+        readonly List<IMyBatteryBlock>   BattryList = new List<IMyBatteryBlock>();
+        readonly List<IMyGasTank>        HTankList = new List<IMyGasTank>();
         List<IMyCameraBlock>    CameraList = new List<IMyCameraBlock>();
 
         class NavPrompt {
@@ -113,12 +112,12 @@ namespace IngameScript {
             }
         }
 
-        bool isOnThisGrid(IMyCubeBlock G) {
+        bool IsOnThisGrid(IMyCubeBlock G) {
             if (G.CubeGrid.Equals(Me.CubeGrid)) return true;
             else return false;
         }
 
-        bool isAlmostSame(double d1, double d2) {
+        bool IsVerySimilar(double d1, double d2) {
             if (d1 == d2) return true;
             double first = d1 > d2 ? d1 : d2,
                    second = d1 < d2 ? d1 : d2;
@@ -130,7 +129,7 @@ namespace IngameScript {
         void ChangeState(MISSILE_STATE state) {
             //Output("Changing mode from " + CurrentState + " to " + state.ToString() + ".");
             timeNR = 0;
-            List<IMyThrust> group = new List<IMyThrust>();
+            List<IMyThrust> group;
             switch (state) {
                 case MISSILE_STATE.INIT:
                     ResetThrust();
@@ -193,7 +192,7 @@ namespace IngameScript {
             CurrentState = state;
         }
 
-        float multiplier() {
+        float Multiplier() {
             if (Runtime.UpdateFrequency == UpdateFrequency.Update1)
                 return 3f;
             else
@@ -212,7 +211,7 @@ namespace IngameScript {
         }
 
         IMyShipController SHIP_CONTROLLER;
-        Dictionary<int, List<IMyThrust>> THRUSTERS = new Dictionary<int, List<IMyThrust>>();
+        readonly Dictionary<int, List<IMyThrust>> THRUSTERS = new Dictionary<int, List<IMyThrust>>();
 
         public Program() {
             Runtime.UpdateFrequency
@@ -224,7 +223,7 @@ namespace IngameScript {
             List<IMyShipController> controls = new List<IMyShipController>();
             ControlList = new List<IMyShipController>();
             GridTerminalSystem.GetBlocksOfType(controls);
-            foreach (IMyShipController cont in controls) { if (isOnThisGrid(cont) && cont.IsWorking) ControlList.Add(cont); }
+            foreach (IMyShipController cont in controls) { if (IsOnThisGrid(cont) && cont.IsWorking) ControlList.Add(cont); }
 
             ChangeState(MISSILE_STATE.INIT);
         }
@@ -247,11 +246,11 @@ namespace IngameScript {
             return new Vector3D(X, Y, Z);
         }
 
-        void antenaText(object message) {
+        void AntennaText(object message) {
             string text = message is string ? (string)message : message.ToString();
             List<IMyRadioAntenna> list = new List<IMyRadioAntenna>();
             GridTerminalSystem.GetBlocksOfType(list);
-            foreach (IMyRadioAntenna ant in list) if (isOnThisGrid(ant)) { ant.Radius = CurrentState>MISSILE_STATE.EXIT_LAUNCHPOINT? 50000f:1000f; ant.CustomName = text; }
+            foreach (IMyRadioAntenna ant in list) if (IsOnThisGrid(ant)) { ant.Radius = CurrentState>MISSILE_STATE.EXIT_LAUNCHPOINT? 50000f:1000f; ant.CustomName = text; }
         }
 
         // CONV
@@ -273,17 +272,6 @@ namespace IngameScript {
                 default:
                     return "ERROR   ";
             }
-        }
-
-        string getCustName() {
-            int index = 1;
-            while (true) {
-                IMyProgrammableBlock block = GridTerminalSystem.GetBlockWithName("MISSILE-" + index) as IMyProgrammableBlock;
-                if (block != null) index++;
-                else break;
-            }
-            myNumber = index;
-            return "MISSILE-" + index;
         }
 
         Vector3D DirToCmd(int lndDir, int culprit) {
@@ -319,11 +307,10 @@ namespace IngameScript {
             }
         }
 
-        void DirToMnv(int lndDir, int culprit) { DirToMnv(lndDir, culprit, 1f); }
-
         void DirToMnv(int lndDir, int culprit, float ovrPrc) {
             ResetThrust();
-            List<IMyThrust> manThr = new List<IMyThrust>();
+            List<IMyThrust> manThr;
+            /**/
             if (lndDir == 1 && (culprit == 3 || culprit == 4)) {
                 if (culprit == 3) { if (THRUSTERS.TryGetValue(4, out manThr)) { MoveAGroupThrusters(manThr, ovrPrc); return; } }
                 else { if (THRUSTERS.TryGetValue(3, out manThr)) { MoveAGroupThrusters(manThr, ovrPrc); return; } }
@@ -331,6 +318,8 @@ namespace IngameScript {
             else {
                 if (THRUSTERS.TryGetValue(culprit, out manThr)) { MoveAGroupThrusters(manThr, ovrPrc); return; }
             }
+            /**/
+
         }
 
         Vector3D DirintToVec(int dirint) {
@@ -356,7 +345,7 @@ namespace IngameScript {
 
         bool GetControllingBlock() {
             List<IMyShipController> temp = new List<IMyShipController>();
-            foreach (IMyShipController cont in ControlList) { if (isOnThisGrid(cont) && cont.IsWorking) temp.Add(cont); }
+            foreach (IMyShipController cont in ControlList) { if (IsOnThisGrid(cont) && cont.IsWorking) temp.Add(cont); }
             ControlList = new List<IMyShipController>(temp);
 
             SHIP_CONTROLLER = null;
@@ -368,7 +357,7 @@ namespace IngameScript {
             }
 
             foreach (IMyShipController controler in ControlList) {
-                if (SHIP_CONTROLLER == null && controler.IsWorking && isOnThisGrid(controler)) {
+                if (SHIP_CONTROLLER == null && controler.IsWorking && IsOnThisGrid(controler)) {
                     SHIP_CONTROLLER = controler;
                     controler.IsMainCockpit = true;
                 }
@@ -388,7 +377,7 @@ namespace IngameScript {
             List<IMyGyro> temp = new List<IMyGyro>();
             GridTerminalSystem.GetBlocksOfType(temp);
 
-            foreach (IMyGyro gyro in temp) if (isOnThisGrid(gyro)) list.Add(gyro);
+            foreach (IMyGyro gyro in temp) if (IsOnThisGrid(gyro)) list.Add(gyro);
 
             return list;
         }
@@ -460,7 +449,7 @@ namespace IngameScript {
                    && target.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies)) {
                     Output("\nFOUND YA");
                     CAMTAR = target.Position;
-                    return applyTarSpd(target.Position,target.Velocity);
+                    return ApplyTarSpd(target.Position,target.Velocity);
                 }
                 else {
                     return GetTarget(++camIndx);
@@ -478,23 +467,13 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(temp);
 
             foreach (IMyCameraBlock cam in temp) {
-                if (isOnThisGrid(cam)) {
+                if (IsOnThisGrid(cam)) {
                     cam.EnableRaycast = true;
                     list.Add(cam);
                 }
             }
 
             return list;
-        }
-
-        Vector3D AutoTarget(double distance = 3000d) {
-            IMyCameraBlock cam = GetRdyCam();
-            if (cam == null) return NOTHING;
-
-            MyDetectedEntityInfo target = cam.Raycast(3000);
-            if (target.IsEmpty() || target.Relationship != MyRelationsBetweenPlayerAndBlock.Enemies ||
-                (target.Type != MyDetectedEntityType.LargeGrid && target.Type != MyDetectedEntityType.SmallGrid)) return NOTHING;
-            else return applyTarSpd(target.Position, target.Velocity);
         }
 
         IMyCameraBlock GetRdyCam(double distance = 3000d) {
@@ -517,7 +496,7 @@ namespace IngameScript {
             List<IMyThrust> list = new List<IMyThrust>();
             GridTerminalSystem.GetBlocksOfType<IMyThrust>(list);
             foreach (IMyThrust t in list) {
-                if (!isOnThisGrid(t)) continue;
+                if (!IsOnThisGrid(t)) continue;
                 int dirint = TranslateDirection(t);
                 t.CustomName = DirintToName(dirint);
                 if (THRUSTERS.TryGetValue(dirint, out temp)) {
@@ -533,7 +512,7 @@ namespace IngameScript {
             }
             bool ok = true;
             if (output) {
-                for (int i = 1; i < 7; i++) if (!THRUSTERS.TryGetValue(i, out temp)) { ok = false; Output("WARNING: NO " + DirintToName(i) + " THRUSTERS."); }
+                for (int i = 1; i < 7; i++) if (!THRUSTERS.ContainsKey(i)) { ok = false; Output("WARNING: NO " + DirintToName(i) + " THRUSTERS."); }
                 if (ok) Output("All thrusters found.");
             }
         }
@@ -607,9 +586,9 @@ namespace IngameScript {
             else
             if (block is IMyGyro) {
 
-                int blockDir = TranslateDirection(block.Orientation.Forward);
-                int blockSub = TranslateDirection(block.Orientation.Up);
-                int firstDigit = 0;
+                int blockDir = TranslateDirection(block.Orientation.Forward),
+                    blockSub = TranslateDirection(block.Orientation.Up),
+                    firstDigit;
 
                 if (blockSub == TFW) firstDigit = 2;
                 else if (blockSub == TUP) firstDigit = 6;
@@ -692,9 +671,9 @@ namespace IngameScript {
 
         void MoveGyroInAWay(IMyGyro target, float Yaw, float Pitch, float Roll) {
             target.GyroOverride = true;
-            Yaw *= multiplier();
-            Pitch *= multiplier();
-            Roll *= multiplier();
+            Yaw *= Multiplier();
+            Pitch *= Multiplier();
+            Roll *= Multiplier();
             switch (TranslateDirection(target)) {
                 case 13:
                     target.Yaw = Roll; target.Pitch = Yaw; target.Roll = Pitch;
@@ -788,18 +767,12 @@ namespace IngameScript {
             }
         }
 
-        void EnableAGroupThrusters(List<IMyThrust> Group, bool Enable) {
-            foreach (IMyThrust Thruster in Group) {
-                Thruster.Enabled = Enable;
-            }
-        }
-
         void ResetThrust() {
             ResetThrust(false);
         }
 
         void ResetThrust(bool all) {
-            List<IMyThrust> list = new List<IMyThrust>();
+            List<IMyThrust> list;
             int i = all ? 0 : 2;
             for (; i < 7; i++)
                 if (THRUSTERS.TryGetValue(i, out list))
@@ -820,7 +793,7 @@ namespace IngameScript {
             List<IMyShipConnector> cons = new List<IMyShipConnector>();
             GridTerminalSystem.GetBlocksOfType(cons);
             foreach (IMyShipConnector con in cons) {
-                if (con.IsWorking && isOnThisGrid(con) && con.CustomName.Equals("Missile/Refuel Connector")) {
+                if (con.IsWorking && IsOnThisGrid(con) && con.CustomName.Equals("Missile/Refuel Connector")) {
                     refCon = con;
                     break;
                 }
@@ -847,10 +820,10 @@ namespace IngameScript {
             GridTerminalSystem.GetBlocksOfType(list3);
             GridTerminalSystem.GetBlocksOfType(list4);
 
-            foreach (IMyShipMergeBlock mer in list1) if (isOnThisGrid(mer)) MergerList.Add(mer);
-            foreach (IMyShipConnector con in list2) if (isOnThisGrid(con)) ConnecList.Add(con);
-            foreach (IMyBatteryBlock bat in list3) if (isOnThisGrid(bat)) BattryList.Add(bat);
-            foreach (IMyGasTank hdt in list4) if (isOnThisGrid(hdt)) { HTankList.Add(hdt); hdt.Stockpile = true; }
+            foreach (IMyShipMergeBlock mer in list1) if (IsOnThisGrid(mer)) MergerList.Add(mer);
+            foreach (IMyShipConnector con in list2) if (IsOnThisGrid(con)) ConnecList.Add(con);
+            foreach (IMyBatteryBlock bat in list3) if (IsOnThisGrid(bat)) BattryList.Add(bat);
+            foreach (IMyGasTank hdt in list4) if (IsOnThisGrid(hdt)) { HTankList.Add(hdt); hdt.Stockpile = true; }
         }
 
         double GetSpeed() {
@@ -860,14 +833,14 @@ namespace IngameScript {
                 return SHIP_CONTROLLER.GetShipSpeed();
         }
 
-        void selfDestruct() {
+        void SelfDestruct() {
             List<IMyWarhead> warheads = new List<IMyWarhead>();
             GridTerminalSystem.GetBlocksOfType(warheads);
             foreach (IMyWarhead head in warheads) { head.IsArmed = true; }
             foreach (IMyWarhead head in warheads) { head.Detonate(); }
         }
 
-        Vector3D checkIfGrav() {
+        Vector3D CheckIfGrav() {
             Vector3D planet;
             if (strtELV == -1) {
                 if (!SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out strtELV)) strtELV = -1;
@@ -894,10 +867,10 @@ namespace IngameScript {
         }
 
         Vector3D
-                ship, sub, curr, algn, alVec,
+                ship, sub, curr, algn,
                 planet, command, initPos;
 
-        double distance = 0,
+        double  distance = 0,
                 currSPD,
                 disToTarget = 2000d;
 
@@ -909,26 +882,22 @@ namespace IngameScript {
         List<NavPrompt> algPr;
         List<IMyThrust> group = new List<IMyThrust>();
 
-        void sigToHQ(string message) { IGC.SendBroadcastMessage(misCMDTag, message); }
+        void SigToHQ(string message) { IGC.SendBroadcastMessage(misCMDTag, message); }
 
         /*
          distance <= (GetSpeed() / 2)
              */
 
-        bool armPayload(double distance, double speed) {
+        bool ArmPayload(double distance, double speed) {
             speed = speed < 200 ? 200 : speed;
             return distance <= (speed / 2);
         }
 
-        Vector3D normalize(Vector3D input) {
-            return new Vector3D(input.X / input.Length(), input.Y / input.Length(), input.Z / input.Length());
-        }
-
-        bool stopFiringEngine() {
+        bool StopFiringEngine() {
             if (!contrFine) return true;
 
             Vector3D
-                velocity = normalize(SHIP_CONTROLLER.GetShipVelocities().LinearVelocity),
+                velocity = Vector3D.Normalize(SHIP_CONTROLLER.GetShipVelocities().LinearVelocity),
                 forward = SHIP_CONTROLLER.WorldMatrix.Forward,
                 diff = Vector3D.Subtract(velocity, forward);
 
@@ -936,23 +905,12 @@ namespace IngameScript {
             return (diff.Length() < 0.5d) && (distance <= GetSpeed() + ACT_DIST || GetSpeed() > maxSpeed);
         }
 
-        void getSensorData() {
-            IMySensorBlock sensor = GridTerminalSystem.GetBlockWithName("Missile/Sensor") as IMySensorBlock;
-            if (sensor == null) return;
-            string output = "";
-            List<MyDetectedEntityInfo> list = new List<MyDetectedEntityInfo>();
-            sensor.DetectedEntities(list);
-            foreach (MyDetectedEntityInfo data in list) {
-                output += data.Type + " " + data.Relationship + "\n";
-            }
-            Echo("List:\n" + output);
-        }
-
+        bool PayloadPrimed = false;
         void ReactToState() {
             ship = SHIP_CONTROLLER.GetPosition();
             sub = TARGET == null ? ship : CutVector(Vector3D.Normalize(Vector3D.Subtract(TARGET, ship)));
             curr = NOTHING;
-            planet = checkIfGrav();
+            planet = CheckIfGrav();
 
             distance = 0;
             currSPD = contrFine ? GetSpeed() : strtSPD;
@@ -1027,7 +985,6 @@ namespace IngameScript {
                             if (!gravMode) ChangeState(MISSILE_STATE.DUMB_APP_TARGET);
                             else {
                                 algn = CutVector(Vector3D.Normalize(Vector3D.Subtract(planet, ship)));
-                                alVec = Vector3D.Subtract(CutVector(DirintToVec(6)), algn);
 
                                 algPr = new List<NavPrompt>();
                                 for (int i = 1; i < 7; i++)
@@ -1063,13 +1020,12 @@ namespace IngameScript {
 
                 case MISSILE_STATE.GRAV_ALGN:
                     algn = CutVector(Vector3D.Normalize(Vector3D.Subtract(planet, ship)));
-                    alVec = Vector3D.Subtract(CutVector(DirintToVec(6)), algn);
 
 
                     algPr = new List<NavPrompt>();
                     for (int i = 1; i < 7; i++)
                         algPr.Add(new NavPrompt(i, Vector3D.Subtract(CutVector(DirintToVec(i)), algn)));
-                    if (isAlmostSame(algPr[2].vLength, algPr[3].vLength) && algPr[5].vLength + 0.5 < algPr[4].vLength) {
+                    if (IsVerySimilar(algPr[2].vLength, algPr[3].vLength) && algPr[5].vLength + 0.5 < algPr[4].vLength) {
                         ChangeState(MISSILE_STATE.DUMB_APP_TARGET);
                         MoveAllGyros(0, 0, 0);
                         OverrideGyros(false);
@@ -1103,11 +1059,14 @@ namespace IngameScript {
                     else {
                         useMNV = false;
                     }
-                    if (distance < 50 && distance > lastDist) selfDestruct();
-                    if (stopFiringEngine()) {
+                    if (distance < 50 && distance > lastDist) SelfDestruct();
+                    if (StopFiringEngine()) {
                         if (THRUSTERS.TryGetValue(1, out group)) MoveAGroupThrusters(group, 0f);
                     }
-                    if (armPayload(distance, GetSpeed()) || !contrFine) {
+                    if ((ArmPayload(distance, GetSpeed()) || !contrFine) && !PayloadPrimed) {
+                        PayloadPrimed = true;
+                        SigToHQ("BOOM;" + missileTag);
+
                         List<IMyShipMergeBlock> merges = new List<IMyShipMergeBlock>();
                         List<IMyWarhead> warheads = new List<IMyWarhead>();
 
@@ -1145,6 +1104,14 @@ namespace IngameScript {
                         }
                     }
 
+                    if (culprit == 3) {
+                        culprit = 4;
+                    }
+                    else
+                    if (culprit == 4) {
+                        culprit = 3;
+                    }
+
                     if (useMNV) DirToMnv(2, culprit, mnvAmm);
                     MoveAllGyros((float)(command.X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
 
@@ -1175,11 +1142,13 @@ namespace IngameScript {
         Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed) {
             /// do not enter if enSpeed is a "0" vector, or if our speed is 0
             Vector3D
-                A = enPos,
-                B = myPos;
+            A = enPos,
+            B = myPos;
+
+            if (speed <= 0) speed = 1;
 
             double
-                t = enSpeed.Length() / maxSpeed,        //t -> b = a*t  
+                t = enSpeed.Length() / speed,        //t -> b = a*t  
                 projPath,//b
                 dist = Vector3D.Distance(A, B),         //c
                 cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
@@ -1192,13 +1161,13 @@ namespace IngameScript {
             else
             if (delta == 0) {
                 if (t == 0) {
-                    return NOTHING;
+                    return enPos;
                 }
                 projPath = -1 * (2 * dist * cos) / (2 * (((t * t) - 1) / (t * t)));
             }
             else {
                 if (t == 0) {
-                    return NOTHING;
+                    return enPos;
                 }
                 else
                 if (t == 1) {
@@ -1217,36 +1186,8 @@ namespace IngameScript {
 
             return Vector3D.Add(enPos, enSpeed);
         }
-        /*
-        IMyTextPanel VerbosePanel;
-
-        /*
-        bool GetVerbosePanel() {
-            List<IMyTextPanel> panels = new List<IMyTextPanel>();
-            GridTerminalSystem.GetBlocksOfType(panels);
-            foreach(IMyTextPanel panel in panels) {
-                if(isOnThisGrid(panel) && panel.CustomName.Contains("[VERBOSE]")) {
-                    VerbosePanel = panel;
-                    return true;
-                }
-            }
-            return false;
-
-        }
-
-        /*
-        void VerboseOutput(object input, bool append = false) {
-            string message = input is string ? (string)input : input.ToString();
-
-            if (VerbosePanel == null && !GetVerbosePanel()) {
-                Echo(message);
-            }
-            else
-                VerbosePanel.WriteText(message, append);
-        }
-        /**/
         
-        Vector3D applyTarSpd(Vector3D position, Vector3D speed) {
+        Vector3D ApplyTarSpd(Vector3D position, Vector3D speed) {
             double
                 mySpeed = SHIP_CONTROLLER.GetShipVelocities().LinearVelocity.Length(),
                 enSpeed = speed.Length(),
@@ -1292,7 +1233,7 @@ namespace IngameScript {
                                 try {
                                     pos = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
                                     vel = new Vector3D(double.Parse(bits[4]), double.Parse(bits[5]), double.Parse(bits[6]));
-                                    TARGET = applyTarSpd(pos,vel);
+                                    TARGET = ApplyTarSpd(pos,vel);
                                     CAMTAR = pos;
                                 }
                                 catch (Exception e) {
@@ -1321,14 +1262,13 @@ namespace IngameScript {
                     }
                     else
                     if (data.Equals("ABORT") || (bits.Length > 0 && bits[0].ToUpper().Equals("ABORT"))) {
-                        aborting = true;
                         MoveAllGyros(0, 0, 0);
                         OverrideGyros(false);
                         List<IMyThrust> group = new List<IMyThrust>();
                         GridTerminalSystem.GetBlocksOfType(group);
                         MoveAGroupThrusters(group, 0f);
                         if (contrFine) SHIP_CONTROLLER.DampenersOverride = false;
-                        selfDestruct();
+                        SelfDestruct();
                         ChangeState(MISSILE_STATE.INIT);
                     }
                 }
@@ -1402,9 +1342,6 @@ namespace IngameScript {
                         else if (eval[0].Equals("MANUAL")) {
                             ChangeState(MISSILE_STATE.MANUAL);
                         }
-                        else if (eval[0].Equals("SENS")) {
-                            getSensorData();
-                        }
                         else if (eval[0].Equals("LAUNCHABORT")) {
                             ChangeState(MISSILE_STATE.INIT);
                         }
@@ -1426,8 +1363,7 @@ namespace IngameScript {
                     }
                 }
                 status += " " + Runtime.UpdateFrequency;
-                if (aborting) antenaText("ABORTING " + status);
-                else antenaText(status);
+                AntennaText(status);
             }
         }
     }

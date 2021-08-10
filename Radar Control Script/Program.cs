@@ -26,7 +26,8 @@ namespace IngameScript {
             RadarCode = "[RADAR]",
             MY_PREFIX = "RADAR",
             missileTag = "MISSILE-CHN",
-            misCMDTag = "MISSILE_COMMAND-CHN";
+            misCMDTag = "MISSILE_COMMAND-CHN",
+            GPSSTRIKE_CODE = "GPSSTRIKE";
 
         readonly IMyBroadcastListener
             misCMDListener;
@@ -34,8 +35,6 @@ namespace IngameScript {
         int MAX_WAIT = 900;
 
         float currExt, currRPM;
-
-        Entry curTarget;
 
         List<Job> schedule = new List<Job>();
 
@@ -69,50 +68,48 @@ namespace IngameScript {
         }
 
         public class Job {
-            public JobType type;
-            public string code;
-            public bool anti;
-            public int misNo, // set if the job is allocated to a specific missile
-                    TTJ; // "TicksToJob"
+            public JobType  type;
+            public string   code;
+            public int      misNo, // set if the job is allocated to a specific missile
+                            TTJ; // "TicksToJob"
 
 
-            public Job(JobType type, int TTJ, int misNo, bool anti = false, string code = "") {
+            public Job(JobType type, int TTJ, int misNo, string code = "") {
                 this.type = type;
                 this.TTJ = TTJ;
                 this.misNo = misNo;
-                this.anti = anti;
                 this.code = code;
             }
         }
 
         public class Entry {
-            public long id;
-            public int timeNum;
+            public long Id;
+            public int TimeNum;
             public int TSB;
-            public double threat;
-            public Vector3D location;
-            public Vector3D velocity;
-            public MyDetectedEntityType type;
-            public MyRelationsBetweenPlayerAndBlock relation;
+            public double Threat;
+            public Vector3D Location;
+            public Vector3D Velocity;
+            public MyDetectedEntityType Type;
+            public MyRelationsBetweenPlayerAndBlock Relation;
 
             public void Increment() {
-                this.timeNum++;
+                this.TimeNum++;
                 this.TSB++;
             }
 
             public Entry(MyDetectedEntityInfo entity) {
-                this.timeNum = 0;
+                this.TimeNum = 0;
                 this.TSB = 0;
-                this.id = entity.EntityId;
-                this.location = entity.Position;
-                this.velocity = entity.Velocity;
-                this.type = entity.Type;
-                this.relation = entity.Relationship;
+                this.Id = entity.EntityId;
+                this.Location = entity.Position;
+                this.Velocity = entity.Velocity;
+                this.Type = entity.Type;
+                this.Relation = entity.Relationship;
             }
 
             public void Update(MyDetectedEntityInfo entity) {
-                this.location = entity.Position;
-                this.velocity = entity.Velocity;
+                this.Location = entity.Position;
+                this.Velocity = entity.Velocity;
             }
 
             public bool ShouldBC() {
@@ -125,65 +122,96 @@ namespace IngameScript {
 
             public string Stringify() {
                 return 
-                    String.Format("{0:0.}", Math.Round(location.X * 10)) + ";" + 
-                    String.Format("{0:0.}", Math.Round(location.Y * 10)) + ";" + 
-                    String.Format("{0:0.}", Math.Round(location.Z * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(Location.X * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(Location.Y * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(Location.Z * 10)) + ";" + 
 
-                    String.Format("{0:0.}", Math.Round(velocity.X * 10)) + ";" + 
-                    String.Format("{0:0.}", Math.Round(velocity.Y * 10)) + ";" + 
-                    String.Format("{0:0.}", Math.Round(velocity.Z * 10));
+                    String.Format("{0:0.}", Math.Round(Velocity.X * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(Velocity.Y * 10)) + ";" + 
+                    String.Format("{0:0.}", Math.Round(Velocity.Z * 10));
             }
 
             public Entry(Vector3D coords) : this(coords.X, coords.Y, coords.Z) { }
             public Entry(double X, double Y, double Z) {
-                this.timeNum = 42044469;
+                this.TimeNum = -42044469;
                 this.TSB = 0;
-                this.id = -1;
-                this.location = new Vector3D(X, Y, Z);
-                this.velocity = new Vector3D(0, 0, 0);
-                this.type = MyDetectedEntityType.LargeGrid;
-                this.relation = MyRelationsBetweenPlayerAndBlock.Enemies;
+                this.Id = -1;
+                this.Location = new Vector3D(X, Y, Z);
+                this.Velocity = new Vector3D(0, 0, 0);
+                this.Type = MyDetectedEntityType.LargeGrid;
+                this.Relation = MyRelationsBetweenPlayerAndBlock.Enemies;
             }
 
         }
 
         public class Register {
-            static List<Entry> content = new List<Entry>();
-            static IMyProgrammableBlock Me;
+            static readonly Dictionary<string, Entry> Content = new Dictionary<string, Entry>();
+            static readonly List<string> MissionCodes = new List<string>();
             static int MAX_WAIT;
 
-            public static void SetMe(IMyProgrammableBlock Me) { Register.Me = Me; }
             public static void SetMax(int MAX) { Register.MAX_WAIT = MAX; }
 
-            public static Entry Get(int index) { return content.Count > index ? content[index] : null; }
+            public static bool TryGet(long key, out Entry entry) {return Content.TryGetValue(key.ToString(), out entry);}
 
-            public static void Add(MyDetectedEntityInfo entity) {
-                int current = 0, target = -1;
-                foreach (Entry ent in content) {
-                    if (ent.id == entity.EntityId) { target = current; break; }
-                    current++;
-                }
+            public static Entry GetByIndex(int index) {
+                List<Entry> list = GetContentAsSortedList();
+                return index >= list.Count ? null : list[index];
+            }
+
+            public static void AddMissionCode(string code) {
+                if (!MissionCodes.Contains(code)) MissionCodes.Add(code);
+            }
+
+            public static void RemoveMissionCode(string code) {
+                MissionCodes.RemoveAll(o => o.Equals(code));
+            }
+
+            public static List<string> GetMissionCodes() {
+                return new List<string>(MissionCodes);
+            }
+
+            public void ClearMissionCodes() {MissionCodes.Clear();}
+
+            public static bool Add(MyDetectedEntityInfo entity) {
                 Entry temp = new Entry(entity);
-                if (target == -1) { content.Add(temp); }
-                else { content[target] = temp; }
+                return Add(temp.Id.ToString(),temp);
+            }
 
-                content = content.OrderByDescending(o => o.relation).ThenBy(o => GetDistance(o.location)).ToList();
+            public static bool Add(string code, Entry entry) {
+                if (Content.ContainsKey(code))
+                    Content.Remove(code);
+
+                Content.Add(code, entry);
+                return MissionCodes.Contains(code);
+            }
+
+            public static List<Entry> GetContentAsList() {
+                List<Entry> entries = new List<Entry>();
+                Entry entry;
+                long Id;
+                foreach (string key in Content.Keys) {
+                    if(long.TryParse(key, out Id) && Content.TryGetValue(key, out entry))
+                        entries.Add(entry);
+                }
+                return entries;
+            }
+
+            public static List<Entry> GetContentAsSortedList() {
+                return GetContentAsList().OrderBy(o => GetDistance(o.Location)).ToList();
             }
 
             public static List<Entry> GetRefList() {
-                List<Entry> output = new List<Entry>(Register.content);
+                List<Entry> output = GetContentAsList();
                 return output;
             }
 
             public static void IncrementAll() {
-                List<Entry> temp = new List<Entry>();
-                foreach (Entry ent in content) {
+                List<Entry> temp = GetContentAsList();
+                foreach (Entry ent in temp) {
                     ent.Increment();
-                    if (ent.timeNum < MAX_WAIT) {
-                        temp.Add(ent);
-                    }
+                    if (ent.TimeNum >= MAX_WAIT)
+                        Content.Remove(ent.Id.ToString());
                 }
-                content = new List<Entry>(temp);
             }
 
             public static string PrintOut() {
@@ -192,15 +220,18 @@ namespace IngameScript {
                 Vector3D
                     position = Ship_Controller.GetPosition();
 
-                for (int i = 0; i < content.Count; i++) {
-                    output += "\n" + ((i + 1 < 10) ? " " + (i + 1) : "" + (i + 1)) + ") " + RelationToAbbreviation(content[i].relation) + " " + TypeToLetter(content[i].type) + " " + new Bearing(position, Ship_Controller.WorldMatrix, content[i].location).ToString() + " " + Convert(content[i].location);
+                List<Entry> content = GetContentAsSortedList();
+                int i = 0;
+                foreach (Entry entry in content) {
+                    output += "\n" + ((i + 1 < 10) ? " " + (i + 1) : "" + (i + 1)) + ") " + RelationToAbbreviation(entry.Relation) + " " + TypeToAbbreviation(entry.Type) + " " + new Bearing(position, Ship_Controller.WorldMatrix, entry.Location).ToString() + " " + Convert(entry.Location);
+                    i++;
                 }
 
                 return output;
             }
 
             static double GetDistance(Vector3D location) {
-                return Vector3D.Subtract(Me.GetPosition(), location).Length();
+                return Vector3D.Subtract(Ship_Controller.GetPosition(), location).Length();
             }
 
             static string Convert(Vector3D location) {
@@ -220,7 +251,7 @@ namespace IngameScript {
         }
 
         public class Bearing {
-            private double yaw, pitch;
+            private readonly double yaw, pitch;
 
             public Bearing(double yaw, double pitch) {
                 this.yaw = yaw;
@@ -240,7 +271,7 @@ namespace IngameScript {
 
             override
             public string ToString() {
-                return string.Format("{0:0.}", yaw)+"-"+ string.Format("{0:0.}", pitch);
+                return string.Format("{0,3:0.}-{1,-3:0.}", yaw, pitch);
             }
         }
 
@@ -298,7 +329,7 @@ namespace IngameScript {
             }
         }
 
-        public static string TypeToLetter(MyDetectedEntityType type) {
+        public static string TypeToAbbreviation(MyDetectedEntityType type) {
             switch (type) {
                 case MyDetectedEntityType.Planet:
                 case MyDetectedEntityType.Asteroid: 
@@ -343,10 +374,8 @@ namespace IngameScript {
 
         public Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
-            Register.SetMe(Me);
             SayMyName(MY_PREFIX);
             ErrorOutput("", false);
-            SetMax(900);
             GetRadars();
             GetControllingBlock();
             GetTurretController();
@@ -399,17 +428,9 @@ namespace IngameScript {
             misCMDListener.SetMessageCallback();
         }
 
-        public void SendToAEGIS(MyDetectedEntityInfo entity) {
-            SendToAEGIS(entity.Position, entity.Velocity, entity.EntityId.ToString());
-        }
-
-        public void SendToAEGIS(Vector3D vec, Vector3D vec2, string tag) {
+        public void SendCoords(Vector3D vec, Vector3D vec2, string tag) {
             SendCoords(vec.X, vec.Y, vec.Z, vec2.X, vec2.Y, vec2.Z, tag);
         }
-
-        public void SendCoords(Vector3D vec) { SendCoords(vec.X, vec.Y, vec.Z); }
-        public void SendCoords(Vector3D vec, Vector3D vec2) { SendCoords(vec.X, vec.Y, vec.Z, vec2.X, vec2.Y, vec2.Z); }
-
         public void SendCoords(double X1, double Y1, double Z1, double X2 = 0, double Y2 = 0, double Z2 = 0, string tag = missileTag) { IGC.SendBroadcastMessage(tag, "TARSET;" + X1 + ";" + Y1 + ";" + Z1 + ";" + X2 + ";" + Y2 + ";" + Z2); }
 
         bool IsOnThisGrid(IMyCubeBlock block) {
@@ -432,15 +453,8 @@ namespace IngameScript {
                     Detected = new List<MyDetectedEntityInfo>();
                     rad.DetectedEntities(Detected);
                     foreach (MyDetectedEntityInfo entity in Detected) {
-                        Register.Add(entity);
-                        if (curTarget != null) {
-                            if (entity.EntityId.Equals(curTarget.id) && curTarget.timeNum != 42044469) {
-                                curTarget.Update(entity);
-                                //if (curTarget.ShouldBC()) {
-                                SendCoords(entity.Position, entity.Velocity);
-                                //}
-                            }
-                        }
+                        if(Register.Add(entity))
+                            SendCoords(entity.Position, entity.Velocity, entity.EntityId.ToString());
                     }
                 }
                 else AllRight = false;
@@ -452,11 +466,11 @@ namespace IngameScript {
 
                 foreach(Entry entry in targets) {
                     output += 
-                       RelationToLetter(entry.relation) + entry.id + ";" + entry.Stringify() + "\n";
+                       RelationToLetter(entry.Relation) + entry.Id + ";" + entry.Stringify() + "\n";
                 }
                 if (targets.Count > 0) { 
-                    Me.CustomData = output;
-                    Echo(targets.Count + " " + Turret_Controller.TryRun("reg") + "\n" + output);
+                    Me.CustomData = output; 
+                    Turret_Controller.TryRun("reg");
                 }
             }
 
@@ -581,15 +595,30 @@ namespace IngameScript {
 
             GridTerminalSystem.GetBlocksOfType(temp);
             foreach (IMyTextPanel scr in temp) {
-                if (IsOnThisGrid(scr) && scr.CustomName.Contains(RadarCode)) Screens.Add(scr);
-                scr.Font = "Monospace";
-                scr.FontSize = 0.75f;
+                if (IsOnThisGrid(scr) && scr.CustomName.Contains(RadarCode)) {
+                    Screens.Add(scr);
+                    scr.Font = "Monospace";
+                    scr.FontSize = 0.75f;
+                }
+            }
+        }
+
+        int ProgressIncrementer = 0;
+        string ProgressShower() {
+            switch (ProgressIncrementer++/15) {
+                case 0: return "/";
+                case 1: return "-";
+                case 2: return "\\";
+                case 3: return "|";
+                default:
+                    ProgressIncrementer = 0;
+                    return "|";
             }
         }
 
         string PrintOut() {
             return
-                "Radar no: " + Radars.Count + "   Screen no: " + Screens.Count + "\n"
+                "Radar no: " + Radars.Count + "   Screen no: " + Screens.Count + " " + ProgressShower() + "\n"
                 + "Sensor range: " + currExt + " m Buoy RPM: " + currRPM + "\n"
                 + "AEGIS: " + (AEGIS?"ON":"OFF")
                 //+ "AEGIS: " + (AEGIS.isOnline ? "ON, TRACKING " + AEGIS.GetTarNo() + " OBJECTS.\n " + AEGIS.launchAttempts + " LAUNCH ATTEMPTS SO FAR." : "OFF") + "\n"
@@ -636,7 +665,7 @@ namespace IngameScript {
             }
         }
 
-        void PrepareForLaunch(int launchSize = 0) {
+        void PrepareForLaunch(string code, int launchSize = 0) {
             List<IMyProgrammableBlock> progList = new List<IMyProgrammableBlock>();
             GridTerminalSystem.GetBlocksOfType(progList);
             int counter = 0;
@@ -648,11 +677,11 @@ namespace IngameScript {
                     catch (Exception e) { missNo = 0; e.ToString(); }
                     if (missNo != 0) {
                         AddAJob(new Job(JobType.OpenDoor, missNo * 10, missNo));
-                        AddAJob(new Job(JobType.Launch, 200 + missNo * 10, missNo));
+                        AddAJob(new Job(JobType.Launch, 200 + missNo * 10, missNo, code));
                         AddAJob(new Job(JobType.CloseDoor, 700 + missNo * 10, missNo));
                     }
                     else continue;
-                    if (launchSize != 0 && ++counter >= launchSize) return;
+                    if (++counter >= launchSize) return;
                 }
             }
         }
@@ -660,15 +689,15 @@ namespace IngameScript {
         void Abort(bool selfDestruct = false) {
             schedule.Clear();
             if (selfDestruct) {
-                IGC.SendBroadcastMessage(missileTag, "ABORT");
+                foreach(string code in Register.GetMissionCodes())
+                    IGC.SendBroadcastMessage(code, "ABORT");
             }
             AbortAllLaunches();
-            curTarget = null;
         }
 
-        void PrepareGPSStrike(double X, double Y, double Z) {
-            curTarget = new Entry(X, Y, Z);
-            PrepareForLaunch();
+        void PrepareGPSStrike(double X, double Y, double Z, string code = GPSSTRIKE_CODE) {
+            Register.Add(code, new Entry(X, Y, Z));
+            PrepareForLaunch(code);
         }
 
         void SortJobs() {
@@ -693,25 +722,14 @@ namespace IngameScript {
             if (schedule.Count > 0 && schedule[0].TTJ <= 0) {
                 Job curr = schedule[0];
                 schedule.RemoveAt(0);
-                string name = curr.anti ? "ANTI-" : "MISSILE-";
+                string name = "MISSILE-";
                 IMyAirtightHangarDoor siloDoor = GridTerminalSystem.GetBlockWithName("Silo Door " + curr.misNo) as IMyAirtightHangarDoor;
-                IMyDoor antiDoor = GridTerminalSystem.GetBlockWithName("Anti Door " + curr.misNo) as IMyDoor;
                 switch (curr.type) {
                     case JobType.OpenDoor:
-                        if (!curr.anti) {
-                            if (siloDoor != null) siloDoor.OpenDoor();
-                            else {
-                                ErrorOutput("NO SILO DOOR \"" + ("Silo Door " + curr.misNo) + "\"");
-                                BumpMyMissile(curr.misNo);
-                                //Abort();
-                            }
-                        }
+                        if (siloDoor != null) siloDoor.OpenDoor();
                         else {
-                            if (antiDoor != null) antiDoor.OpenDoor();
-                            else {
-                                ErrorOutput("NO ANTI DOOR \"" + ("Anti Door " + curr.misNo) + "\"");
-                                //Abort();
-                            }
+                            ErrorOutput("NO SILO DOOR \"" + ("Silo Door " + curr.misNo) + "\"");
+                            BumpMyMissile(curr.misNo);
                         }
                         break;
 
@@ -723,28 +741,22 @@ namespace IngameScript {
                             return;
                         }
                         else {
-                            if (!curr.anti) { 
-                                if (curTarget == null) {
-                                    string message = "ABORTING LAUNCH: TARGET DOES NOT EXIST.";
-                                    Abort();
-                                    ErrorOutput(message);
-                                    return;
-                                }
-                                else {
-                                    missile.TryRun("prep " + curTarget.location.X + " " + curTarget.location.Y + " " + curTarget.location.Z);
-                                }
+                            long code;
+                            Entry entry;
+                            if (long.TryParse(curr.code, out code) && Register.TryGet(code, out entry)) {
+                                missile.TryRun("prep " + entry.Location.X + " " + entry.Location.Y + " " + entry.Location.Z + " " + code);
+                            }
+                            else {
+                                string message = "ABORTING LAUNCH: TARGET DOES NOT EXIST.";
+                                ErrorOutput(message);
+                                return;
                             }
                         }
                         break;
 
 
                     case JobType.CloseDoor:
-                        if (!curr.anti) {
-                            if (siloDoor != null) siloDoor.CloseDoor();
-                        }
-                        else {
-                            if (antiDoor != null) antiDoor.CloseDoor();
-                        }
+                        if (siloDoor != null) siloDoor.CloseDoor();
                         break;
                 }
             }
@@ -758,33 +770,38 @@ namespace IngameScript {
             return string.Format("{0:0." + addition + "}", input);
         }
 
-        static string Format(float input, int afterPoint = 1) {
-            string addition = "";
-
-            for (int i = 0; i < afterPoint; i++) addition += "#";
-
-            return string.Format("{0:0." + addition + "}", input);
-        }
-
         static string Format(Vector3D input) {
             return "(" + Format(input.X) + "," + Format(input.Y) + "," + Format(input.Z) + ")";
         }
 
         void IncrementAll() {
             Register.IncrementAll();
-            if (curTarget != null) {
-                curTarget.Increment();
-                if (curTarget.TSB > 2 * MAX_WAIT) curTarget = null;
-            }
             foreach (Job job in schedule) job.TTJ--;
         }
 
         public void Main(string argument, UpdateType updateSource) {
+            if (Ship_Controller == null && !GetControllingBlock()) {
+                Echo("The Ship Controller does not exist.");
+                return;
+            }
             if ((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0) {
                 Detect();
                 Output(PrintOut() + "\n" + Register.PrintOut());
-                DoYourJob();
-                IncrementAll();
+                Echo("RADAR "+currExt+" "+currRPM+":\n" + 
+                "DetectPlayers:" + DetectPlayers + "\n" +
+                "DetectFloatingObjects:" + DetectFloatingObjects + "\n" +
+                "DetectSmallShips:" + DetectSmallShips + "\n" +
+                "DetectLargeShips:" + DetectLargeShips + "\n" +
+                "DetectStations:" + DetectStations + "\n" +
+                "DetectSubgrids:" + DetectSubgrids + "\n" +
+                "DetectAsteroids:" + DetectAsteroids + "\n" +
+
+                "DetectOwner:" + DetectOwner + "\n" +
+                "DetectFriendly:" + DetectFriendly + "\n" +
+                "DetectNeutral:" + DetectNeutral + "\n" +
+                "DetectEnemy:" + DetectEnemy);
+                 DoYourJob();
+                 IncrementAll();
             }
             else
             if ((updateSource & UpdateType.IGC) > 0) {
@@ -794,22 +811,28 @@ namespace IngameScript {
                         string data = (string)message.Data;
                         string[] bits = data.Split(';');
 
+                        double X, Y, Z;
+                        int i = 0;
+
                         if (bits.Length <= 0) return;
                         switch (bits[0].ToUpper()) {
                             case "SALVO":
                                 if (bits.Length > 3) {
-                                    try {
-                                        curTarget = new Entry(float.Parse(bits[1]), float.Parse(bits[2]), float.Parse(bits[3]));
-                                        PrepareForLaunch();
-                                    }
-                                    catch (Exception e) {
-                                        Echo(e.ToString());
+                                    if (
+                                        double.TryParse(bits[i++], out X) &&
+                                        double.TryParse(bits[i++], out Y) &&
+                                        double.TryParse(bits[i++], out Z)
+                                        ) {
+                                        //curTarget = new Entry(float.Parse(bits[1]), float.Parse(bits[2]), float.Parse(bits[3]));
+                                        PrepareGPSStrike(X,Y,Z,"SALVO");
                                     }
                                 }
                                 break;
 
-                            case "ABORT":
-                                IGC.SendBroadcastMessage(missileTag, "ABORT");
+                            case "BOOM":
+                                if (bits.Length > 1) {
+                                    Register.RemoveMissionCode(bits[1]);
+                                }
                                 break;
                         }
                     }
@@ -820,39 +843,43 @@ namespace IngameScript {
                 if (argument.Length > 0) {
                     string[] args = argument.ToLower().Split(' ');
                     float detExt = 8000, tarRPM = 3;
-                    int index;
+                    double X, Y, Z;
+                    int index, i = 0;
                     Entry target;
                     switch (args[0]) {
                         case "ext":
                         case "range":
-                            try { detExt = args.Length > 1 ? float.Parse(args[1]) : 8000f; } catch (Exception e) { e.ToString(); }
-                            Echo("set: " + detExt + " " + tarRPM);
-                            SetRadExt(detExt);
+                            if (args.Length > 1 && float.TryParse(args[1], out detExt)) {
+                                Echo("set: " + detExt + " " + tarRPM);
+                                SetRadExt(detExt);
+                            }
                             break;
 
                         case "rpm":
-                            try { tarRPM = args.Length > 1 ? float.Parse(args[1]) : 3f; } catch (Exception e) { e.ToString(); }
-                            Echo("set: " + detExt + " " + tarRPM);
-                            SetRadRPM(tarRPM);
+                            if (args.Length > 1 && float.TryParse(args[1], out tarRPM)) {
+                                Echo("set: " + detExt + " " + tarRPM);
+                                SetRadRPM(tarRPM);
+                            }
                             break;
 
                         case "rad":
                         case "set":
-                            try { detExt = args.Length > 1 ? float.Parse(args[1]) : 8000f; } catch (Exception e) { e.ToString(); }
-                            try { tarRPM = args.Length > 2 ? float.Parse(args[2]) : 3f; } catch (Exception e) { e.ToString(); }
-                            Echo("set: " + detExt + " " + tarRPM);
-                            SetRadars(detExt, tarRPM);
+                            i = 1;
+                            if (args.Length > 2 && float.TryParse(args[i++], out detExt) && float.TryParse(args[i++], out tarRPM)) {
+                                Echo("set: " + detExt + " " + tarRPM);
+                                SetRadars(detExt, tarRPM);
+                            }
                             break;
 
                         case "gpsstrike":
                         case "gpstrike":
                         case "gps":
-                            double X, Y, Z;
-                            try { X = double.Parse(args[1]); } catch (Exception e) { e.ToString(); return; }
-                            try { Y = double.Parse(args[2]); } catch (Exception e) { e.ToString(); return; }
-                            try { Z = double.Parse(args[3]); } catch (Exception e) { e.ToString(); return; }
-
-                            PrepareGPSStrike(X, Y, Z);
+                            if(
+                                double.TryParse(args[i++], out X) &&
+                                double.TryParse(args[i++], out Y) &&
+                                double.TryParse(args[i++], out Z)) {
+                                PrepareGPSStrike(X, Y, Z);
+                            }
                             break;
 
                         case "get":
@@ -862,28 +889,24 @@ namespace IngameScript {
                             else {
                                 try { index = int.Parse(args[1]) - 1; } catch (Exception e) { e.ToString(); return; }
                             }
-                            target = Register.Get(index); if (target == null) return;
+                            target = Register.GetByIndex(index); if (target == null) return;
 
-                            ErrorOutput("Position of [" + (index + 1) + "]: " + Format(target.location));
+                            ErrorOutput("Position of [" + (index + 1) + "]: " + Format(target.Location));
 
                             break;
 
 
                         case "attack":
                         case "fire":
-                            if (args.Length < 2) {
-                                if (curTarget != null) PrepareForLaunch();
-                            }
-                            else {
+                            if (args.Length > 1) {
                                 int magnitude = 0;
                                 try { index = int.Parse(args[1]) - 1; } catch (Exception e) { e.ToString(); return; }
-                                target = Register.Get(index); if (target == null) return;
-                                curTarget = target;
+                                target = Register.GetByIndex(index); if (target == null) return;
 
                                 if (args.Length > 2) {
-                                    try { magnitude = int.Parse(args[2]); } catch (Exception e) { e.ToString(); magnitude = -1; }
+                                    try { magnitude = int.Parse(args[2]); } catch (Exception e) { e.ToString(); magnitude = 0; }
                                 }
-                                PrepareForLaunch(magnitude);
+                                PrepareForLaunch(target.Id.ToString(),magnitude);
                             }
 
                             break;
@@ -911,10 +934,6 @@ namespace IngameScript {
                                         break;
                                 }
                             }
-                            if (Turret_Controller != null) 
-                                Turret_Controller.TryRun(argument);
-                            else 
-                                Echo("Turret Controller cannot be reached.");
                             break;
 
                         case "detect":
@@ -1051,6 +1070,7 @@ namespace IngameScript {
                                         break;
 
                                     case "friendly":
+                                    case "friend":
                                     case "fac":
                                     case "green":
                                     case "allies":

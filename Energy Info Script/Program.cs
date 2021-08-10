@@ -56,12 +56,11 @@ namespace IngameScript
         }
 
         void SayMyName(string ScriptName, float textSize = 2f) {
-            ScriptName = "\n\n" + ScriptName;
             IMyTextSurface surface = Me.GetSurface(0);
             surface.Alignment = TextAlignment.CENTER;
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
             surface.FontSize = textSize;
-            surface.WriteText(ScriptName);
+            surface.WriteText("\n\n" + ScriptName);
 
             Me.CustomName = "[" + ScriptName + "] Script";
         }
@@ -139,6 +138,7 @@ namespace IngameScript
             float MaxShipOutput = 0;
             float CurrentBatteryOutput = 0;
             float CurrentShipOutput = 0;
+            float CurrentSolarOutput = 0;
             int Online = 0;
             int Recharging = 0;
             int Empty = 0;
@@ -150,11 +150,15 @@ namespace IngameScript
             GridTerminalSystem.GetBlocksOfType(Producers);
 
             foreach (IMyPowerProducer P in Producers) {
+                /*/
                 if (isOnThisGrid(P.CubeGrid)) {
+                    /**/
                     if (P.IsWorking) MaxShipOutput += P.MaxOutput;
                     CurrentShipOutput += P.CurrentOutput;
 
-                    if (P is IMySolarPanel) { }
+                    if (P is IMySolarPanel) {
+                        CurrentSolarOutput += P.CurrentOutput;
+                    }
                     else if (!(P is IMyBatteryBlock)) {
                         if (P.IsWorking) RNominal++;
                         else ROff++;
@@ -172,14 +176,16 @@ namespace IngameScript
                         else if (B.ChargeMode == ChargeMode.Recharge) Recharging++;
                         else Online++;
                     }
+                    /*/
                 }
+                /**/
             }
 
             if (recentStoredPower == -1) 
                 recentStoredPower = ShipsStoredPower;
 
 
-            float convert = 0.001F,
+            float convert = 1F,
                   difference = recentStoredPower - ShipsStoredPower,
                   timeMulti;
 
@@ -194,13 +200,16 @@ namespace IngameScript
 
             CurrentShipOutput = convert * CurrentShipOutput;
             MaxShipOutput = convert * MaxShipOutput;
+            CurrentSolarOutput *= convert;
 
             string output = " Current Power: " + ShipsStoredPower.ToString("0.0") + "/" + ShipsMaxPower.ToString("0.0") + " MWh ("
             + toPercent(ShipsStoredPower, ShipsMaxPower) + "%)";
             output += "\n H2 Reserves:   " + (getMedH2Capacity() * 100).ToString("0.00") + "%";
 
             output += "\n Current Output: " + CurrentShipOutput.ToString("0.00") + "/" + MaxShipOutput.ToString("0.0") +
-            " GW (" + toPercent(CurrentShipOutput, MaxShipOutput) + "%)";
+            " MW (" + toPercent(CurrentShipOutput, MaxShipOutput) + "%)";
+
+            output += "\n              Solar: " + CurrentSolarOutput.ToString("0.00") +" MW";
 
             float remainingTime;
             if (difference != 0) {

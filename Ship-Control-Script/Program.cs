@@ -119,10 +119,12 @@ namespace IngameScript {
             string name = Me.CubeGrid.CustomName;
             string[] split = name.Split(' ');
             if (!(split.Length > 1 && split[1].ToUpper().Equals("GRID"))) { ShipName = name; }
+            SayMyName("SHIP CONTROL");
             //ChangeState(PROGRAM_STATE.INIT);
-            if (Storage == null) {
-                //if (CurrentState == null) ChangeState(PROGRAM_STATE.INIT);
-            }/*/
+            //if (Storage == null) {
+            //if (CurrentState == null) ChangeState(PROGRAM_STATE.INIT);
+            //}
+            /*/
             else {
                 string[] bits = Storage.Split(';');
                 if (Storage.Length > 0)
@@ -144,6 +146,17 @@ namespace IngameScript {
 
         public void Save() {
             Storage = CurrentState.ToString();
+        }
+
+        string GetFullScriptName(string ScriptName) { return "[" + ScriptName + "] Script"; }
+        void SayMyName(string ScriptName, float textSize = 2f) {
+            Me.CustomName = GetFullScriptName(ScriptName);
+            ScriptName = "\n\n" + ScriptName;
+            IMyTextSurface surface = Me.GetSurface(0);
+            surface.Alignment = TextAlignment.CENTER;
+            surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.FontSize = textSize;
+            surface.WriteText(ScriptName);
         }
 
         public void STDBYS(int time) { STDBYT(time * 60, CurrentState); }

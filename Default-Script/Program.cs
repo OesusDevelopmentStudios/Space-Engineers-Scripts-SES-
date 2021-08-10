@@ -24,18 +24,21 @@ namespace IngameScript{
             Runtime.UpdateFrequency = UpdateFrequency.None;
         }
 
-        public void Main() {
-            List<IMyProgrammableBlock> progList = new List<IMyProgrammableBlock>();
-            GridTerminalSystem.GetBlocksOfType(progList);
-            //int counter = 0;
-            foreach (IMyProgrammableBlock pb in progList) {
-                if (pb.CustomName.StartsWith("ANTIMISSILE-")) {
-                    string toParse = pb.CustomName.Substring(12);
-                    Echo(toParse + "\n");
-                }
-            }
+        public void Main(string argument, UpdateType updateSource) {
+            int index;
+            if(argument!=null && argument.Length>0 && int.TryParse(argument, out index)) {
 
-            //Echo(all + " " + those);
+            }
+            else
+                index = 0;
+
+            List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
+            IMyBatteryBlock battery;
+            GridTerminalSystem.GetBlocksOfType(batteries);
+            if (batteries.Count > 0) {
+                battery = batteries.ElementAt(index);
+                Echo(battery.EntityId + " " + battery.GetId());
+            }
         }
     }
 }
