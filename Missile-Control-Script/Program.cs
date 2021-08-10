@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v5.0";
+        const string SCRIPT_VERSION = "v6.0";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float MIN_DISTANCE_TO_TARGET_FOR_ENGINE_DEACTIVATION = 300f;
         const double MAX_LENGTH_OF_DEVIATION_VECTOR = 0.02d;
@@ -261,6 +261,12 @@ namespace IngameScript {
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
             surface.FontSize = textSize;
             surface.WriteText(ScriptName);
+
+            surface = Me.GetSurface(0);
+            surface.Alignment = TextAlignment.CENTER;
+            surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.FontSize = textSize;
+            surface.WriteText("\n\nUniversal Missile");
         }
 
         Vector3D RoundVectorValues(Vector3D vector) { return RoundVectorValues(vector, 3); }
