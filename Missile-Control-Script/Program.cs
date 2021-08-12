@@ -23,10 +23,11 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v6.0";
+        const string SCRIPT_VERSION = "v6.1.0";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float MIN_DISTANCE_TO_TARGET_FOR_ENGINE_DEACTIVATION = 300f;
         const double MAX_LENGTH_OF_DEVIATION_VECTOR = 0.02d;
+        const double USED_APPROXIMATION_OF_2SQRT = 1.4142d;
         const int MINIMUM_SUFFICIENT_NUMBER_OF_CAMERAS = 9;
 
         MISSILE_STATE CurrentState;
@@ -37,7 +38,15 @@ namespace IngameScript {
             missileTag = "MISSILE-CHN", 
             missileCommandCenterTag = "MISSILE_COMMAND-CHN";
 
-        class Command{
+        const int
+            FORWARD_VECTOR_VALUE = 2,
+            UPWARD_VECTOR_VALUE = 6,
+            LEFTWARD_VECTOR_VALUE = 4,
+            RIGHTWARD_VECTOR_VALUE = 3,
+            BACKWARD_VECTOR_VALUE = 1,
+            DOWNWARD_VECTOR_VALUE = 5;
+
+        class Command {
             public double X, Y, Z;
 
             public static Command
@@ -46,16 +55,66 @@ namespace IngameScript {
                 YAW_LEFT = new Command(-1, 0, 0),
                 YAW_RIGHT = new Command(1, 0, 0),
                 ROLL_CLOCKWISE = new Command(0, 0, 1),
-                ROLL_ANTICLOCKWISE = new Command(0, 0, -1);
+                ROLL_ANTICLOCKWISE = new Command(0, 0, -1),
+                ZERO = new Command(0, 0, 0);
 
-            public Command(double X, double Y, double Z){
+            public Command(double X, double Y, double Z) {
                 this.X = X;
                 this.Y = Y;
                 this.Z = Z;
             }
+
+            public Command(Command command, double multiplier){
+                this.X = command.X*multiplier;
+                this.Y = command.Y*multiplier;
+                this.Z = command.Z*multiplier;
+            }
+
+            public Command(Command command1, Command command2){
+                this.X = command1.X + command2.X;
+                this.Y = command1.Y + command2.Y;
+                this.Z = command1.Z + command2.Z;
+            }
+
+            public Command Multiply(double multiplier) {
+                return new Command(this, multiplier);
+            }
+
+            public Command PowerUpBy(double power) {
+                return new Command(Math.Pow(X, power), Math.Pow(Y, power), Math.Pow(Z, power));
+            }
+
+            public double PowerAsNeeded(double input, double powerOrRoot) {
+                if (input == 0) return 0;
+
+                double
+                    output = input,
+                    sign = input >= 0 ? 1 : -1;
+
+                output *= sign;
+
+                if (output <= 1) return input;
+
+                return sign*Math.Pow(output, powerOrRoot);
+            }
+
+            public Command PowerAsNeededBy(double powerOrRoot) {
+                double
+                    X = PowerAsNeeded(this.X, powerOrRoot),
+                    Y = PowerAsNeeded(this.Y, powerOrRoot),
+                    Z = PowerAsNeeded(this.Z, powerOrRoot);
+
+                return new Command(X, Y, Z);
+            }
+
+            override
+            public string ToString() {
+                return "("+ Math.Round(X,1) +","+ Math.Round(Y, 1) + ","+ Math.Round(Z, 1) + ")";
+            }
         }
 
         Command currentCommand;
+        DeviationOffendersPair pairOfOffenders;
 
         Vector3D  
             NOTHING = new Vector3D(44, 44, 44),
@@ -63,14 +122,6 @@ namespace IngameScript {
             cameras_target,
             currentMissileLocation, vectorFromMissileToTarget, deviationVector, gravityAlignmentVector,
             centreOfGravityWell, initialMissilePosition;
-
-        const int 
-            FORWARD_VECTOR_VALUE    = 2,
-            UPWARD_VECTOR_VALUE     = 6,
-            LEFTWARD_VECTOR_VALUE   = 4,
-            RIGHTWARD_VECTOR_VALUE  = 3,
-            BACKWARD_VECTOR_VALUE   = 1,
-            DOWNWARD_VECTOR_VALUE   = 5;
 
         /// END OF CONSTANTS
 
@@ -112,17 +163,49 @@ namespace IngameScript {
         float thrusterOverrideAmount;
 
 
-        List<NavPrompt> NavigationalPrompts = new List<NavPrompt>();
-        List<NavPrompt> AlignmentPrompts;
+        List<NavigationalPrompt> NavigationalPrompts = new List<NavigationalPrompt>();
+        List<NavigationalPrompt> AlignmentPrompts;
         List<IMyThrust> group = new List<IMyThrust>();
 
-        class NavPrompt {
+        class DeviationOffendersPair {
+            public NavigationalPrompt first;
+            public NavigationalPrompt second;
+            public bool isValid;
+
+            public DeviationOffendersPair() {
+                first = new NavigationalPrompt();
+                second = new NavigationalPrompt();
+                isValid = false;
+            }
+
+            public DeviationOffendersPair(NavigationalPrompt first, NavigationalPrompt second) {
+                this.first = first;
+                this.second = second;
+                isValid = true;
+            }
+        }
+
+        class NavigationalPrompt {
+            public bool isValid;
             public int directionInteger;
             public double vectorLength;
 
-            public NavPrompt(int directionInteger, Vector3D inputVector) {
+            public NavigationalPrompt() {
+                this.directionInteger = 0;
+                this.vectorLength = 0d;
+                this.isValid = false;
+            }
+
+            public NavigationalPrompt(int directionInteger, Vector3D inputVector) {
                 this.directionInteger = directionInteger;
                 this.vectorLength = inputVector.Length();
+                this.isValid = true;
+            }
+
+            public NavigationalPrompt(NavigationalPrompt input) {
+                this.directionInteger = input.directionInteger;
+                this.vectorLength = input.vectorLength;
+                this.isValid = true;
             }
         }
 
@@ -150,12 +233,19 @@ namespace IngameScript {
             else return false;
         }
 
-        bool DoublesAreSimilar(double d1, double d2) {
-            if (d1 == d2) return true;
+        double DifferenceBetweenDoubles(double d1, double d2){
             double first = d1 > d2 ? d1 : d2,
                    second = d1 < d2 ? d1 : d2;
+            
+            return first - second;
+        }
 
-            if (first - second < (first / 10)) return true;
+        bool DoublesAreSimilar(double d1, double d2) {
+            if (d1 == d2) return true;
+
+            double difference = DifferenceBetweenDoubles(d1,d2);
+            if (difference < (d1 / 10)
+             || difference < (d2 / 10)) return true;
             else return false;
         }
 
@@ -172,7 +262,6 @@ namespace IngameScript {
 
         void ChangeState(MISSILE_STATE state) {
             timeIndex = 0;
-            List<IMyThrust> group;
             switch (state) {
                 case MISSILE_STATE.INITIALIZING:
                     TurnOffManeuveringThrusters();
@@ -200,8 +289,7 @@ namespace IngameScript {
                     break;
 
                 case MISSILE_STATE.DAMPENING:
-                    TurnOffManeuveringThrusters();
-                    if (MissileThrusters.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, 0f);
+                    TurnOffThrusters();
                     if (controllerExistsAndWorking) SHIP_CONTROLLER.DampenersOverride = true;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
                     if (missileListener == null) {
@@ -254,7 +342,6 @@ namespace IngameScript {
             ChangeState(MISSILE_STATE.INITIALIZING);
         }
 
-        //TODO: Also fill the other surfaces with something
         void DisplayScriptNameOnTextSurfaces(string ScriptName, float textSize = 10f) {
             IMyTextSurface surface = Me.GetSurface(1);
             surface.Alignment = TextAlignment.CENTER;
@@ -265,8 +352,8 @@ namespace IngameScript {
             surface = Me.GetSurface(0);
             surface.Alignment = TextAlignment.CENTER;
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
-            surface.FontSize = textSize;
-            surface.WriteText("\n\nUniversal Missile");
+            surface.FontSize = 2f;
+            surface.WriteText("\n\n\nUniversal Missile");
         }
 
         Vector3D RoundVectorValues(Vector3D vector) { return RoundVectorValues(vector, 3); }
@@ -291,84 +378,133 @@ namespace IngameScript {
 
         string VectorValueToName(int dirint) {
             switch (dirint) {
-                case 1:
+                case BACKWARD_VECTOR_VALUE:
                     return "FORWARD ";
-                case 2:
+                case FORWARD_VECTOR_VALUE:
                     return "BACKWARD";
-                case 3:
+                case RIGHTWARD_VECTOR_VALUE:
                     return "LEFT    ";
-                case 4:
+                case LEFTWARD_VECTOR_VALUE:
                     return "RIGHT   ";
-                case 5:
+                case DOWNWARD_VECTOR_VALUE:
                     return "UP      ";
-                case 6:
+                case UPWARD_VECTOR_VALUE:
                     return "DOWN    ";
                 default:
                     return "ERROR   ";
             }
         }
 
+        //bool deviationSent = false;
+        double maxDeviation = 5d;
+
+        Command VectorValueToCommand(int vectorValue, double vectorLength) {
+            double deviation = DifferenceBetweenDoubles(vectorLength, USED_APPROXIMATION_OF_2SQRT);
+
+            if (maxDeviation > deviation) maxDeviation = deviation;
+            SetAntennasText(maxDeviation);
+            if (deviation < 0.002f) return Command.ZERO;
+            if (deviation < 0.1f) deviation = 0.1f;
+
+            if (vectorValue <= 4) {
+                if (vectorValue == LEFTWARD_VECTOR_VALUE)
+                        return new Command(Command.YAW_RIGHT, deviation);
+                else    return new Command(Command.YAW_LEFT, deviation);
+            }
+            else {
+                if (vectorValue == UPWARD_VECTOR_VALUE)
+                        return new Command(Command.PITCH_DOWN, deviation);
+                else    return new Command(Command.PITCH_UP, deviation);
+            }
+        }
+
+        Command VectorValuesToBiaxialGyrosCommand(DeviationOffendersPair pair) {
+            return VectorValuestoBiaxialCommand(pair).PowerAsNeededBy(2).Multiply(2);
+        }
+
+        Command VectorValuesToBiaxialThrustersCommand(DeviationOffendersPair pair) {
+            return VectorValuestoBiaxialCommand(pair).Multiply(1/USED_APPROXIMATION_OF_2SQRT);
+        }
+
+        Command VectorValuestoBiaxialCommand(DeviationOffendersPair pair) {
+            return
+            VectorValuestoBiaxialCommand(
+                pair.first,
+                pair.second
+            );
+        }
+
+        Command VectorValuestoBiaxialCommand(NavigationalPrompt prompt1, NavigationalPrompt prompt2){
+            return 
+            VectorValuestoBiaxialCommand(
+                prompt1.directionInteger,
+                prompt1.vectorLength,
+                prompt2.directionInteger,
+                prompt2.vectorLength
+            );
+        }
+
+        Command VectorValuestoBiaxialCommand(int vectorValue1, double vectorLength1, int vectorValue2, double vectorLength2){
+            return 
+            new Command(
+                VectorValueToCommand(vectorValue1,vectorLength1),
+                VectorValueToCommand(vectorValue2,vectorLength2)
+            );
+        }
+
+        /// GONNA GET DEPRECATED IN A SECOND
         Command VectorValueToCommand(int lndDir, int culprit) {
             if (lndDir <= 2) {
                 if (culprit <= 4) {
-                    if (lndDir % 2 == culprit % 2) return Command.YAW_RIGHT;
-                    else return Command.YAW_LEFT; /// LFT
+                    if (lndDir % 2 == culprit % 2) 
+                            return Command.YAW_RIGHT;
+                    else    return Command.YAW_LEFT; /// LFT
                 }
                 else {
-                    if (lndDir % 2 == culprit % 2) return Command.PITCH_DOWN; /// DWN
-                    else return Command.PITCH_UP; /// UPP
+                    if (lndDir % 2 == culprit % 2) 
+                            return Command.PITCH_DOWN; /// DWN
+                    else    return Command.PITCH_UP; /// UPP
                 }
             }
             else if (lndDir <= 4) {
                 if (culprit <= 4) {
-                    if (lndDir % 2 == culprit % 2) return Command.YAW_LEFT; /// LFT
-                    else return Command.YAW_RIGHT; /// RIG
+                    if (lndDir % 2 == culprit % 2) 
+                            return Command.YAW_LEFT; /// LFT
+                    else    return Command.YAW_RIGHT; /// RIG
                 }
                 else {
-                    if (lndDir % 2 == culprit % 2) return Command.ROLL_ANTICLOCKWISE; /// ALK
-                    else return Command.ROLL_CLOCKWISE; /// CLK
+                    if (lndDir % 2 == culprit % 2) 
+                            return Command.ROLL_ANTICLOCKWISE; /// ALK
+                    else    return Command.ROLL_CLOCKWISE; /// CLK
                 }
             }
             else {
                 if (culprit <= 2) {
-                    if (lndDir % 2 == culprit % 2) return Command.PITCH_UP; /// UPP
-                    else return Command.PITCH_DOWN; /// DWN
+                    if (lndDir % 2 == culprit % 2) 
+                            return Command.PITCH_UP; /// UPP
+                    else    return Command.PITCH_DOWN; /// DWN
                 }
                 else {
-                    if (lndDir % 2 == culprit % 2) return Command.ROLL_CLOCKWISE; /// CLK
-                    else return Command.ROLL_ANTICLOCKWISE; /// ALK
+                    if (lndDir % 2 == culprit % 2) 
+                            return Command.ROLL_CLOCKWISE; /// CLK
+                    else    return Command.ROLL_ANTICLOCKWISE; /// ALK
                 }
             }
-        }
-
-        void VectorValueToManeuver(int lndDir, int culprit, float ovrPrc) {
-            TurnOffManeuveringThrusters();
-            List<IMyThrust> manThr;
-            /**/
-            if (lndDir == 1 && (culprit == 3 || culprit == 4)) {
-                if (culprit == 3) { if (MissileThrusters.TryGetValue(4, out manThr)) { MoveAGroupOfThrusters(manThr, ovrPrc); return; } }
-                else { if (MissileThrusters.TryGetValue(3, out manThr)) { MoveAGroupOfThrusters(manThr, ovrPrc); return; } }
-            }
-            else {
-                if (MissileThrusters.TryGetValue(culprit, out manThr)) { MoveAGroupOfThrusters(manThr, ovrPrc); return; }
-            }
-            /**/
-
         }
 
         Vector3D VectorValueToVector(int dirint) {
             switch (dirint) {
-                case 1:
+                case BACKWARD_VECTOR_VALUE:
                     return SHIP_CONTROLLER.WorldMatrix.Forward;
-                case 2:
+                case FORWARD_VECTOR_VALUE:
                     return SHIP_CONTROLLER.WorldMatrix.Backward;
-                case 3:
+                case RIGHTWARD_VECTOR_VALUE:
                     return SHIP_CONTROLLER.WorldMatrix.Left;
-                case 4:
+                case LEFTWARD_VECTOR_VALUE:
                     return SHIP_CONTROLLER.WorldMatrix.Right;
-                case 5:
+                case DOWNWARD_VECTOR_VALUE:
                     return SHIP_CONTROLLER.WorldMatrix.Up;
-                case 6:
+                case UPWARD_VECTOR_VALUE:
                     return SHIP_CONTROLLER.WorldMatrix.Down;
             }
             return NOTHING;
@@ -494,7 +630,7 @@ namespace IngameScript {
                 return NOTHING;
             }
         }
-        /**/
+        
         List<IMyCameraBlock> GetCameras() {
             List<IMyCameraBlock> list = new List<IMyCameraBlock>();
             List<IMyCameraBlock> temp = new List<IMyCameraBlock>();
@@ -528,7 +664,7 @@ namespace IngameScript {
             List<IMyThrust> temp;
             MissileThrusters.Clear();
             List<IMyThrust> list = new List<IMyThrust>();
-            GridTerminalSystem.GetBlocksOfType<IMyThrust>(list);
+            GridTerminalSystem.GetBlocksOfType(list);
             foreach (IMyThrust t in list) {
                 if (!ThisBlockIsOnTheGrid(t)) continue;
                 int dirint = TranslateDirectionToIdentifiableValue(t);
@@ -563,12 +699,12 @@ namespace IngameScript {
 
         int TranslateDirectionToIdentifiableValue(Base6Directions.Direction d) {
             switch (d) {
-                case Base6Directions.Direction.Forward: return 1;
-                case Base6Directions.Direction.Backward: return 2;
-                case Base6Directions.Direction.Left: return 3;
-                case Base6Directions.Direction.Right: return 4;
-                case Base6Directions.Direction.Up: return 5;
-                case Base6Directions.Direction.Down: return 6;
+                case Base6Directions.Direction.Forward: return BACKWARD_VECTOR_VALUE;
+                case Base6Directions.Direction.Backward: return FORWARD_VECTOR_VALUE;
+                case Base6Directions.Direction.Left: return RIGHTWARD_VECTOR_VALUE;
+                case Base6Directions.Direction.Right: return LEFTWARD_VECTOR_VALUE;
+                case Base6Directions.Direction.Up: return DOWNWARD_VECTOR_VALUE;
+                case Base6Directions.Direction.Down: return UPWARD_VECTOR_VALUE;
                 default: Output("*ANGERY SIREN NOISES*"); return 44;
             }
         }
@@ -586,15 +722,15 @@ namespace IngameScript {
                     else if (TUP % 2 == 0) {
                         if (blockDir == TUP - 1) return DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return RIGHTWARD_VECTOR_VALUE;
-                            else return LEFTWARD_VECTOR_VALUE;
+                            if (blockDir % 2 == 0) return LEFTWARD_VECTOR_VALUE;
+                            else return RIGHTWARD_VECTOR_VALUE;
                         }
                     }
                     else {
                         if (blockDir == TUP + 1) return DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return RIGHTWARD_VECTOR_VALUE;
-                            else return LEFTWARD_VECTOR_VALUE;
+                            if (blockDir % 2 == 0) return LEFTWARD_VECTOR_VALUE;
+                            else return RIGHTWARD_VECTOR_VALUE;
                         }
                     }
                 }
@@ -603,15 +739,15 @@ namespace IngameScript {
                     else if (TUP % 2 == 0) {
                         if (blockDir == TUP - 1) return DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return LEFTWARD_VECTOR_VALUE;
-                            else return RIGHTWARD_VECTOR_VALUE;
+                            if (blockDir % 2 == 0) return RIGHTWARD_VECTOR_VALUE;
+                            else return LEFTWARD_VECTOR_VALUE;
                         }
                     }
                     else {
                         if (blockDir == TUP + 1) return DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return LEFTWARD_VECTOR_VALUE;
-                            else return RIGHTWARD_VECTOR_VALUE;
+                            if (blockDir % 2 == 0) return RIGHTWARD_VECTOR_VALUE;
+                            else return LEFTWARD_VECTOR_VALUE;
                         }
                     }
                 }
@@ -624,78 +760,78 @@ namespace IngameScript {
                     blockSub = TranslateDirectionToIdentifiableValue(block.Orientation.Up),
                     firstDigit;
 
-                if (blockSub == TFW) firstDigit = 2;
-                else if (blockSub == TUP) firstDigit = 6;
+                if (blockSub == TFW) firstDigit = FORWARD_VECTOR_VALUE;
+                else if (blockSub == TUP) firstDigit = UPWARD_VECTOR_VALUE;
                 else if (TFW % 2 == 0) {
-                    if (blockSub == TFW - 1) firstDigit = 1;
+                    if (blockSub == TFW - 1) firstDigit = BACKWARD_VECTOR_VALUE;
                     else if (TUP % 2 == 0) {
-                        if (blockSub == TUP - 1) firstDigit = 5;
-                        else {
-                            if (blockSub % 2 == 0) firstDigit = 3;
-                            else firstDigit = 4;
+                        if (blockSub == TUP - 1) firstDigit = DOWNWARD_VECTOR_VALUE;
+                        else { // L->R and R->L Unchanged below this point
+                            if (blockSub % 2 == 0) firstDigit = RIGHTWARD_VECTOR_VALUE;
+                            else firstDigit = LEFTWARD_VECTOR_VALUE;
                         }
                     }
                     else {
-                        if (blockSub == TUP + 1) firstDigit = 5;
+                        if (blockSub == TUP + 1) firstDigit = DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockSub % 2 == 0) firstDigit = 3;
-                            else firstDigit = 4;
+                            if (blockSub % 2 == 0) firstDigit = RIGHTWARD_VECTOR_VALUE;
+                            else firstDigit = LEFTWARD_VECTOR_VALUE;
                         }
                     }
                 }
                 else {
-                    if (blockSub == TFW + 1) firstDigit = 1;
+                    if (blockSub == TFW + 1) firstDigit = BACKWARD_VECTOR_VALUE;
                     else if (TUP % 2 == 0) {
-                        if (blockSub == TUP - 1) firstDigit = 5;
+                        if (blockSub == TUP - 1) firstDigit = DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockSub % 2 == 0) firstDigit = 4;
-                            else firstDigit = 3;
+                            if (blockSub % 2 == 0) firstDigit = LEFTWARD_VECTOR_VALUE;
+                            else firstDigit = RIGHTWARD_VECTOR_VALUE;
                         }
                     }
                     else {
-                        if (blockSub == TUP + 1) firstDigit = 5;
+                        if (blockSub == TUP + 1) firstDigit = DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockSub % 2 == 0) firstDigit = 4;
-                            else firstDigit = 3;
+                            if (blockSub % 2 == 0) firstDigit = LEFTWARD_VECTOR_VALUE;
+                            else firstDigit = RIGHTWARD_VECTOR_VALUE;
                         }
                     }
                 }
 
-                if (blockDir == TFW) return firstDigit * 10 + 2;
-                else if (blockDir == TUP) return firstDigit * 10 + 6;
+                if (blockDir == TFW) return firstDigit * 10 + FORWARD_VECTOR_VALUE;
+                else if (blockDir == TUP) return firstDigit * 10 + UPWARD_VECTOR_VALUE;
                 else if (TFW % 2 == 0) {
-                    if (blockDir == TFW - 1) return firstDigit * 10 + 1;
+                    if (blockDir == TFW - 1) return firstDigit * 10 + BACKWARD_VECTOR_VALUE;
                     else if (TUP % 2 == 0) {
                         if (blockDir == TUP - 1)
-                            return firstDigit * 10 + 5;
+                            return firstDigit * 10 + DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return firstDigit * 10 + 3;
-                            else return firstDigit * 10 + 4;
+                            if (blockDir % 2 == 0) return firstDigit * 10 + RIGHTWARD_VECTOR_VALUE;
+                            else return firstDigit * 10 + LEFTWARD_VECTOR_VALUE;
                         }
                     }
                     else {
-                        if (blockDir == TUP + 1) return firstDigit * 10 + 5;
+                        if (blockDir == TUP + 1) return firstDigit * 10 + DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return firstDigit * 10 + 3;
-                            else return firstDigit * 10 + 4;
+                            if (blockDir % 2 == 0) return firstDigit * 10 + RIGHTWARD_VECTOR_VALUE;
+                            else return firstDigit * 10 + LEFTWARD_VECTOR_VALUE;
                         }
                     }
                 }
                 else {
-                    if (blockDir == TFW + 1) return firstDigit * 10 + 1;
+                    if (blockDir == TFW + 1) return firstDigit * 10 + BACKWARD_VECTOR_VALUE;
                     else if (TUP % 2 == 0) {
-                        if (blockDir == TUP - 1) return firstDigit * 10 + 5;
+                        if (blockDir == TUP - 1) return firstDigit * 10 + DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return firstDigit * 10 + 4;
-                            else return firstDigit * 10 + 3;
+                            if (blockDir % 2 == 0) return firstDigit * 10 + LEFTWARD_VECTOR_VALUE;
+                            else return firstDigit * 10 + RIGHTWARD_VECTOR_VALUE;
 
                         }
                     }
                     else {
-                        if (blockDir == TUP + 1) return firstDigit * 10 + 5;
+                        if (blockDir == TUP + 1) return firstDigit * 10 + DOWNWARD_VECTOR_VALUE;
                         else {
-                            if (blockDir % 2 == 0) return firstDigit * 10 + 4;
-                            else return firstDigit * 10 + 3;
+                            if (blockDir % 2 == 0) return firstDigit * 10 + LEFTWARD_VECTOR_VALUE;
+                            else return firstDigit * 10 + RIGHTWARD_VECTOR_VALUE;
                         }
                     }
                 }
@@ -788,11 +924,44 @@ namespace IngameScript {
             }
         }
 
+        void MoveAllGyros(Command command){
+            //SetAntennasText(command.ToString());
+            MoveAllGyros((float)command.X, (float)command.Y, (float)command.Z);
+        }
+
         void MoveAllGyros(float Yaw, float Pitch, float Roll) {
             List<IMyGyro> gyros = GetGyros();
             foreach (IMyGyro gyro in gyros) {
                 MoveGyroInAWay(gyro, Yaw, Pitch, Roll);
             }
+        }
+
+        void ManeuverUsingBiaxialCommand(Command command) {
+            ManeuverUsingBiaxialCommand((float)command.X, (float)command.Y);
+        }
+
+        void ManeuverUsingBiaxialCommand(float Yaw, float Pitch){
+            if(Yaw>0){
+                MoveAGroupOfThrustersByDirectionVectorValue(RIGHTWARD_VECTOR_VALUE, Yaw );
+                MoveAGroupOfThrustersByDirectionVectorValue(LEFTWARD_VECTOR_VALUE, 0f);
+            }
+            else {
+                MoveAGroupOfThrustersByDirectionVectorValue(LEFTWARD_VECTOR_VALUE, -1 * Yaw );
+                MoveAGroupOfThrustersByDirectionVectorValue(RIGHTWARD_VECTOR_VALUE, 0f);
+            }
+            if(Pitch>0){
+                MoveAGroupOfThrustersByDirectionVectorValue(DOWNWARD_VECTOR_VALUE, Pitch );
+                MoveAGroupOfThrustersByDirectionVectorValue(UPWARD_VECTOR_VALUE, 0f);
+            }
+            else {
+                MoveAGroupOfThrustersByDirectionVectorValue(UPWARD_VECTOR_VALUE, -1 * Pitch );
+                MoveAGroupOfThrustersByDirectionVectorValue(DOWNWARD_VECTOR_VALUE, 0f);
+            }
+        }
+
+        void MoveAGroupOfThrustersByDirectionVectorValue(int directionValue, float OverridePercent){
+            List<IMyThrust> group;
+            if(MissileThrusters.TryGetValue(directionValue, out group)) MoveAGroupOfThrusters(group, OverridePercent);
         }
 
         void MoveAGroupOfThrusters(List<IMyThrust> Group, float OverridePercent) {
@@ -803,8 +972,7 @@ namespace IngameScript {
 
         void TurnOffThrusters() {
             List<IMyThrust> list;
-            int i = 0;
-            for (; i < 7; i++)
+            for (int i = 0; i < 7; i++)
                 if (MissileThrusters.TryGetValue(i, out list))
                     foreach (IMyThrust tru in list) {
                         tru.ThrustOverride = 0f;
@@ -813,8 +981,7 @@ namespace IngameScript {
 
         void TurnOffManeuveringThrusters() {
             List<IMyThrust> list;
-            int i = 2;
-            for (; i < 7; i++)
+            for (int i = 2; i < 7; i++)
                 if (MissileThrusters.TryGetValue(i, out list))
                     foreach (IMyThrust tru in list) {
                         tru.ThrustOverride = 0f;
@@ -918,11 +1085,32 @@ namespace IngameScript {
             ///    New Part               && Classic Part
             return (diff.Length() < 0.5d) && (currentDistanceToTarget <= GetCurrentMissileSpeed() + MIN_DISTANCE_TO_TARGET_FOR_ENGINE_DEACTIVATION || GetCurrentMissileSpeed() > maxAllowedMissileSpeed);
         }
+        /*/
+        DeviationOffendersPair GetOffendersPair() {
+            return GetOffendersPair(new int[] { });
+        }
+        /**/
+
+        DeviationOffendersPair GetOffendersPair(int[] exclusions) {
+            bool firstOffenderFound = false;
+            NavigationalPrompt firstOffender = new NavigationalPrompt();
+            for(int i = 0; i < 3; i++) { 
+            //foreach(NavigationalPrompt prompt in NavigationalPrompts) {
+                if (exclusions.Length==0 || !exclusions.Contains(NavigationalPrompts[i].directionInteger)) {
+                    if (!firstOffenderFound) {
+                        firstOffenderFound = true;
+                        firstOffender = new NavigationalPrompt(NavigationalPrompts[i]);
+                    }
+                    else return new DeviationOffendersPair(firstOffender, new NavigationalPrompt(NavigationalPrompts[i]));
+                }
+            }
+
+            return new DeviationOffendersPair();
+        }
 
         void ComputeNavigationalData(){
             currentMissileLocation = SHIP_CONTROLLER.GetPosition();
             vectorFromMissileToTarget = target == null ? currentMissileLocation : RoundVectorValues(Vector3D.Normalize(Vector3D.Subtract(target, currentMissileLocation)));
-            deviationVector = NOTHING;
             CheckIfMissileIsInGravityWell();
 
             currentDistanceToTarget = 0;
@@ -930,11 +1118,11 @@ namespace IngameScript {
         }
 
         void ComputeTargetRelatedData(){
-            NavigationalPrompts = new List<NavPrompt>();
+            NavigationalPrompts = new List<NavigationalPrompt>();
             deviationVector = Vector3D.Subtract(RoundVectorValues(VectorValueToVector(1)), vectorFromMissileToTarget);
             currentDistanceToTarget = Vector3D.Subtract(target, currentMissileLocation).Length();
             for (int i = 1; i < 7; i++)
-                NavigationalPrompts.Add(new NavPrompt(i, Vector3D.Subtract(RoundVectorValues(VectorValueToVector(i)), vectorFromMissileToTarget)));
+                NavigationalPrompts.Add(new NavigationalPrompt(i, Vector3D.Subtract(RoundVectorValues(VectorValueToVector(i)), vectorFromMissileToTarget)));
             NavigationalPrompts = NavigationalPrompts.OrderBy(o => o.vectorLength).ToList();
         }
 
@@ -945,8 +1133,8 @@ namespace IngameScript {
             }
 
             if (CurrentState > MISSILE_STATE.PREPARING_FOR_LAUNCH) {
-                ComputeTargetRelatedData();
                 group = new List<IMyThrust>();
+                ComputeTargetRelatedData();
             }
 
             switch (CurrentState) {
@@ -970,8 +1158,8 @@ namespace IngameScript {
 
                     // part below seems to be needed, because missile does not want to exit the launchpoint otherwise
                     if (currentMissileElevation <= initialMissileElevation && initialMissileElevation != -1) {
-                        if (MissileThrusters.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, 0f);
-                        if (MissileThrusters.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, thrusterOverrideAmount);
+                        MoveAGroupOfThrustersByDirectionVectorValue(BACKWARD_VECTOR_VALUE, 0f);
+                        MoveAGroupOfThrustersByDirectionVectorValue(BACKWARD_VECTOR_VALUE, thrusterOverrideAmount);
                     }
 
                     bool abortNormal = false;
@@ -997,8 +1185,8 @@ namespace IngameScript {
                     if (currentMissileSpeed >= initialMissileSpeed + additionalSpeedNeededForExiting || abortNormal) {
                         ChangeState(MISSILE_STATE.DAMPENING);
                     }
-                    else if (MissileThrusters.TryGetValue(1, out group)) {
-                        MoveAGroupOfThrusters(group, thrusterOverrideAmount);
+                    else {
+                        MoveAGroupOfThrustersByDirectionVectorValue(BACKWARD_VECTOR_VALUE, thrusterOverrideAmount);
                     }
                     break;
 
@@ -1009,9 +1197,9 @@ namespace IngameScript {
                             else {
                                 gravityAlignmentVector = RoundVectorValues(Vector3D.Normalize(Vector3D.Subtract(centreOfGravityWell, currentMissileLocation)));
 
-                                AlignmentPrompts = new List<NavPrompt>();
+                                AlignmentPrompts = new List<NavigationalPrompt>();
                                 for (int i = 1; i < 7; i++)
-                                    AlignmentPrompts.Add(new NavPrompt(i, Vector3D.Subtract(RoundVectorValues(VectorValueToVector(i)), gravityAlignmentVector)));
+                                    AlignmentPrompts.Add(new NavigationalPrompt(i, Vector3D.Subtract(RoundVectorValues(VectorValueToVector(i)), gravityAlignmentVector)));
                                 AlignmentPrompts = AlignmentPrompts.OrderBy(o => o.vectorLength).ToList();
 
                                 if (AlignmentPrompts[0].directionInteger == 2 || AlignmentPrompts[1].directionInteger == 2) {
@@ -1030,23 +1218,30 @@ namespace IngameScript {
                         Runtime.UpdateFrequency = UpdateFrequency.Update1;
                     }
 
+                    pairOfOffenders = GetOffendersPair(new int[] {1,2});
+
+                    MoveAllGyros(VectorValuesToBiaxialGyrosCommand(pairOfOffenders));
+                    ManeuverUsingBiaxialCommand(VectorValuesToBiaxialThrustersCommand(pairOfOffenders));
+
+                    /*/
                     for (valueOfTheDeviationOffender = 0; valueOfTheDeviationOffender < 3; valueOfTheDeviationOffender++) {
                         if (NavigationalPrompts[valueOfTheDeviationOffender].directionInteger != 1 && NavigationalPrompts[valueOfTheDeviationOffender].directionInteger != 2) break;
                     }
                     valueOfTheDeviationOffender = NavigationalPrompts[valueOfTheDeviationOffender].directionInteger;
 
                     currentCommand = VectorValueToCommand(2, valueOfTheDeviationOffender);
-                    MoveAllGyros((float)(currentCommand.X * deviationVector.Length()), (float)(currentCommand.Y * deviationVector.Length()), (float)(currentCommand.Z * deviationVector.Length()));
+                    MoveAllGyros((float)(currentCommand.X * Math.Sqrt(deviationVector.Length())), (float)(currentCommand.Y * Math.Sqrt(deviationVector.Length())), (float)(currentCommand.Z * Math.Sqrt(deviationVector.Length())));
                     VectorValueToManeuver(2, valueOfTheDeviationOffender, 0.1F);
+                    /**/
 
                     break;
 
                 case MISSILE_STATE.GRAVITY_ALIGNMENT:
                     gravityAlignmentVector = RoundVectorValues(Vector3D.Normalize(Vector3D.Subtract(centreOfGravityWell, currentMissileLocation)));
 
-                    AlignmentPrompts = new List<NavPrompt>();
+                    AlignmentPrompts = new List<NavigationalPrompt>();
                     for (int i = 1; i < 7; i++)
-                        AlignmentPrompts.Add(new NavPrompt(i, Vector3D.Subtract(RoundVectorValues(VectorValueToVector(i)), gravityAlignmentVector)));
+                        AlignmentPrompts.Add(new NavigationalPrompt(i, Vector3D.Subtract(RoundVectorValues(VectorValueToVector(i)), gravityAlignmentVector)));
                     if (DoublesAreSimilar(AlignmentPrompts[2].vectorLength, AlignmentPrompts[3].vectorLength) && AlignmentPrompts[5].vectorLength + 0.5 < AlignmentPrompts[4].vectorLength) {
                         ChangeState(MISSILE_STATE.APPROACHING_TARGET);
                         MoveAllGyros(0, 0, 0);
@@ -1098,6 +1293,13 @@ namespace IngameScript {
                         foreach (IMyShipMergeBlock mer in merges) mer.Enabled = false;
                     }
 
+                    pairOfOffenders = GetOffendersPair(new int[] { 1, 2 });
+
+                    MoveAllGyros(VectorValuesToBiaxialGyrosCommand(pairOfOffenders));
+                    //if (maneuveringThrustersAllowed) 
+                        ManeuverUsingBiaxialCommand(VectorValuesToBiaxialThrustersCommand(pairOfOffenders));
+
+                    /*/
                     for (valueOfTheDeviationOffender = 0; valueOfTheDeviationOffender < 3; valueOfTheDeviationOffender++) {
                         if (NavigationalPrompts[valueOfTheDeviationOffender].directionInteger != 1 && NavigationalPrompts[valueOfTheDeviationOffender].directionInteger != 2) break;
                     }
@@ -1128,8 +1330,9 @@ namespace IngameScript {
 
                     if (maneuveringThrustersAllowed) VectorValueToManeuver(2, valueOfTheDeviationOffender, mnvAmm);
                     MoveAllGyros((float)(currentCommand.X * deviationVector.Length()), (float)(currentCommand.Y * deviationVector.Length()), (float)(currentCommand.Z * deviationVector.Length()));
+                    /**/
 
-                    if (currentDistanceToTarget >= 4000d && missileIsInGravityWell && currentMissileElevation <= 1000) if (MissileThrusters.TryGetValue(5, out group)) MoveAGroupOfThrusters(group, 1f);
+                    if (currentDistanceToTarget >= 4000d && missileIsInGravityWell && currentMissileElevation <= 1000)  MoveAGroupOfThrustersByDirectionVectorValue(DOWNWARD_VECTOR_VALUE, 1f);
                     previousDistanceToTarget = currentDistanceToTarget;
 
                     Echo(" " + currentDistanceToTarget + " ");
@@ -1148,7 +1351,7 @@ namespace IngameScript {
         double GetInnerCosineBetweenVectors(Vector3D first, Vector3D second) {
             double 
                 scalarProduct   = first.X * second.X + first.Y * second.Y + first.Z * second.Z,
-                productOfLengths   = first.Length() * second.Length();
+                productOfLengths= first.Length() * second.Length();
 
             return scalarProduct / productOfLengths;
         }
@@ -1336,9 +1539,8 @@ namespace IngameScript {
                 }
             }
             status += " " + Runtime.UpdateFrequency;
-            SetAntennasText(status);
+            //SetAntennasText(status);
         }
-
 
         public void Main(string argument, UpdateType updateSource) {
             if (SHIP_CONTROLLER == null || !SHIP_CONTROLLER.IsWorking)
