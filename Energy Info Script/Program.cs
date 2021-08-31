@@ -17,110 +17,105 @@ using VRage.Game;
 using VRage;
 using VRageMath;
 
-namespace IngameScript
-{
-    partial class Program : MyGridProgram
-    {
-        const bool ONLY_USE_BLOCKS_FROM_THIS_GRID = false;
-        readonly string  ScreenName = "[ENERGY INFO]";
-        float   RecentStoredPower = -1f;
-        long    IceAmount;
-        int     TimeIncrementer = 0;
+namespace IngameScript {
+    partial class Program : MyGridProgram {
+        const bool ONLY_USE_BLOCKS_FROM_THIS_GRID = true;
+        readonly string ScreenName = "[ENERGY INFO]";
+        float RecentStoredPower = -1f;
+        long IceAmount;
+        int TimeIncrementer = 0;
 
-        List<IMyCargoContainer> cargoContainters    = new List<IMyCargoContainer>();
-        List<IMyGasGenerator>   gasGenerators       = new List<IMyGasGenerator>();
-        List<IMyGasTank>        hydrogenTanks       = new List<IMyGasTank>();
-        List<IMyPowerProducer>  powerProducers      = new List<IMyPowerProducer>();
-        List<IMyTextPanel>      textPanels          = new List<IMyTextPanel>();
+        List<IMyCargoContainer> cargoContainters = new List<IMyCargoContainer>();
+        List<IMyGasGenerator> gasGenerators = new List<IMyGasGenerator>();
+        List<IMyGasTank> hydrogenTanks = new List<IMyGasTank>();
+        List<IMyPowerProducer> powerProducers = new List<IMyPowerProducer>();
+        List<IMyTextPanel> textPanels = new List<IMyTextPanel>();
 
-        void FindCargoContainers(bool restrictive){
-            if(!restrictive){
+        void FindCargoContainers(bool restrictive) {
+            if (!restrictive) {
                 GridTerminalSystem.GetBlocksOfType(cargoContainters = new List<IMyCargoContainer>());
                 return;
             }
             List<IMyCargoContainer> temp = new List<IMyCargoContainer>();
             GridTerminalSystem.GetBlocksOfType(temp); cargoContainters = new List<IMyCargoContainer>();
 
-            foreach(IMyCargoContainer cont in temp) if(IsOnThisGrid(cont)) cargoContainters.Add(cont);
+            foreach (IMyCargoContainer cont in temp) if (IsOnThisGrid(cont)) cargoContainters.Add(cont);
         }
 
-        void FindGasGenerators(bool restrictive){
-            if(!restrictive){
+        void FindGasGenerators(bool restrictive) {
+            if (!restrictive) {
                 GridTerminalSystem.GetBlocksOfType(gasGenerators = new List<IMyGasGenerator>());
                 return;
             }
             List<IMyGasGenerator> temp = new List<IMyGasGenerator>();
             GridTerminalSystem.GetBlocksOfType(temp); gasGenerators = new List<IMyGasGenerator>();
 
-            foreach(IMyGasGenerator gasG in temp) if(IsOnThisGrid(gasG)) gasGenerators.Add(gasG);
+            foreach (IMyGasGenerator gasG in temp) if (IsOnThisGrid(gasG)) gasGenerators.Add(gasG);
         }
 
-        void FindHydrogenTanks(bool restrictive){
+        void FindHydrogenTanks(bool restrictive) {
             List<IMyGasTank> temp = new List<IMyGasTank>();
             GridTerminalSystem.GetBlocksOfType(temp); hydrogenTanks = new List<IMyGasTank>();
 
-            foreach(IMyGasTank tank in temp) 
-                if((!restrictive || IsOnThisGrid(tank)) && tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) 
+            foreach (IMyGasTank tank in temp)
+                if ((!restrictive || IsOnThisGrid(tank)) && tank.BlockDefinition.SubtypeName.Contains("HydrogenTank"))
                     hydrogenTanks.Add(tank);
         }
 
-        void FindPowerProducers(bool restrictive){
-            if(!restrictive){
+        void FindPowerProducers(bool restrictive) {
+            if (!restrictive) {
                 GridTerminalSystem.GetBlocksOfType(powerProducers = new List<IMyPowerProducer>());
                 return;
             }
             List<IMyPowerProducer> temp = new List<IMyPowerProducer>();
             GridTerminalSystem.GetBlocksOfType(temp); powerProducers = new List<IMyPowerProducer>();
 
-            foreach(IMyPowerProducer PP in temp) if(IsOnThisGrid(PP)) powerProducers.Add(PP);
+            foreach (IMyPowerProducer PP in temp) if (IsOnThisGrid(PP)) powerProducers.Add(PP);
         }
 
-        void FindTextPanels(bool restrictive){
+        void FindTextPanels(bool restrictive) {
             List<IMyTextPanel> temp = new List<IMyTextPanel>();
             GridTerminalSystem.GetBlocksOfType(temp); textPanels = new List<IMyTextPanel>();
 
-            foreach(IMyTextPanel TP in temp) if((!restrictive || IsOnThisGrid(TP)) && TP.CustomName.Contains(ScreenName)) textPanels.Add(TP);
+            foreach (IMyTextPanel TP in temp) if ((!restrictive || IsOnThisGrid(TP)) && TP.CustomName.Contains(ScreenName)) textPanels.Add(TP);
         }
 
-        void FindNeededBlocks(UpdateType updateSource){
-            int 
-                timeLimiter = (updateSource & UpdateType.Update1)>0? 300:((updateSource & UpdateType.Update10)>0?30:3), 
-                effectiveTimeIncrementer = TimeIncrementer/timeLimiter,
-                TimeIncrementerMod = TimeIncrementer%timeLimiter;
+        void FindNeededBlocks(UpdateType updateSource) {
+            int
+                timeLimiter = (updateSource & UpdateType.Update1) > 0 ? 300 : ((updateSource & UpdateType.Update10) > 0 ? 30 : 3),
+                effectiveTimeIncrementer = TimeIncrementer / timeLimiter,
+                TimeIncrementerMod = TimeIncrementer % timeLimiter;
             TimeIncrementer++;
 
-            if(effectiveTimeIncrementer > 4){
+            if (effectiveTimeIncrementer > 4) {
                 TimeIncrementer = 0; return;
             }
-            if(TimeIncrementerMod!=0) return;
+            if (TimeIncrementerMod != 0) return;
 
-            switch(effectiveTimeIncrementer){
+            switch (effectiveTimeIncrementer) {
                 case 0: FindCargoContainers(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
                 case 1: FindPowerProducers(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
                 case 2: FindGasGenerators(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
                 case 3: FindHydrogenTanks(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
                 case 4: FindTextPanels(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
                 default: TimeIncrementer = 0; return;
-            }  
+            }
         }
 
         public class Logs {
             private static float value = 0;
             public static int count = 0;
-
             public static float GetRemainingSecondsOfEnergy() { return value; }
-
             public static void Add() { count++; }
-            public static void Add(float input){
+            public static void Add(float input) {
                 Add();
 
-                if((input>0 && value<0) || (input < 0 && value > 0)) {
+                if ((input > 0 && value < 0) || (input < 0 && value > 0)) {
                     count = 1;
                 }
 
-                if (count != 1) 
-                    {value += ((input - value) / count);}
-                else 
+                if (count != 1) { value += ((input - value) / count); }
+                else
                     value = input;
 
                 if (count > 100) count = 100;
@@ -148,17 +143,9 @@ namespace IngameScript
             SayMyName("ENERGY INFO");
         }
 
-        String SecondsToTimeInString(float seconds){
-            if(seconds<0) seconds = -seconds;
-            if (seconds >= 3600) {
-                return String.Format("{0,2:D2} h {1,2:D2} m {2,2:D2} s", seconds / 3600, (seconds % 3600)/60, seconds % 60);
-            }
-            else if (seconds >= 60) {
-                return String.Format("{0,7:D2} m {1,2:D2} s", (seconds % 3600)/60, seconds % 60);
-            }
-            else {
-                return String.Format("{0,12:D2} s", seconds);
-            }
+        String SecondsToTimeInString(float seconds) {
+            if (seconds < 0) seconds = -seconds;
+            return String.Format("{0,2:00}:{1,2:00}:{2,4:00.0}", (int)(seconds / 3600), (int)((seconds % 3600) / 60), seconds % 60);
         }
 
         long GetIceAmount() {
@@ -183,21 +170,15 @@ namespace IngameScript
 
         double GetMeanHydrogenFillage() {
             double output = 0;
-            if (hydrogenTanks.Count==0) return output;
+            if (hydrogenTanks.Count == 0) return output;
             else {
                 Double tempo = Convert.ToDouble(hydrogenTanks.Count);
-                foreach (IMyGasTank tank in hydrogenTanks)  output += tank.FilledRatio;
+                foreach (IMyGasTank tank in hydrogenTanks) output += tank.FilledRatio;
                 return (output / tempo);
             }
         }
 
         bool IsOnThisGrid(IMyCubeBlock block) { return (block != null && block.CubeGrid.Equals(Me.CubeGrid)); }
-
-        String ConvertFractionToPercentage(float up, float down) {
-            float input = (100 * up) / down;
-            String output = input.ToString("0.00");
-            return output;
-        }
 
         String PrintEnergyInfo() {
             float ShipsStoredPower = 0;
@@ -205,7 +186,6 @@ namespace IngameScript
             float MaxShipOutput = 0;
             float CurrentBatteryOutput = 0;
             float CurrentShipOutput = 0;
-            float CurrentSolarOutput = 0;
             int Online = 0;
             int Recharging = 0;
             int Empty = 0;
@@ -214,66 +194,56 @@ namespace IngameScript
             int ROff = 0;
 
             foreach (IMyPowerProducer P in powerProducers) {
-                /*/
-                if (isOnThisGrid(P.CubeGrid)) {
-                    /**/
-                    if (P.IsWorking) MaxShipOutput += P.MaxOutput;
-                    CurrentShipOutput += P.CurrentOutput;
+                if (P.IsWorking) MaxShipOutput += P.MaxOutput;
+                CurrentShipOutput += P.CurrentOutput;
 
-                    if (P is IMySolarPanel) {
-                        CurrentSolarOutput += P.CurrentOutput;
-                    }
-                    else if (!(P is IMyBatteryBlock)) {
-                        if (P.IsWorking) RNominal++;
-                        else ROff++;
-                    }
-                    else {
-                        IMyBatteryBlock B = (IMyBatteryBlock)P;
-                        ShipsStoredPower += B.CurrentStoredPower;
-                        ShipsMaxPower += B.MaxStoredPower;
-                        CurrentBatteryOutput += B.CurrentOutput;
-                        CurrentShipOutput -= B.CurrentInput;
-                        CurrentBatteryOutput -= B.CurrentInput;
-
-                        if (B.CurrentStoredPower == 0) Empty++;
-                        else if (!(B.IsWorking)) Offline++;
-                        else if (B.ChargeMode == ChargeMode.Recharge) Recharging++;
-                        else Online++;
-                    }
-                    /*/
+                if (!(P is IMyBatteryBlock)) {
+                    if (P.IsWorking) RNominal++;
+                    else ROff++;
                 }
-                /**/
+                else {
+                    IMyBatteryBlock B = (IMyBatteryBlock)P;
+                    ShipsStoredPower += B.CurrentStoredPower;
+                    ShipsMaxPower += B.MaxStoredPower;
+                    CurrentBatteryOutput += B.CurrentOutput;
+                    CurrentShipOutput -= B.CurrentInput;
+                    CurrentBatteryOutput -= B.CurrentInput;
+
+                    if (B.CurrentStoredPower == 0) Empty++;
+                    else if (!(B.IsWorking)) Offline++;
+                    else if (B.ChargeMode == ChargeMode.Recharge) Recharging++;
+                    else Online++;
+                }
             }
 
-            if (RecentStoredPower == -1) 
+            if (RecentStoredPower == -1)
                 RecentStoredPower = ShipsStoredPower;
 
             float convert = 1F,
                   difference = RecentStoredPower - ShipsStoredPower,
                   timeMulti;
 
-            if((Runtime.UpdateFrequency & UpdateFrequency.Update1) > 0) 
-                {timeMulti = 60;}
-            else if ((Runtime.UpdateFrequency & UpdateFrequency.Update10) > 0) 
-                {timeMulti = 6;}
-            else 
-                {timeMulti = 6/10;}
+            if ((Runtime.UpdateFrequency & UpdateFrequency.Update1) > 0) { timeMulti = 60; }
+            else if ((Runtime.UpdateFrequency & UpdateFrequency.Update10) > 0) { timeMulti = 6; }
+            else { timeMulti = 6 / 10; }
 
             difference *= timeMulti;
 
             CurrentShipOutput = convert * CurrentShipOutput;
             MaxShipOutput = convert * MaxShipOutput;
-            CurrentSolarOutput *= convert;
 
-            string output = " Current Power: " + ShipsStoredPower.ToString("0.0") + "/" + ShipsMaxPower.ToString("0.0") + " MWh ("
-            + ConvertFractionToPercentage(ShipsStoredPower, ShipsMaxPower) + "%)";
-            output += "\n H2 Reserves:   " + (GetMeanHydrogenFillage() * 100).ToString("0.00") + "%";
-
-            output += "\n Current Output: " + CurrentShipOutput.ToString("0.00") + "/" + MaxShipOutput.ToString("0.0") +
-            " MW (" + ConvertFractionToPercentage(CurrentShipOutput, MaxShipOutput) + "%)";
-
+            string
+                output =
+                String.Format("\n" +
+                     "{0,-14}: {1,9:0.0}/{2,-4:0} MWh ({3,5:0.0}%)\n"
+                    + "{6,-14}: {7,9:0.0}/{8,-4:0} MW  ({9,5:0.0}%)\n"
+                    + "{4,-14}: {10,19}({5,5:0.0}%)",
+                     "Current Power", ShipsStoredPower, ShipsMaxPower, (ShipsStoredPower * 100 / ShipsMaxPower),
+                     "H2 Reserves", (GetMeanHydrogenFillage() * 100),
+                     "Current Output", CurrentShipOutput, MaxShipOutput, (CurrentShipOutput * 100 / MaxShipOutput), "");
+            /*/
             output += "\n              Solar: " + CurrentSolarOutput.ToString("0.00") +" MW";
-
+            /**/
             float remainingTime;
             if (difference != 0) {
                 remainingTime = ShipsStoredPower / difference;
@@ -281,19 +251,14 @@ namespace IngameScript
             }
             else Logs.Add();
 
-            remainingTime = Logs.GetRemainingSecondsOfEnergy();
-            string firstPart = remainingTime<0? "Recharged in":"Will last for";
-            output += String.Format("\n {0,13} {1}",firstPart,SecondsToTimeInString(remainingTime));
+            if (RNominal > 0 || ROff > 0)
+                output += String.Format("\n{0,-14}: {1,9}/{2,-6}", "Cores Online", RNominal, RNominal + ROff);
+            else
+                output += "\n No power cores present!";
 
-            if (RNominal > 0 || ROff > 0) {
-                double percent = GetMeanHydrogenFillage();
-                output += "\n Cores Online:    " + RNominal + "/" + (RNominal + ROff);
-            }
-            else output += "\n No power cores present!";
-
-            output += "\n Batteries:          " + Online + "/" + (Online + Empty + Recharging + Offline) + " Online";
-            if (Recharging > 0) output += "\n                           " + Recharging + " Recharging";
-            if (Empty > 0) output += "\n                           " + Empty + " Empty";
+            output += String.Format("\n{0,-14}: {1,9}/{2,-6} {3}", "Batteries", Online, Online + Empty + Recharging + Offline, "Online");
+            if (Recharging > 0) output += String.Format("\n{0,32} {1}", Recharging, "Recharging");
+            if (Empty > 0) output += String.Format("\n{0,32} {1}", Empty, "Empty");
 
 
             long currAmm = GetIceAmount();
@@ -301,10 +266,14 @@ namespace IngameScript
             if (IceAmount - currAmm > 0) {
                 float remTime = currAmm * 100 / (IceAmount - currAmm);
                 IceAmount = currAmm;
-                output += "\n Ice will last for    ";
-                output += SecondsToTimeInString(remTime);
+                output += String.Format("\n\n{0,-14}: {2,3}{1}", "Ice will last for", SecondsToTimeInString(remTime),"");
             }
-            else output += "\n Ice stable";
+            else output += String.Format("\n\n{0,-14}: {2,3}{1}", "Ice reserves", "stable", "");
+
+            remainingTime = Logs.GetRemainingSecondsOfEnergy();
+            string firstPart = remainingTime < 0 ? "Full power in" : "Enough power for";
+            if (remainingTime != 0) output += String.Format("\n{0,-14}: {2,9}{1}", firstPart, SecondsToTimeInString(remainingTime), "");
+            else output += String.Format("\n{0,-14}: {2,3}{1}", "Power reserves", "stable", "");
 
             RecentStoredPower = ShipsStoredPower;
 
@@ -313,7 +282,8 @@ namespace IngameScript
 
         public void Output(String output) {
             foreach (IMyTextPanel EnergyScreen in textPanels) {
-                EnergyScreen.FontSize = (float)1.8;
+                EnergyScreen.FontSize = 1.1f;
+                EnergyScreen.Font = "Monospace";
                 EnergyScreen.WriteText(output, false);
                 EnergyScreen.ContentType = ContentType.TEXT_AND_IMAGE;
             }
