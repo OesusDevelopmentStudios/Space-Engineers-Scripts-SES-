@@ -20,7 +20,7 @@ using VRageMath;
 namespace IngameScript {
     partial class Program : MyGridProgram {// UTILITY
 
-        string 
+        readonly string 
             SHIP_NAME = "",
             SOUND_BLOCK,
             ROTAT_LIGHT,
@@ -79,7 +79,7 @@ namespace IngameScript {
 
         public List<IMyLightingBlock> GetSredLights() { return GetLights(SRED_LIGHT); }
 
-        public void setWeapons(bool turn) {
+        public void SetWeapons(bool turn) {
             List<IMyLargeTurretBase> temp = new List<IMyLargeTurretBase>();
             GridTerminalSystem.GetBlocksOfType(temp);
 
@@ -88,7 +88,7 @@ namespace IngameScript {
             }
         }
 
-        public void closeAllDoors() {
+        public void CloseAllDoors() {
             List<IMyDoor> temp = new List<IMyDoor>();
             GridTerminalSystem.GetBlocksOfType(temp);
 
@@ -113,13 +113,13 @@ namespace IngameScript {
             return result;
         }
 
-        public void changeLightsStatus(List<IMyLightingBlock> target, bool turnon) {
+        public void ChangeLightsStatus(List<IMyLightingBlock> target, bool turnon) {
             foreach (IMyLightingBlock LB in target) {
                 LB.Enabled = turnon;
             }
         }
 
-        public void changeLightsColor(List<IMyLightingBlock> target, Color color) {
+        public void ChangeLightsColor(List<IMyLightingBlock> target, Color color) {
             foreach (IMyLightingBlock LB in target) {
                 LB.Color = color;
             }
@@ -138,7 +138,7 @@ namespace IngameScript {
             return output;
         }
 
-        public void output(string input) {
+        public void Output(string input) {
             List<IMyTextPanel> screens = GetSupportScreens();
             if(screens.Count>0)
                 foreach (IMyTextPanel screen in screens) {
@@ -154,7 +154,7 @@ namespace IngameScript {
 
         //Main Functions
 
-        public void switchRedAlert() {
+        public void SwitchRedAlert() {
             List<IMyLightingBlock> rotatLights = GetRotatingLights();
             List<IMyLightingBlock> alarmLights = GetAlarmLights();
             List<IMyLightingBlock> switchLights= GetSwtchLights();
@@ -165,12 +165,12 @@ namespace IngameScript {
             onAlert = !onAlert;
 
             if (onAlert) {   // turn the <s> Fucking Furries </s> on
-                changeLightsColor   (otherLights,   new Color( 60,  0,  0));
-                changeLightsColor   (switchLights,  new Color(  0,  0,255));
-                changeLightsColor   (alarmLights,   new Color(  0,  0,255));
-                changeLightsColor   (sredLights,    new Color( 60,  0,  0));
-                changeLightsStatus  (rotatLights, true);
-                changeLightsStatus  (alarmLights, true);
+                ChangeLightsColor   (otherLights,   new Color( 60,  0,  0));
+                ChangeLightsColor   (switchLights,  new Color(  0,  0,255));
+                ChangeLightsColor   (alarmLights,   new Color(  0,  0,255));
+                ChangeLightsColor   (sredLights,    new Color( 60,  0,  0));
+                ChangeLightsStatus  (rotatLights, true);
+                ChangeLightsStatus  (alarmLights, true);
                 if (alarmBlock != null) alarmBlock.Play();
                 foreach (IMyLightingBlock l in otherLights) {
                     l.BlinkLength = 50f;
@@ -180,17 +180,17 @@ namespace IngameScript {
                     l.BlinkLength = 50f;
                     l.BlinkIntervalSeconds = 2;
                 }
-                setWeapons(true);
-                closeAllDoors();
-                output("\nRED ALERT");
+                SetWeapons(true);
+                CloseAllDoors();
+                Output("\nRED ALERT");
                 if (EnergyControl != null) EnergyControl.TryRun("COMBAT");
             }
             else {   // turn the <s> Fucking Furries </s> off
-                changeLightsColor   (otherLights,   new Color(255,255,255));
-                changeLightsColor   (switchLights,  new Color(255,255,255));
-                changeLightsColor   (sredLights,    new Color(255,255,255));
-                changeLightsStatus  (rotatLights, false);
-                changeLightsStatus  (alarmLights, false);
+                ChangeLightsColor   (otherLights,   new Color(255,255,255));
+                ChangeLightsColor   (switchLights,  new Color(255,255,255));
+                ChangeLightsColor   (sredLights,    new Color(255,255,255));
+                ChangeLightsStatus  (rotatLights, false);
+                ChangeLightsStatus  (alarmLights, false);
                 if (alarmBlock != null) alarmBlock.Stop();
                 foreach (IMyLightingBlock l in otherLights) {
                     l.BlinkIntervalSeconds = 0;
@@ -199,18 +199,18 @@ namespace IngameScript {
                 foreach (IMyLightingBlock l in switchLights) {
                     l.BlinkIntervalSeconds = 0;
                 }
-                output("\nIN ORDER");
+                Output("\nIN ORDER");
                 if (EnergyControl != null) EnergyControl.TryRun("NORMAL");
             }
         }
 
-        public bool checkForIgnore(IMyTerminalBlock block) {
+        public bool CheckForIgnore(IMyTerminalBlock block) {
             string name = block.CustomName.ToLower();
             if(name.Contains("(ignore)")|| name.Contains("[ignore]")) return true;
             return false;
         }
 
-        public string unpackList(List<object> list) {
+        public string UnpackList(List<object> list) {
             string output = "";
             foreach(object obj in list) {
                 output += obj.ToString() + "\n";
@@ -218,7 +218,7 @@ namespace IngameScript {
             return output;
         }
 
-        public string unpackList(List<ITerminalAction> list) {
+        public string UnpackList(List<ITerminalAction> list) {
             string output = "";
             foreach (ITerminalAction obj in list) {
                 output += obj.Name + "\n";
@@ -232,7 +232,7 @@ namespace IngameScript {
             String[] eval = argument.Split(' ');
 
             if(eval.Length<=0)
-                switchRedAlert();
+                SwitchRedAlert();
             else
             switch (eval[0].ToLower()) {
                 case "lazy":
@@ -240,7 +240,7 @@ namespace IngameScript {
                     GridTerminalSystem.GetBlocksOfType(temp);
                     foreach (IMyLightingBlock bl in temp) {
                         if (
-                            !checkForIgnore(bl) &&
+                            !CheckForIgnore(bl) &&
                             !bl.CustomName.Equals(ALARM_LIGHT) &&
                             !bl.CustomName.Equals(ROTAT_LIGHT) &&
                             !bl.CustomName.Equals(SWITCH_LIGHT) &&
@@ -274,11 +274,11 @@ namespace IngameScript {
                         List<ITerminalAction> list = new List<ITerminalAction>();
                         block.GetActions(list);
                         Echo(block.BlockDefinition.SubtypeId);
-                        Echo(unpackList(list));
+                        Echo(UnpackList(list));
                     break;
 
 
-                default: switchRedAlert(); break;
+                default: SwitchRedAlert(); break;
             }
         }
     }

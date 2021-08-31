@@ -22,7 +22,7 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         const bool ONLY_USE_BLOCKS_FROM_THIS_GRID = false;
-        string  ScreenName = "[ENERGY INFO]";
+        readonly string  ScreenName = "[ENERGY INFO]";
         float   RecentStoredPower = -1f;
         long    IceAmount;
         int     TimeIncrementer = 0;
@@ -85,14 +85,14 @@ namespace IngameScript
         void FindNeededBlocks(UpdateType updateSource){
             int 
                 timeLimiter = (updateSource & UpdateType.Update1)>0? 300:((updateSource & UpdateType.Update10)>0?30:3), 
-                effectiveTimeIncrementer = timeIncrementer/timeLimiter,
-                timeIncrementerMod = timeIncrementer%timeLimiter;
-            timeIncrementer++;
+                effectiveTimeIncrementer = TimeIncrementer/timeLimiter,
+                TimeIncrementerMod = TimeIncrementer%timeLimiter;
+            TimeIncrementer++;
 
             if(effectiveTimeIncrementer > 4){
-                timeIncrementer = 0; return;
+                TimeIncrementer = 0; return;
             }
-            if(timeIncrementerMod!=0) return;
+            if(TimeIncrementerMod!=0) return;
 
             switch(effectiveTimeIncrementer){
                 case 0: FindCargoContainers(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
@@ -100,7 +100,7 @@ namespace IngameScript
                 case 2: FindGasGenerators(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
                 case 3: FindHydrogenTanks(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
                 case 4: FindTextPanels(ONLY_USE_BLOCKS_FROM_THIS_GRID); break;
-                default: timeIncrementer = 0; return;
+                default: TimeIncrementer = 0; return;
             }  
         }
 
@@ -119,7 +119,7 @@ namespace IngameScript
                 }
 
                 if (count != 1) 
-                    {value = value + ((input - value) / count);}
+                    {value += ((input - value) / count);}
                 else 
                     value = input;
 
@@ -150,14 +150,14 @@ namespace IngameScript
 
         String SecondsToTimeInString(float seconds){
             if(seconds<0) seconds = -seconds;
-            if (remainingTime >= 3600) {
-                return String.Format("{0,2:D2} h {1,2:D2} m {2,2:D2} s", remainingTime / 3600, (remainingTime%3600)/60, remainingTime%60);
+            if (seconds >= 3600) {
+                return String.Format("{0,2:D2} h {1,2:D2} m {2,2:D2} s", seconds / 3600, (seconds % 3600)/60, seconds % 60);
             }
-            else if (remainingTime >= 60) {
-                return String.Format("{0,7:D2} m {1,2:D2} s", (remainingTime%3600)/60, remainingTime%60);
+            else if (seconds >= 60) {
+                return String.Format("{0,7:D2} m {1,2:D2} s", (seconds % 3600)/60, seconds % 60);
             }
             else {
-                return String.Format("{0,12:D2} s", remainingTime);
+                return String.Format("{0,12:D2} s", seconds);
             }
         }
 
@@ -302,21 +302,7 @@ namespace IngameScript
                 float remTime = currAmm * 100 / (IceAmount - currAmm);
                 IceAmount = currAmm;
                 output += "\n Ice will last for    ";
-                if (remTime > 3600) {
-                    output += (remTime / 3600).ToString("0.") + " h ";
-                    remTime = remTime % 3600;
-                    output += (remTime / 60).ToString("0.") + " m ";
-                    remTime = remTime % 60;
-                    output += remTime.ToString("0.") + " s";
-                }
-                else if (remTime > 60) {
-                    output += (remTime / 60).ToString("0.") + " m ";
-                    remTime = remTime % 60;
-                    output += remTime.ToString("0.") + " s";
-                }
-                else {
-                    output += remTime.ToString("0.") + " s";
-                }
+                output += SecondsToTimeInString(remTime);
             }
             else output += "\n Ice stable";
 
