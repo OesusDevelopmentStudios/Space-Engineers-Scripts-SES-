@@ -43,13 +43,9 @@ namespace IngameScript {
                     return;
                 }
             }
-
         }
 
-        bool IsOnThisGrid(IMyCubeBlock block) {
-            if (Me.CubeGrid.Equals(block.CubeGrid)) return true;
-            else return false;
-        }
+        bool IsOnThisGrid(IMyCubeBlock block) { return (Me.CubeGrid.Equals(block.CubeGrid)); }
 
         void SayMyName(string ScriptName, float textSize = 2f) {
             ScriptName = "\n\n" + ScriptName;
@@ -73,29 +69,19 @@ namespace IngameScript {
             GetECBlock();
         }
 
-        public List<IMyLightingBlock> getRotatingLights() {
-            return getLights(ROTAT_LIGHT);
-        }
+        public List<IMyLightingBlock> GetRotatingLights() { return GetLights(ROTAT_LIGHT); }
 
-        public List<IMyLightingBlock> getOtherLights() {
-            return getLights(OTHER_LIGHT);
-        }
+        public List<IMyLightingBlock> GetOtherLights() { return GetLights(OTHER_LIGHT); }
 
-        public List<IMyLightingBlock> getAlarmLights() {
-            return getLights(ALARM_LIGHT);
-        }
+        public List<IMyLightingBlock> GetAlarmLights() { return GetLights(ALARM_LIGHT); }
 
-        public List<IMyLightingBlock> getSwtchLights() {
-            return getLights(SWITCH_LIGHT);
-        }
+        public List<IMyLightingBlock> GetSwtchLights() { return GetLights(SWITCH_LIGHT); }
 
-        public List<IMyLightingBlock> getSredLights() {
-            return getLights(SRED_LIGHT);
-        }
+        public List<IMyLightingBlock> GetSredLights() { return GetLights(SRED_LIGHT); }
 
         public void setWeapons(bool turn) {
             List<IMyLargeTurretBase> temp = new List<IMyLargeTurretBase>();
-            GridTerminalSystem.GetBlocksOfType<IMyLargeTurretBase>(temp);
+            GridTerminalSystem.GetBlocksOfType(temp);
 
             foreach (IMyLargeTurretBase tb in temp) {
                 tb.Enabled = turn;
@@ -104,19 +90,14 @@ namespace IngameScript {
 
         public void closeAllDoors() {
             List<IMyDoor> temp = new List<IMyDoor>();
-            GridTerminalSystem.GetBlocksOfType<IMyDoor>(temp);
+            GridTerminalSystem.GetBlocksOfType(temp);
 
             foreach (IMyDoor d in temp) {
                 d.CloseDoor();
             }
         }
 
-        public IMyTimerBlock getSpecificTimer(string name) {
-            IMyTimerBlock result = GridTerminalSystem.GetBlockWithName(name) as IMyTimerBlock;
-            return result;
-        }
-
-        public List<IMyLightingBlock> getLights(string name) {
+        public List<IMyLightingBlock> GetLights(string name) {
             List<IMyLightingBlock> result = new List<IMyLightingBlock>();
             List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
             GridTerminalSystem.SearchBlocksOfName(name, temp);
@@ -144,9 +125,10 @@ namespace IngameScript {
             }
         }
 
-        public List<IMyTextPanel> getSupportScreens() {
-            List<IMyTextPanel>  temp = new List<IMyTextPanel>(),
-                                output = new List<IMyTextPanel>();
+        public List<IMyTextPanel> GetSupportScreens() {
+            List<IMyTextPanel>  
+                temp = new List<IMyTextPanel>(),
+                output = new List<IMyTextPanel>();
 
             GridTerminalSystem.GetBlocksOfType(temp);
             foreach(IMyTextPanel panel in temp) {
@@ -157,7 +139,7 @@ namespace IngameScript {
         }
 
         public void output(string input) {
-            List<IMyTextPanel> screens = getSupportScreens();
+            List<IMyTextPanel> screens = GetSupportScreens();
             if(screens.Count>0)
                 foreach (IMyTextPanel screen in screens) {
                     if (screen != null) {
@@ -173,11 +155,11 @@ namespace IngameScript {
         //Main Functions
 
         public void switchRedAlert() {
-            List<IMyLightingBlock> rotatLights = getRotatingLights();
-            List<IMyLightingBlock> alarmLights = getAlarmLights();
-            List<IMyLightingBlock> switchLights= getSwtchLights();
-            List<IMyLightingBlock> otherLights = getOtherLights();
-            List<IMyLightingBlock> sredLights  = getSredLights();
+            List<IMyLightingBlock> rotatLights = GetRotatingLights();
+            List<IMyLightingBlock> alarmLights = GetAlarmLights();
+            List<IMyLightingBlock> switchLights= GetSwtchLights();
+            List<IMyLightingBlock> otherLights = GetOtherLights();
+            List<IMyLightingBlock> sredLights  = GetSredLights();
             IMySoundBlock alarmBlock = GridTerminalSystem.GetBlockWithName(SOUND_BLOCK) as IMySoundBlock;
 
             onAlert = !onAlert;
@@ -224,9 +206,8 @@ namespace IngameScript {
 
         public bool checkForIgnore(IMyTerminalBlock block) {
             string name = block.CustomName.ToLower();
-            if      (name.Contains("(ignore)")) return true;
-            else if (name.Contains("[ignore]")) return true;
-                                                return false;
+            if(name.Contains("(ignore)")|| name.Contains("[ignore]")) return true;
+            return false;
         }
 
         public string unpackList(List<object> list) {
