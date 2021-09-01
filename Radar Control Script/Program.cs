@@ -632,6 +632,7 @@ namespace IngameScript {
             foreach (IMyTextPanel screen in Screens) {
                 if (screen != null) {
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
+                    screen.TextPadding = 0f;
                     screen.WriteText(message, append);
                 }
                 else AllRight = false;
