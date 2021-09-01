@@ -219,9 +219,10 @@ namespace IngameScript {
             if (RecentStoredPower == -1)
                 RecentStoredPower = ShipsStoredPower;
 
-            float convert = 1F,
-                  difference = RecentStoredPower - ShipsStoredPower,
-                  timeMulti;
+            float 
+                convert = 1F,
+                difference = RecentStoredPower - ShipsStoredPower,
+                timeMulti;
 
             if ((Runtime.UpdateFrequency & UpdateFrequency.Update1) > 0) { timeMulti = 60; }
             else if ((Runtime.UpdateFrequency & UpdateFrequency.Update10) > 0) { timeMulti = 6; }
@@ -236,8 +237,8 @@ namespace IngameScript {
                 output =
                 String.Format("\n" +
                      "{0,-14}: {1,9:0.0}/{2,-4:0} MWh ({3,5:0.0}%)\n"
-                    + "{6,-14}: {7,9:0.0}/{8,-4:0} MW  ({9,5:0.0}%)\n"
-                    + "{4,-14}: {10,19}({5,5:0.0}%)",
+                    +"{6,-14}: {7,9:0.0}/{8,-4:0} MW  ({9,5:0.0}%)\n"
+                    +"{4,-14}: {10,19}({5,5:0.0}%)",
                      "Current Power", ShipsStoredPower, ShipsMaxPower, (ShipsStoredPower * 100 / ShipsMaxPower),
                      "H2 Reserves", (GetMeanHydrogenFillage() * 100),
                      "Current Output", CurrentShipOutput, MaxShipOutput, (CurrentShipOutput * 100 / MaxShipOutput), "");
