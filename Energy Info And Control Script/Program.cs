@@ -19,21 +19,83 @@ using VRageMath;
 
 namespace IngameScript {
     partial class Program : MyGridProgram {
-        const bool ONLY_USE_BLOCKS_FROM_THIS_GRID = true;
-        readonly string ScreenName = "[ENERGY INFO]";
+        readonly bool ONLY_USE_BLOCKS_FROM_THIS_GRID = true;
+        readonly string ScreenName = "[ENERGY SCRIPT]";
+        readonly int IdleCyclesBase = 2;
         float RecentStoredPower = -1f;
         long IceAmount;
-        int TimeIncrementer = 0, IdleCyclesBase = 2;
+        int
+            TimeIncrementer = 0,
+            EmergencyNumber = 0,
+            TicksSinceLastDrop = 0,
+            TicksSinceLastIncrease = 0;
 
-        Logs EnergyLogs, IceLogs;
+        readonly Logs EnergyLogs, IceLogs;
+        PowerRegister Register;
+
+        class PowerRegister {
+            private readonly List<IMyBatteryBlock>   batteries   = new List<IMyBatteryBlock>();
+            private readonly List<IMyPowerProducer>  hydroEngines= new List<IMyPowerProducer>();
+            private readonly List<IMyReactor>        reactors    = new List<IMyReactor>();
+
+            public bool
+                batteriesNominal    = true,
+                hydroEnabled        = true,
+                reactorsEnabled     = true;
+
+            public PowerRegister(List<IMyPowerProducer> input) {
+                foreach(IMyPowerProducer PP in input) {
+                    if(PP is IMyBatteryBlock) {
+                        batteries.Add((IMyBatteryBlock)PP);
+                        if(batteriesNominal && (!PP.Enabled || ((IMyBatteryBlock)PP).ChargeMode == ChargeMode.Recharge))
+                                batteriesNominal = false;
+                    }
+                    else
+                    if(PP is IMyReactor) {
+                        reactors.Add((IMyReactor)PP);
+                        if (reactorsEnabled && !PP.Enabled) reactorsEnabled = false;
+                    }
+                    else
+                    if(!(PP is IMySolarPanel)) {
+                        hydroEngines.Add(PP);
+                        if (hydroEnabled && !PP.Enabled)    hydroEnabled = false;
+                    }
+                }
+            }
+
+            public void SetBatteriesNominal(bool nominal) {
+                ChargeMode charMod = nominal ? ChargeMode.Auto : ChargeMode.Recharge;
+                foreach (IMyBatteryBlock block in batteries) {
+                    block.Enabled       = true;
+                    block.ChargeMode    = charMod;
+                }
+                batteriesNominal = nominal;
+            }
+
+            public void SetHydrogenCoresEnabled(bool enabled) {
+                foreach (IMyPowerProducer PP in hydroEngines)
+                    PP.Enabled = enabled;
+
+                hydroEnabled = enabled;
+            }
+
+            public void SetReactorsEnabled(bool enabled) {
+                foreach (IMyReactor PP in reactors)
+                    PP.Enabled = enabled;
+
+                reactorsEnabled = enabled;
+            }
+
+        }
 
         ControllerState CurrentState = ControllerState.NORMAL;
 
-        List<IMyCargoContainer> cargoContainters = new List<IMyCargoContainer>();
-        List<IMyGasGenerator> gasGenerators = new List<IMyGasGenerator>();
-        List<IMyGasTank> hydrogenTanks = new List<IMyGasTank>();
-        List<IMyPowerProducer> powerProducers = new List<IMyPowerProducer>();
-        List<IMyTextPanel> textPanels = new List<IMyTextPanel>();
+        readonly List<IMyCargoContainer> cargoContainters    = new List<IMyCargoContainer>();
+        readonly List<IMyGasGenerator>   gasGenerators       = new List<IMyGasGenerator>();
+        List<IMyGasTank>        hydrogenTanks       = new List<IMyGasTank>();
+        readonly List<IMyPowerProducer>  powerProducers      = new List<IMyPowerProducer>();
+        List<IMyTextPanel>      textPanels          = new List<IMyTextPanel>();
+        readonly List<IMyProductionBlock>industrialProducers = new List<IMyProductionBlock>();
 
         enum ControllerState{
             AUTO,
@@ -42,51 +104,66 @@ namespace IngameScript {
             EMERGENCY
         }
 
+        bool BlockIsntCritical(IMyFunctionalBlock A) {
+            return  (   !(A is IMyPowerProducer)        && !(A is IMyShipConnector) && !(A is IMyShipMergeBlock)&& !(A is IMyRadioAntenna)
+                    &&  !(A is IMyTextPanel)            && !(A is IMyUpgradeModule) && !(A is IMyTextSurface)   && !(A is IMyGyro)
+                    &&  !(A is IMyProgrammableBlock)    && !(A is IMyTimerBlock)    && !(A is IMyDoor)          && !(A is IMyThrust));
+        }
+
+        void EmergencyPanicButton() {
+            SwitchControllersState(ControllerState.EMERGENCY);
+            List<IMyFunctionalBlock>    blocks      = new List<IMyFunctionalBlock>();   FindItemsForList(blocks);
+            List<IMyRadioAntenna>       antennas    = new List<IMyRadioAntenna>();      FindItemsForList(antennas);
+            Register.SetReactorsEnabled(true); Register.SetBatteriesNominal(true); 
+            bool suitableAntennaFound = false;
+            foreach (IMyFunctionalBlock A in blocks) if (BlockIsntCritical(A)) A.Enabled = false;
+            foreach (IMyRadioAntenna ant in antennas) {
+                if (!suitableAntennaFound) {
+                    if (ant.IsFunctional) {
+                        ant.Enabled = true;
+                        ant.EnableBroadcasting = true;
+                        ant.Radius = 50000f;
+                        ant.CustomName = "SHIP SHUT DOWN BY EMERGENCY PROTOCOLS";
+                        ant.ShowShipName = true;
+                        suitableAntennaFound = true;
+                    }
+                }
+                else 
+                    ant.Enabled = false;
+            }
+        }
+
+        void YouKnowWhatFuckYouUnpanicsYourEmergencyButton() {
+            List<IMyFunctionalBlock> blocks = new List<IMyFunctionalBlock>(); FindItemsForList(blocks);
+            foreach (IMyFunctionalBlock A in blocks) if (BlockIsntCritical(A)) A.Enabled = true;
+        }
+
         void SwitchControllersState(ControllerState state){
             CurrentState = state;
             switch(state){
                 case ControllerState.AUTO:
-
+                    // Initiating HAL 9000 ... . . .  hello, dave :)
                     break;
 
                 case ControllerState.NORMAL:
-
+                    EnableItemsInList(true, industrialProducers);
+                    Register.SetHydrogenCoresEnabled(true);
+                    Register.SetBatteriesNominal(true);
+                    Register.SetReactorsEnabled(false);
                     break;
 
                 case ControllerState.COMBAT:
-
+                    EnableItemsInList(false, industrialProducers);
+                    Register.SetHydrogenCoresEnabled(true);
+                    Register.SetBatteriesNominal(true);
                     break;
 
                 case ControllerState.EMERGENCY:
-
                     break;
 
                 default:
-
                     break;
             }
-        }
-
-        void FindCargoContainers() {
-            if (!ONLY_USE_BLOCKS_FROM_THIS_GRID) {
-                GridTerminalSystem.GetBlocksOfType(cargoContainters = new List<IMyCargoContainer>());
-                return;
-            }
-            List<IMyCargoContainer> temp = new List<IMyCargoContainer>();
-            GridTerminalSystem.GetBlocksOfType(temp); cargoContainters = new List<IMyCargoContainer>();
-
-            foreach (IMyCargoContainer cont in temp) if (IsOnThisGrid(cont)) cargoContainters.Add(cont);
-        }
-
-        void FindGasGenerators() {
-            if (!ONLY_USE_BLOCKS_FROM_THIS_GRID) {
-                GridTerminalSystem.GetBlocksOfType(gasGenerators = new List<IMyGasGenerator>());
-                return;
-            }
-            List<IMyGasGenerator> temp = new List<IMyGasGenerator>();
-            GridTerminalSystem.GetBlocksOfType(temp); gasGenerators = new List<IMyGasGenerator>();
-
-            foreach (IMyGasGenerator gasG in temp) if (IsOnThisGrid(gasG)) gasGenerators.Add(gasG);
         }
 
         void FindHydrogenTanks() {
@@ -96,17 +173,6 @@ namespace IngameScript {
             foreach (IMyGasTank tank in temp)
                 if ((!ONLY_USE_BLOCKS_FROM_THIS_GRID || IsOnThisGrid(tank)) && tank.BlockDefinition.SubtypeName.Contains("HydrogenTank"))
                     hydrogenTanks.Add(tank);
-        }
-
-        void FindPowerProducers() {
-            if (!ONLY_USE_BLOCKS_FROM_THIS_GRID) {
-                GridTerminalSystem.GetBlocksOfType(powerProducers = new List<IMyPowerProducer>());
-                return;
-            }
-            List<IMyPowerProducer> temp = new List<IMyPowerProducer>();
-            GridTerminalSystem.GetBlocksOfType(temp); powerProducers = new List<IMyPowerProducer>();
-
-            foreach (IMyPowerProducer PP in temp) if (IsOnThisGrid(PP)) powerProducers.Add(PP);
         }
 
         void FindTextPanels() {
@@ -123,17 +189,18 @@ namespace IngameScript {
                 TimeIncrementerMod = TimeIncrementer % timeLimiter;
             TimeIncrementer++;
 
-            if (effectiveTimeIncrementer > 4) {
+            if (effectiveTimeIncrementer > 5) {
                 TimeIncrementer = 0; return;
             }
             if (TimeIncrementerMod != 0) return;
 
             switch (effectiveTimeIncrementer) {
-                case 0: FindCargoContainers(); break;
-                case 1: FindPowerProducers(); break;
-                case 2: FindGasGenerators(); break;
-                case 3: FindHydrogenTanks(); break;
-                case 4: FindTextPanels(); break;
+                case 0: FindItemsForList(industrialProducers); break;
+                case 1: FindItemsForList(cargoContainters); break;
+                case 2: FindItemsForList(powerProducers); Register = new PowerRegister(powerProducers); break;
+                case 3: FindItemsForList(gasGenerators); break;
+                case 4: FindHydrogenTanks(); break;
+                case 5: FindTextPanels(); break;
                 default: TimeIncrementer = 0; return;
             }
         }
@@ -173,15 +240,33 @@ namespace IngameScript {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             EnergyLogs  = new Logs();
             IceLogs     = new Logs();
-            FindCargoContainers();
-            FindGasGenerators();
+            FindItemsForList(cargoContainters);
+            FindItemsForList(powerProducers); Register = new PowerRegister(powerProducers);
+            FindItemsForList(gasGenerators);
+            FindItemsForList(industrialProducers);
             FindHydrogenTanks();
-            FindPowerProducers();
             FindTextPanels();
             IceAmount = GetIceAmount();
             SayMyName("ENERGY INFO & CONTROL");
-            if(!Enum.TryParse<ControllerState>(Storage, out CurrentState)))
+            if(!Enum.TryParse(Storage, out CurrentState))
                 CurrentState = ControllerState.NORMAL;
+        }
+
+        void FindItemsForList<T>(List<T> list) where T: class{
+            if (ONLY_USE_BLOCKS_FROM_THIS_GRID) {
+                List<T> temp = new List<T>(), temp2 = new List<T>();
+                GridTerminalSystem.GetBlocksOfType(temp);
+                Me.CustomData = temp.Count+"";
+                foreach (T item in temp) if (IsOnThisGrid((IMyCubeBlock)item)) temp2.Add(item);
+
+                Me.CustomData += temp2.Count + "";
+                list = temp2;
+
+                Me.CustomData += list.Count + "";
+            }
+            else {
+                GridTerminalSystem.GetBlocksOfType(list);
+            }
         }
 
         void EnableItemsInList<T>(bool enable, List<T> list) where T:IMyFunctionalBlock {
@@ -237,18 +322,23 @@ namespace IngameScript {
 
         bool IsOnThisGrid(IMyCubeBlock block) { return (block != null && block.CubeGrid.Equals(Me.CubeGrid)); }
 
-        String PrintEnergyInfo() {
-            float ShipsStoredPower = 0;
-            float ShipsMaxPower = 0;
-            float MaxShipOutput = 0;
-            float CurrentBatteryOutput = 0;
-            float CurrentShipOutput = 0;
-            int Online = 0;
-            int Recharging = 0;
-            int Empty = 0;
-            int Offline = 0;
-            int RNominal = 0;
-            int ROff = 0;
+        String PrintEvaluateAndReactToEnergyInfo() {
+            float 
+                ShipsStoredPower    = 0,
+                ShipsMaxPower       = 0,
+                MaxShipOutput       = 0,
+                CurrentBatteryOutput= 0,
+                CurrentShipOutput   = 0;
+
+            double
+                MeanHydrogenFillage;
+
+            int Online      = 0,
+                Recharging  = 0,
+                Empty       = 0,
+                Offline     = 0,
+                RNominal    = 0,
+                ROff        = 0;
 
             foreach (IMyPowerProducer P in powerProducers) {
                 if (P.IsWorking) MaxShipOutput += P.MaxOutput;
@@ -298,7 +388,7 @@ namespace IngameScript {
                     +"{6,-14}: {7,9:0.0}/{8,-4:0} MW  ({9,5:0.0}%)\n"
                     +"{4,-14}: {10,19}({5,5:0.0}%)",
                      "Current Power", ShipsStoredPower, ShipsMaxPower, (ShipsStoredPower * 100 / ShipsMaxPower),
-                     "H2 Reserves", (GetMeanHydrogenFillage() * 100),
+                     "H2 Reserves", (MeanHydrogenFillage = (GetMeanHydrogenFillage() * 100)),
                      "Current Output", CurrentShipOutput, MaxShipOutput, (CurrentShipOutput * 100 / MaxShipOutput), "");
 
             if (difference != 0)
@@ -310,8 +400,8 @@ namespace IngameScript {
             else    output += "\n No power cores present!";
 
             output += String.Format("\n{0,-14}: {1,9}/{2,-6} {3}", "Batteries", Online, Online + Empty + Recharging + Offline, "Online");
-            if (Recharging > 0) output += String.Format("\n{0,32} {1}", Recharging, "Recharging"); else output+="\n";
-            if (Empty > 0) output += String.Format("\n{0,32} {1}", Empty, "Empty"); else output+="\n";
+            if (Recharging > 0) output += String.Format("\n{2,26}{0,-6} {1}", Recharging, "Recharging", ""); else output+="\n";
+            if (Empty > 0) output += String.Format("\n{2,26}{0,-6} {1}", Empty, "Empty", ""); else output+="\n";
 
             float remainingTime = EnergyLogs.GetValue();
             string firstPart = remainingTime < 0 ? "Full power in" : "Enough power for";
@@ -326,10 +416,85 @@ namespace IngameScript {
             else    IceLogs.Add();
 
             remainingTime = IceLogs.GetValue();
-            firstPart = remainingTime < 0 ? "Ice reserves":"Ice reserves depleted in";
             if (remainingTime > 0)  
-                    output += String.Format("\n{0,-14}: {2,9}{1}", firstPart, SecondsToTimeInString(remainingTime), "");
-            else    output += String.Format("\n{0,-14}: {2,3}{1}", firstPart, remainingTime == 0? "stable":"rising", "");
+                    output += String.Format("\n{0,-14}: {2,9}{1}", "Ice reserves", SecondsToTimeInString(remainingTime), "");
+            else    output += String.Format("\n{0,-14}: {2,3}{1}", "Ice reserves", remainingTime == 0? "stable":"rising", "");
+
+            float
+                outputPercent   = 100 * CurrentShipOutput / MaxShipOutput,
+                powerPercent    = 100 * ShipsStoredPower / ShipsMaxPower;
+
+            if (CurrentState == ControllerState.AUTO) {
+                output += "\n\nAUTOMATIC POWER CONTROL";
+                if (outputPercent > 90f || powerPercent < 10f) {
+                    if ((TicksSinceLastIncrease += 5) < 120) { }
+                    else {
+                        TicksSinceLastIncrease = 0; TicksSinceLastDrop = 0;
+                        if (!Register.batteriesNominal) {
+                            Register.SetBatteriesNominal(true); EmergencyNumber = 1;
+                        }
+                        else if (!Register.hydroEnabled) {
+                            Register.SetHydrogenCoresEnabled(true); EmergencyNumber = 2;
+                        }
+                        else if (ItemsInListAreEnabled(industrialProducers)) {
+                            EnableItemsInList(false, industrialProducers); EmergencyNumber = 3;
+                        }
+                        else if (!Register.reactorsEnabled) {
+                            Register.SetReactorsEnabled(true); EmergencyNumber = 4;
+                        }
+                        else if (powerPercent < 5f && MeanHydrogenFillage < 10f) {
+                            EmergencyPanicButton(); EmergencyNumber = 5;
+                        }
+                    }
+                }
+                else
+                if (outputPercent < 10f && powerPercent > 20f) {
+                    if (TicksSinceLastDrop++ < 120) { }
+                    else { 
+                        TicksSinceLastIncrease = 0; TicksSinceLastDrop = 0;
+                        if (Register.reactorsEnabled) {
+                            Register.SetReactorsEnabled(false); EmergencyNumber = -1;
+                        }
+                        else if (!ItemsInListAreEnabled(industrialProducers)) {
+                            EnableItemsInList(true, industrialProducers); EmergencyNumber = -2;
+                        }
+                        else if (Register.hydroEnabled && Register.batteriesNominal) {
+                            Register.SetHydrogenCoresEnabled(false); EmergencyNumber = -3;
+                        }
+                        else if (outputPercent < 3 && MeanHydrogenFillage > 0.85D) {
+                            Register.SetHydrogenCoresEnabled(true);
+                            Register.SetBatteriesNominal(false);
+                            EmergencyNumber = -4;
+                        }
+                    }
+                }
+
+                string loadingBar = "";
+                if (EmergencyNumber > 0)
+                    for (int i = 0; i < TicksSinceLastIncrease / 3; i++) loadingBar += "|";
+                else if (EmergencyNumber < 0)
+                    for (int i = 0; i < (120-TicksSinceLastDrop) / 3; i++) loadingBar += "|";
+                else {
+                    if(TicksSinceLastDrop>TicksSinceLastIncrease)
+                        for (int i = 0; i < (120 - TicksSinceLastDrop) / 3; i++) loadingBar += "|";
+                    else
+                        for (int i = 0; i < TicksSinceLastIncrease / 3; i++) loadingBar += "|";
+                }
+
+                output += String.Format("\n\n{0}{2} [{1,-40}]", EmergencyNumber>0?"-":"+", loadingBar, EmergencyNumber * (EmergencyNumber<0? -1:1));
+            }
+            else {
+                if (CurrentState == ControllerState.EMERGENCY) output += "\n\nSHIP IS IN EMERGENCY MODE";
+                else {
+                    if (CurrentState == ControllerState.COMBAT)     output += "\n\nPOWER REROUTED TO COMBAT SYSTEMS";
+                    else if (CurrentState == ControllerState.NORMAL)output += "\n\nPOWER SYSTEMS USING DEFAULT SETTINGS.";
+
+                    if (powerPercent < 10f && (Register.hydroEnabled == false || MeanHydrogenFillage < 10f)) {
+                        SwitchControllersState(ControllerState.AUTO);
+                    }
+                }
+            }
+            
             
             RecentStoredPower = ShipsStoredPower;
             IceAmount = currAmm;
@@ -350,16 +515,26 @@ namespace IngameScript {
             string[] command = argument.ToUpper().Split(' ');
             if(command.Length>0){
                 switch(command[0]){
+                    case "EMON":
+                        EmergencyPanicButton();
+                        break;
+
+                    case "EMOFF":
+                        YouKnowWhatFuckYouUnpanicsYourEmergencyButton();
+                        SwitchControllersState(ControllerState.NORMAL);
+                        break;
+
                     default:
-                        foreach(ControllerState state in ControllerState.)
+                        ControllerState state;
+                        if (Enum.TryParse(command[0], out state)) SwitchControllersState(state);
                         break;
                 }
             }
         }
 
         public void Main(string argument, UpdateType updateSource) {
-            if(updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100) > 0){
-                Output(PrintEnergyInfo());
+            if((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0){
+                Output(PrintEvaluateAndReactToEnergyInfo());
                 FindNeededBlocks(updateSource);
             }
             else{
