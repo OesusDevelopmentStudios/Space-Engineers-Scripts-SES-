@@ -24,14 +24,14 @@ namespace IngameScript {
         readonly int IdleCyclesBase = 2;
         float RecentStoredPower = -1f;
         long IceAmount;
-        int
-            TimeIncrementer = 0,
+        int TimeIncrementer = 0,
             EmergencyNumber = 0,
             TicksSinceLastDrop = 0,
             TicksSinceLastIncrease = 0;
 
-        readonly Logs EnergyLogs, IceLogs;
-        PowerRegister Register;
+        Color           CurrentScreenColor;
+        readonly Logs   EnergyLogs, IceLogs;
+        PowerRegister   Register;
 
         class PowerRegister {
             private readonly List<IMyBatteryBlock>   batteries   = new List<IMyBatteryBlock>();
@@ -61,6 +61,10 @@ namespace IngameScript {
                         if (hydroEnabled && !PP.Enabled)    hydroEnabled = false;
                     }
                 }
+
+                if(batteries.Count      <= 0) batteriesNominal= false;
+                if(hydroEngines.Count   <= 0) hydroEnabled    = false;
+                if(reactors.Count       <= 0) reactorsEnabled = false;
             }
 
             public void SetBatteriesNominal(bool nominal) {
@@ -69,33 +73,36 @@ namespace IngameScript {
                     block.Enabled       = true;
                     block.ChargeMode    = charMod;
                 }
-                batteriesNominal = nominal;
+                if (batteries.Count>0) batteriesNominal = nominal;
+                else batteriesNominal = false;
             }
 
             public void SetHydrogenCoresEnabled(bool enabled) {
                 foreach (IMyPowerProducer PP in hydroEngines)
                     PP.Enabled = enabled;
 
-                hydroEnabled = enabled;
+                if (hydroEngines.Count > 0) hydroEnabled = enabled;
+                else hydroEnabled = false;
             }
 
             public void SetReactorsEnabled(bool enabled) {
                 foreach (IMyReactor PP in reactors)
                     PP.Enabled = enabled;
 
-                reactorsEnabled = enabled;
+                if (reactors.Count > 0) reactorsEnabled = enabled;
+                else reactorsEnabled = false;
             }
 
         }
 
         ControllerState CurrentState = ControllerState.NORMAL;
 
-        readonly List<IMyCargoContainer> cargoContainters    = new List<IMyCargoContainer>();
-        readonly List<IMyGasGenerator>   gasGenerators       = new List<IMyGasGenerator>();
-        List<IMyGasTank>        hydrogenTanks       = new List<IMyGasTank>();
-        readonly List<IMyPowerProducer>  powerProducers      = new List<IMyPowerProducer>();
-        List<IMyTextPanel>      textPanels          = new List<IMyTextPanel>();
-        readonly List<IMyProductionBlock>industrialProducers = new List<IMyProductionBlock>();
+        readonly List<IMyCargoContainer>    cargoContainters    = new List<IMyCargoContainer>();
+        readonly List<IMyGasGenerator>      gasGenerators       = new List<IMyGasGenerator>();
+        List<IMyGasTank>                    hydrogenTanks       = new List<IMyGasTank>();
+        readonly List<IMyPowerProducer>     powerProducers      = new List<IMyPowerProducer>();
+        List<IMyTextPanel>                  textPanels          = new List<IMyTextPanel>();
+        readonly List<IMyProductionBlock>   industrialProducers = new List<IMyProductionBlock>();
 
         enum ControllerState{
             AUTO,
@@ -104,28 +111,54 @@ namespace IngameScript {
             EMERGENCY
         }
 
+        Type[] ArrayOfCriticalTypes = { 
+            typeof(IMyPowerProducer),
+            typeof(IMyShipConnector),
+            typeof(IMyShipMergeBlock),
+            typeof(IMyRadioAntenna),
+            typeof(IMyShipController),
+            typeof(IMyTextPanel),
+            typeof(IMyUpgradeModule),
+            typeof(IMyTextSurface),
+            typeof(IMyProgrammableBlock),
+            typeof(IMyBeacon),
+            typeof(IMyTimerBlock),
+            typeof(IMyDoor),
+            typeof(IMyThrust),
+            typeof(IMyGyro)
+        };
+
         bool BlockIsntCritical(IMyFunctionalBlock A) {
-            return  (   !(A is IMyPowerProducer)        && !(A is IMyShipConnector) && !(A is IMyShipMergeBlock)&& !(A is IMyRadioAntenna)
-                    &&  !(A is IMyTextPanel)            && !(A is IMyUpgradeModule) && !(A is IMyTextSurface)   && !(A is IMyGyro)
-                    &&  !(A is IMyProgrammableBlock)    && !(A is IMyTimerBlock)    && !(A is IMyDoor)          && !(A is IMyThrust));
+            return  (!ArrayOfCriticalTypes.Contains(A.GetType()));
         }
 
         void EmergencyPanicButton() {
             SwitchControllersState(ControllerState.EMERGENCY);
             List<IMyFunctionalBlock>    blocks      = new List<IMyFunctionalBlock>();   FindItemsForList(blocks);
+            List<IMyBeacon>             beacons     = new List<IMyBeacon>();            FindItemsForList(beacons);
             List<IMyRadioAntenna>       antennas    = new List<IMyRadioAntenna>();      FindItemsForList(antennas);
             Register.SetReactorsEnabled(true); Register.SetBatteriesNominal(true); 
             bool suitableAntennaFound = false;
             foreach (IMyFunctionalBlock A in blocks) if (BlockIsntCritical(A)) A.Enabled = false;
+            foreach(IMyBeacon bcn in beacons){
+                if (!suitableAntennaFound) {
+                    if (bcn.IsFunctional) {
+                        bcn.Enabled = true;
+                        bcn.Radius = 50000f;
+                        bcn.CustomName = "SHIP SHUT DOWN BY EMERGENCY PROTOCOLS";
+                        suitableAntennaFound = true;
+                    }
+                }
+                else 
+                    bcn.Enabled = false;
+            }
             foreach (IMyRadioAntenna ant in antennas) {
                 if (!suitableAntennaFound) {
                     if (ant.IsFunctional) {
-                        ant.Enabled = true;
-                        ant.EnableBroadcasting = true;
+                        ant.Enabled = true; ant.EnableBroadcasting = true;  ant.ShowShipName = true;
                         ant.Radius = 50000f;
                         ant.CustomName = "SHIP SHUT DOWN BY EMERGENCY PROTOCOLS";
-                        ant.ShowShipName = true;
-                        suitableAntennaFound = true;
+                         suitableAntennaFound = true;
                     }
                 }
                 else 
@@ -139,13 +172,16 @@ namespace IngameScript {
         }
 
         void SwitchControllersState(ControllerState state){
+            if(CurrentState==ControllerState.EMERGENCY && state!=ControllerState.EMERGENCY)
+                YouKnowWhatFuckYouUnpanicsYourEmergencyButton();
             CurrentState = state;
             switch(state){
                 case ControllerState.AUTO:
-                    // Initiating HAL 9000 ... . . .  hello, dave :)
+                    CurrentScreenColor = Color.Black;
                     break;
 
                 case ControllerState.NORMAL:
+                    CurrentScreenColor = Color.Black;
                     EnableItemsInList(true, industrialProducers);
                     Register.SetHydrogenCoresEnabled(true);
                     Register.SetBatteriesNominal(true);
@@ -153,16 +189,17 @@ namespace IngameScript {
                     break;
 
                 case ControllerState.COMBAT:
+                    CurrentScreenColor = Color.Black;
                     EnableItemsInList(false, industrialProducers);
                     Register.SetHydrogenCoresEnabled(true);
                     Register.SetBatteriesNominal(true);
                     break;
 
-                case ControllerState.EMERGENCY:
+                case ControllerState.EMERGENCY: 
+                    CurrentScreenColor = new Color(255,0,0);
                     break;
 
-                default:
-                    break;
+                default: break;
             }
         }
 
@@ -207,18 +244,16 @@ namespace IngameScript {
 
         public class Logs {
             private float value = 0;
-            public int count = 0;
+            private int count = 0;
             public float GetValue() { return value; }
             public void Add() { count++; }
             public void Add(float input) {
-                Add();
+                if (count++ > 100) count = 100;
 
-                if ((input > 0 && value < 0) || (input < 0 && value > 0)) count = 1;
-
+                if ((input > 0 && value < 0) || (input < 0 && value > 0))
+                    count = 1;          
                 if (count != 1) { value += ((input - value) / count); }
                 else            { value = input; }
-
-                if (count > 100) count = 100;
             }
         }
 
@@ -228,13 +263,10 @@ namespace IngameScript {
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
             surface.FontSize = textSize;
             surface.WriteText("\n\n" + ScriptName);
-
             Me.CustomName = "[" + ScriptName + "] Script";
         }
 
-        public void Save(){
-            Storage = CurrentState.ToString();
-        }
+        public void Save(){ Storage = CurrentState.ToString(); }
 
         public Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
@@ -250,18 +282,18 @@ namespace IngameScript {
             SayMyName("ENERGY INFO & CONTROL");
             if(!Enum.TryParse(Storage, out CurrentState))
                 CurrentState = ControllerState.NORMAL;
+
+            CurrentScreenColor = Color.Black;
         }
 
         void FindItemsForList<T>(List<T> list) where T: class{
             if (ONLY_USE_BLOCKS_FROM_THIS_GRID) {
-                List<T> temp = new List<T>(), temp2 = new List<T>();
-                GridTerminalSystem.GetBlocksOfType(temp);
+                List<T> temp = new List<T>(); GridTerminalSystem.GetBlocksOfType(temp);
                 list.Clear();
                 foreach (T item in temp) if (IsOnThisGrid((IMyCubeBlock)item)) list.Add(item);
             }
-            else {
+            else
                 GridTerminalSystem.GetBlocksOfType(list);
-            }
         }
 
         void EnableItemsInList<T>(bool enable, List<T> list) where T:IMyFunctionalBlock {
@@ -300,18 +332,16 @@ namespace IngameScript {
                 }
             }
 
-            return output
-                //     /1000000 //to get 'normal' numbers
-                ;
+            return output; // /=1000000 to get 'normal' numbers
         }
 
         double GetMeanHydrogenFillage() {
             double output = 0;
             if (hydrogenTanks.Count == 0) return output;
             else {
-                Double tempo = Convert.ToDouble(hydrogenTanks.Count);
+                Double tanksCount = Convert.ToDouble(hydrogenTanks.Count);
                 foreach (IMyGasTank tank in hydrogenTanks) output += tank.FilledRatio;
-                return (output / tempo);
+                return (output / tanksCount);
             }
         }
 
@@ -422,7 +452,7 @@ namespace IngameScript {
             if (CurrentState == ControllerState.AUTO) {
                 output += "\n\nAUTOMATIC POWER CONTROL";
                 if (outputPercent > 90f || powerPercent < 10f) {
-                    if ((TicksSinceLastIncrease += 5) < 120) { }
+                    if ((TicksSinceLastIncrease += 5) < 120) { TicksSinceLastDrop = 0; }
                     else {
                         TicksSinceLastIncrease = 0; TicksSinceLastDrop = 0;
                         if (!Register.batteriesNominal) {
@@ -442,39 +472,44 @@ namespace IngameScript {
                         }
                     }
                 }
-                else
-                if (outputPercent < 10f && powerPercent > 20f) {
-                    if (TicksSinceLastDrop++ < 120) { }
-                    else { 
-                        TicksSinceLastIncrease = 0; TicksSinceLastDrop = 0;
-                        if (Register.reactorsEnabled) {
-                            Register.SetReactorsEnabled(false); EmergencyNumber = -1;
+                else {
+                    if (outputPercent < 10f && powerPercent > 20f) {
+                        if (TicksSinceLastDrop++ < 120) { TicksSinceLastIncrease = 0; }
+                        else { 
+                            TicksSinceLastIncrease = 0; TicksSinceLastDrop = 0;
+                            if (Register.reactorsEnabled) {
+                                Register.SetReactorsEnabled(false); EmergencyNumber = -1;
+                            }
+                            else if (!ItemsInListAreEnabled(industrialProducers)) {
+                                EnableItemsInList(true, industrialProducers); EmergencyNumber = -2;
+                            }
+                            else{
+                                else if (Register.hydroEnabled && Register.batteriesNominal) {
+                                    Register.SetHydrogenCoresEnabled(false); EmergencyNumber = -3;
+                                }
+                                else if (outputPercent < 3 && powerPercent <50f && MeanHydrogenFillage > 0.85D) {
+                                    Register.SetHydrogenCoresEnabled(true);
+                                    Register.SetBatteriesNominal(false);
+                                    EmergencyNumber = -4;
+                                }
+                            }
                         }
-                        else if (!ItemsInListAreEnabled(industrialProducers)) {
-                            EnableItemsInList(true, industrialProducers); EmergencyNumber = -2;
-                        }
-                        else if (Register.hydroEnabled && Register.batteriesNominal) {
-                            Register.SetHydrogenCoresEnabled(false); EmergencyNumber = -3;
-                        }
-                        else if (outputPercent < 3 && MeanHydrogenFillage > 0.85D) {
-                            Register.SetHydrogenCoresEnabled(true);
-                            Register.SetBatteriesNominal(false);
-                            EmergencyNumber = -4;
-                        }
+                    }
+                    if(Register.batteriesNominal){
+                        if(Register.hydroEnabled && MeanHydrogenFillage < 0.25D) 
+                            Register.SetHydrogenCoresEnabled(false);
+                    }
+                    else{
+                        if(Register.hydroEnabled && MeanHydrogenFillage < 0.5D)
+                            Register.SetBatteriesNominal(true);
                     }
                 }
 
                 string loadingBar = "";
-                if (EmergencyNumber > 0)
+                if      (EmergencyNumber < 0 || TicksSinceLastDrop>TicksSinceLastIncrease)
+                    for (int i = 0; i < (120 - TicksSinceLastDrop) / 3; i++) loadingBar += "|";
+                else if (EmergencyNumber > 0 || TicksSinceLastDrop<TicksSinceLastIncrease)
                     for (int i = 0; i < TicksSinceLastIncrease / 3; i++) loadingBar += "|";
-                else if (EmergencyNumber < 0)
-                    for (int i = 0; i < (120-TicksSinceLastDrop) / 3; i++) loadingBar += "|";
-                else {
-                    if(TicksSinceLastDrop>TicksSinceLastIncrease)
-                        for (int i = 0; i < (120 - TicksSinceLastDrop) / 3; i++) loadingBar += "|";
-                    else
-                        for (int i = 0; i < TicksSinceLastIncrease / 3; i++) loadingBar += "|";
-                }
 
                 output += String.Format("\n\n{0}{2} [{1,-40}]", EmergencyNumber>0?"-":"+", loadingBar, EmergencyNumber * (EmergencyNumber<0? -1:1));
             }
@@ -484,16 +519,15 @@ namespace IngameScript {
                     if (CurrentState == ControllerState.COMBAT)     output += "\n\nPOWER REROUTED TO COMBAT SYSTEMS";
                     else if (CurrentState == ControllerState.NORMAL)output += "\n\nPOWER SYSTEMS USING DEFAULT SETTINGS.";
 
-                    if (powerPercent < 10f && (Register.hydroEnabled == false || MeanHydrogenFillage < 10f)) {
-                        SwitchControllersState(ControllerState.AUTO);
+                    if(powerPercent <= 20f && (Register.hydroEnabled == false || MeanHydrogenFillage < 10f)) {
+                        int RedValueOfNewColor = (int)(200 - ((powerPercent - 10f)*20));
+                        if (powerPercent < 10f) SwitchControllersState(ControllerState.AUTO);
+                        CurrentScreenColor = new Color(RedValueOfNewColor,0,0);
                     }
                 }
             }
-            
-            
             RecentStoredPower = ShipsStoredPower;
             IceAmount = currAmm;
-
             return output;
         }
 
@@ -515,8 +549,7 @@ namespace IngameScript {
                         break;
 
                     case "EMOFF":
-                        YouKnowWhatFuckYouUnpanicsYourEmergencyButton();
-                        SwitchControllersState(ControllerState.NORMAL);
+                        if(CurrentState == ControllerState.Emergency) SwitchControllersState(ControllerState.NORMAL);
                         break;
 
                     default:
@@ -532,9 +565,8 @@ namespace IngameScript {
                 Output(PrintEvaluateAndReactToEnergyInfo());
                 FindNeededBlocks(updateSource);
             }
-            else{
+            else
                 EvaluateInputArgument(argument);
-            }
         }
     }
 }

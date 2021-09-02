@@ -51,13 +51,13 @@ namespace IngameScript {
         bool DetectNeutral;
         bool DetectEnemy;
 
+        bool AEGIS;
+
         List<IMySensorBlock> Radars;
         List<IMyMotorStator> RadRots;
         List<IMyTextPanel> Screens;
 
         static IMyShipController Ship_Controller;
-
-        bool AEGIS;
         const string TURRET_CONTROLLER_SCRIPT_NAME = "AEGIS";
         IMyProgrammableBlock Turret_Controller;
 
@@ -215,16 +215,16 @@ namespace IngameScript {
             }
 
             public static string PrintOut() {
-                string output = "TARGETS:";
+                string  output = "TARGETS:";
+                int     i = 0;
 
-                Vector3D
-                    position = Ship_Controller.GetPosition();
-
+                Vector3D position = Ship_Controller.GetPosition();
                 List<Entry> content = GetContentAsSortedList();
-                int i = 0;
                 foreach (Entry entry in content) {
-                    output += "\n" + ((i + 1 < 10) ? " " + (i + 1) : "" + (i + 1)) + ") " + RelationToAbbreviation(entry.Relation) + " " + TypeToAbbreviation(entry.Type) + " " + new Bearing(position, Ship_Controller.WorldMatrix, entry.Location).ToString() + " " + Convert(entry.Location);
-                    i++;
+                    output += String.Format("\n{0,2}){1,4}{2,4}{3,8}{4,8}", ++i, 
+                    RelationToAbbreviation(entry.Relation), TypeToAbbreviation(entry.Type), 
+                    new Bearing(position, Ship_Controller.WorldMatrix, entry.Location).ToString(), 
+                    Convert(entry.Location));
                 }
 
                 return output;
@@ -238,13 +238,9 @@ namespace IngameScript {
                 double temporal = GetDistance(location);
                 string output;
 
-                if (temporal >= 1000d) {
-                    temporal /= 1000d;
-                    output = String.Format("{0:0.##} KM", temporal);
-                }
-                else {
-                    output = String.Format("{0:0.#} M", temporal);
-                }
+                if (temporal >= 1000d)
+                        output = String.Format("{0:0.##} KM", temporal/1000d);
+                else    output = String.Format("{0:0.#} M", temporal);
 
                 return output;
             }
@@ -356,8 +352,7 @@ namespace IngameScript {
             Storage = currExt + ";" + currRPM + ";" +
             DetectPlayers + ";" + DetectFloatingObjects + ";" +
             DetectSmallShips + ";" + DetectLargeShips + ";" + DetectStations + ";" + DetectSubgrids + ";" + DetectAsteroids + ";" +
-            DetectOwner + ";" + DetectFriendly + ";" + DetectNeutral + ";" + DetectEnemy + ";" 
-            //+ AEGIS.isOnline
+            DetectOwner + ";" + DetectFriendly + ";" + DetectNeutral + ";" + DetectEnemy + ";" //+ AEGIS.isOnline
             ;
         }
 
@@ -422,10 +417,8 @@ namespace IngameScript {
 
                 if (++f >= i) AEGIS                 = true;
             }
-            SetRadars(currExt, currRPM);
-            GetScreens();
-            misCMDListener = IGC.RegisterBroadcastListener(misCMDTag);
-            misCMDListener.SetMessageCallback();
+            SetRadars(currExt, currRPM); GetScreens();
+            (misCMDListener = IGC.RegisterBroadcastListener(misCMDTag)).SetMessageCallback();
         }
 
         public void SendCoords(Vector3D vec, Vector3D vec2, string tag) {
@@ -434,16 +427,10 @@ namespace IngameScript {
         public void SendCoords(double X1, double Y1, double Z1, double X2 = 0, double Y2 = 0, double Z2 = 0, string tag = missileTag) { IGC.SendBroadcastMessage(tag, "TARSET;" + X1 + ";" + Y1 + ";" + Z1 + ";" + X2 + ";" + Y2 + ";" + Z2); }
 
         bool IsOnThisGrid(IMyCubeBlock block) {
-            if (block.CubeGrid.Equals(Me.CubeGrid))
-                return true;
-            else
-                return false;
+            return block.CubeGrid.Equals(Me.CubeGrid);
         }
 
-        void SetMax(int MAX) {
-            MAX_WAIT = MAX;
-            Register.SetMax(MAX_WAIT);
-        }
+        void SetMax(int MAX) { Register.SetMax((MAX_WAIT = MAX)); }
 
         void Detect() {
             bool AllRight = true;
@@ -598,6 +585,8 @@ namespace IngameScript {
                 if (IsOnThisGrid(scr) && scr.CustomName.Contains(RadarCode)) {
                     Screens.Add(scr);
                     scr.Font = "Monospace";
+                    scr.ContentType = ContentType.TEXT_AND_IMAGE;
+                    screen.TextPadding = 0f;
                     scr.FontSize = 0.75f;
                 }
             }
@@ -605,7 +594,7 @@ namespace IngameScript {
 
         int ProgressIncrementer = 0;
         string ProgressShower() {
-            switch (ProgressIncrementer++/15) {
+            switch (ProgressIncrementer++/30) {
                 case 0: return "/";
                 case 1: return "-";
                 case 2: return "\\";
@@ -618,27 +607,18 @@ namespace IngameScript {
 
         string PrintOut() {
             return
-                "Radar no: " + Radars.Count + "   Screen no: " + Screens.Count + " " + ProgressShower() + "\n"
-                + "Sensor range: " + currExt + " m Buoy RPM: " + currRPM + "\n"
-                + "AEGIS: " + (AEGIS?"ON":"OFF")
-                //+ "AEGIS: " + (AEGIS.isOnline ? "ON, TRACKING " + AEGIS.GetTarNo() + " OBJECTS.\n " + AEGIS.launchAttempts + " LAUNCH ATTEMPTS SO FAR." : "OFF") + "\n"
-
-                + "\n";
+                String.Format("Radar no: {0,-4} Screen no: {1,-4} {2}\n"
+                            + "Sensors range: {3,-4} m Buoy RMP: {4,-2}\n"
+                            + "AEGIS: {5}\n",
+                Radars.Count, Screens.Count, ProgressShower(),
+                currExt, currRPM, AEGIS?"ONLINE":"OFFLINE");
         }
 
         void Output(object input, bool append = false) {
             bool AllRight = true;
             string message = input is string ? (string)input : input.ToString();
-            foreach (IMyTextPanel screen in Screens) {
-                if (screen != null) {
-                    screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.TextPadding = 0f;
-                    screen.WriteText(message, append);
-                }
-                else AllRight = false;
-            }
-            //Echo(message);
-            if (!AllRight) GetScreens();
+            foreach (IMyTextPanel screen in GetScreens())
+                screen.WriteText(message, append);
         }
 
         void ErrorOutput(object input, bool append = true) {
@@ -788,21 +768,24 @@ namespace IngameScript {
             if ((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0) {
                 Detect();
                 Output(PrintOut() + "\n" + Register.PrintOut());
-                Echo("RADAR "+currExt+" "+currRPM+":\n" + 
-                "DetectPlayers:" + DetectPlayers + "\n" +
-                "DetectFloatingObjects:" + DetectFloatingObjects + "\n" +
-                "DetectSmallShips:" + DetectSmallShips + "\n" +
-                "DetectLargeShips:" + DetectLargeShips + "\n" +
-                "DetectStations:" + DetectStations + "\n" +
-                "DetectSubgrids:" + DetectSubgrids + "\n" +
-                "DetectAsteroids:" + DetectAsteroids + "\n" +
+                Echo(
+                    "RADAR "+currExt+" "+currRPM+":\n\n" + 
 
-                "DetectOwner:" + DetectOwner + "\n" +
-                "DetectFriendly:" + DetectFriendly + "\n" +
-                "DetectNeutral:" + DetectNeutral + "\n" +
-                "DetectEnemy:" + DetectEnemy);
-                 DoYourJob();
-                 IncrementAll();
+                    "DetectPlayers:" + DetectPlayers + "\n" +
+                    "DetectFloatingObjects:" + DetectFloatingObjects + "\n" +
+                    "DetectSmallShips:" + DetectSmallShips + "\n" +
+                    "DetectLargeShips:" + DetectLargeShips + "\n" +
+                    "DetectStations:" + DetectStations + "\n" +
+                    "DetectSubgrids:" + DetectSubgrids + "\n" +
+                    "DetectAsteroids:" + DetectAsteroids + "\n\n" +
+
+                    "DetectOwner:" + DetectOwner + "\n" +
+                    "DetectFriendly:" + DetectFriendly + "\n" +
+                    "DetectNeutral:" + DetectNeutral + "\n" +
+                    "DetectEnemy:" + DetectEnemy
+                );
+                DoYourJob();
+                IncrementAll();
             }
             else
             if ((updateSource & UpdateType.IGC) > 0) {
