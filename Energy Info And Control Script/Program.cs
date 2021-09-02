@@ -256,13 +256,8 @@ namespace IngameScript {
             if (ONLY_USE_BLOCKS_FROM_THIS_GRID) {
                 List<T> temp = new List<T>(), temp2 = new List<T>();
                 GridTerminalSystem.GetBlocksOfType(temp);
-                Me.CustomData = temp.Count+"";
-                foreach (T item in temp) if (IsOnThisGrid((IMyCubeBlock)item)) temp2.Add(item);
-
-                Me.CustomData += temp2.Count + "";
-                list = temp2;
-
-                Me.CustomData += list.Count + "";
+                list.Clear();
+                foreach (T item in temp) if (IsOnThisGrid((IMyCubeBlock)item)) list.Add(item);
             }
             else {
                 GridTerminalSystem.GetBlocksOfType(list);
