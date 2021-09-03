@@ -111,25 +111,24 @@ namespace IngameScript {
             EMERGENCY
         }
 
-        Type[] ArrayOfCriticalTypes = { 
-            typeof(IMyPowerProducer),
-            typeof(IMyShipConnector),
-            typeof(IMyShipMergeBlock),
-            typeof(IMyRadioAntenna),
-            typeof(IMyShipController),
-            typeof(IMyTextPanel),
-            typeof(IMyUpgradeModule),
-            typeof(IMyTextSurface),
-            typeof(IMyProgrammableBlock),
-            typeof(IMyBeacon),
-            typeof(IMyTimerBlock),
-            typeof(IMyDoor),
-            typeof(IMyThrust),
-            typeof(IMyGyro)
-        };
-
         bool BlockIsntCritical(IMyFunctionalBlock A) {
-            return  (!ArrayOfCriticalTypes.Contains(A.GetType()));
+            return (
+                !(A is IMyPowerProducer)    &&
+                !(A is IMyShipConnector)    &&
+                !(A is IMyShipMergeBlock)   &&
+                !(A is IMyRadioAntenna)     &&
+                !(A is IMyShipController)   &&
+                !(A is IMyTextPanel)        &&
+                !(A is IMyUpgradeModule)    &&
+                !(A is IMyTextSurface)      &&
+                !(A is IMyProgrammableBlock)&&
+                !(A is IMyBeacon)           &&
+                !(A is IMyTimerBlock)       &&
+                !(A is IMyDoor)             &&
+                !(A is IMyThrust)           &&
+                !(A is IMyGasTank)          &&
+                !(A is IMyGyro)
+            );
         }
 
         void EmergencyPanicButton() {
@@ -145,7 +144,7 @@ namespace IngameScript {
                     if (bcn.IsFunctional) {
                         bcn.Enabled = true;
                         bcn.Radius = 50000f;
-                        bcn.CustomName = "SHIP SHUT DOWN BY EMERGENCY PROTOCOLS";
+                        bcn.HudText = "SHIP SHUT DOWN BY EMERGENCY PROTOCOLS";
                         suitableAntennaFound = true;
                     }
                 }
@@ -157,8 +156,8 @@ namespace IngameScript {
                     if (ant.IsFunctional) {
                         ant.Enabled = true; ant.EnableBroadcasting = true;  ant.ShowShipName = true;
                         ant.Radius = 50000f;
-                        ant.CustomName = "SHIP SHUT DOWN BY EMERGENCY PROTOCOLS";
-                         suitableAntennaFound = true;
+                        ant.HudText = "SHIP SHUT DOWN BY EMERGENCY PROTOCOLS";
+                        suitableAntennaFound = true;
                     }
                 }
                 else 
@@ -484,7 +483,7 @@ namespace IngameScript {
                                 EnableItemsInList(true, industrialProducers); EmergencyNumber = -2;
                             }
                             else{
-                                else if (Register.hydroEnabled && Register.batteriesNominal) {
+                                if (Register.hydroEnabled && Register.batteriesNominal) {
                                     Register.SetHydrogenCoresEnabled(false); EmergencyNumber = -3;
                                 }
                                 else if (outputPercent < 3 && powerPercent <50f && MeanHydrogenFillage > 0.85D) {
@@ -537,6 +536,7 @@ namespace IngameScript {
                 EnergyScreen.Font = "Monospace";
                 EnergyScreen.WriteText(output, false);
                 EnergyScreen.ContentType = ContentType.TEXT_AND_IMAGE;
+                EnergyScreen.BackgroundColor = CurrentScreenColor;
             }
         }
 
@@ -549,7 +549,7 @@ namespace IngameScript {
                         break;
 
                     case "EMOFF":
-                        if(CurrentState == ControllerState.Emergency) SwitchControllersState(ControllerState.NORMAL);
+                        if(CurrentState == ControllerState.EMERGENCY) SwitchControllersState(ControllerState.NORMAL);
                         break;
 
                     default:
