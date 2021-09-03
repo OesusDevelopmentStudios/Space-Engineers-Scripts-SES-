@@ -575,7 +575,7 @@ namespace IngameScript {
             return screens;
         }
 
-        void GetScreens() {
+        List<IMyTextPanel> GetScreens() {
             List<IMyTextPanel> temp
                     = new List<IMyTextPanel>();
             Screens = new List<IMyTextPanel>();
@@ -586,10 +586,12 @@ namespace IngameScript {
                     Screens.Add(scr);
                     scr.Font = "Monospace";
                     scr.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.TextPadding = 0f;
+                    scr.TextPadding = 0f;
                     scr.FontSize = 0.75f;
                 }
             }
+
+            return Screens;
         }
 
         int ProgressIncrementer = 0;
@@ -615,7 +617,6 @@ namespace IngameScript {
         }
 
         void Output(object input, bool append = false) {
-            bool AllRight = true;
             string message = input is string ? (string)input : input.ToString();
             foreach (IMyTextPanel screen in GetScreens())
                 screen.WriteText(message, append);
@@ -769,7 +770,7 @@ namespace IngameScript {
                 Detect();
                 Output(PrintOut() + "\n" + Register.PrintOut());
                 Echo(
-                    "RADAR "+currExt+" "+currRPM+":\n\n" + 
+                    "RADAR " +currExt+" "+currRPM+":\n\n" + 
 
                     "DetectPlayers:" + DetectPlayers + "\n" +
                     "DetectFloatingObjects:" + DetectFloatingObjects + "\n" +
@@ -890,6 +891,7 @@ namespace IngameScript {
                                 if (args.Length > 2) {
                                     try { magnitude = int.Parse(args[2]); } catch (Exception e) { e.ToString(); magnitude = 0; }
                                 }
+                                Register.AddMissionCode(target.Id.ToString());
                                 PrepareForLaunch(target.Id.ToString(),magnitude);
                             }
 
