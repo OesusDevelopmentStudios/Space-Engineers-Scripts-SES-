@@ -505,30 +505,30 @@ namespace IngameScript {
         public void MoveGyroInAWay(IMyGyro target, float Yaw, float Pitch, float Roll) {
             target.GyroOverride = true; float[] command;
             switch (TranslateDirection(target)) {
-                case 13: command = { Roll , Yaw   , Pitch}; break;
-                case 14: command = { Roll ,-Yaw   ,-Pitch}; break;
-                case 15: command = { Roll ,-Pitch , Yaw  }; break;
-                case 16: command = { Roll , Pitch ,-Yaw  }; break;
-                case 23: command = {-Roll ,-Yaw   , Pitch}; break;
-                case 24: command = {-Roll , Yaw   ,-Pitch}; break;
-                case 25: command = {-Roll , Pitch , Yaw  }; break;
-                case 26: command = {-Roll ,-Pitch ,-Yaw  }; break;
-                case 31: command = { Pitch,-Yaw   ,-Roll }; break;
-                case 32: command = {-Pitch, Yaw   , Roll }; break;
-                case 35: command = {-Pitch,-Roll  , Yaw  }; break;
-                case 36: command = {-Pitch, Roll  ,-Yaw  }; break;
-                case 41: command = { Pitch, Yaw   ,-Roll }; break;
-                case 42: command = { Pitch, Yaw   , Roll }; break;
-                case 45: command = { Pitch, Roll  , Yaw  }; break;
-                case 46: command = { Pitch,-Roll  ,-Yaw  }; break;
-                case 51: command = {-Yaw  , Pitch ,-Roll }; break;
-                case 52: command = {-Yaw  ,-Pitch , Roll }; break;
-                case 53: command = {-Yaw  ,-Roll  , Pitch}; break;
-                case 54: command = {-Yaw  ,-Roll  ,-Pitch}; break;
-                case 61: command = { Yaw  ,-Pitch ,-Roll }; break;
-                case 62: command = { Yaw  , Pitch , Roll }; break;
-                case 63: command = { Yaw  ,-Roll  , Pitch}; break;
-                case 64: command = { Yaw  ,-Roll  ,-Pitch}; break;
+                case 13: command = new float [] { Roll , Yaw   , Pitch}; break;
+                case 14: command = new float [] { Roll ,-Yaw   ,-Pitch}; break;
+                case 15: command = new float [] { Roll ,-Pitch , Yaw  }; break;
+                case 16: command = new float [] { Roll , Pitch ,-Yaw  }; break;
+                case 23: command = new float [] {-Roll ,-Yaw   , Pitch}; break;
+                case 24: command = new float [] {-Roll , Yaw   ,-Pitch}; break;
+                case 25: command = new float [] {-Roll , Pitch , Yaw  }; break;
+                case 26: command = new float [] {-Roll ,-Pitch ,-Yaw  }; break;
+                case 31: command = new float [] { Pitch,-Yaw   ,-Roll }; break;
+                case 32: command = new float [] {-Pitch, Yaw   , Roll }; break;
+                case 35: command = new float [] {-Pitch,-Roll  , Yaw  }; break;
+                case 36: command = new float [] {-Pitch, Roll  ,-Yaw  }; break;
+                case 41: command = new float [] { Pitch, Yaw   ,-Roll }; break;
+                case 42: command = new float [] { Pitch, Yaw   , Roll }; break;
+                case 45: command = new float [] { Pitch, Roll  , Yaw  }; break;
+                case 46: command = new float [] { Pitch,-Roll  ,-Yaw  }; break;
+                case 51: command = new float [] {-Yaw  , Pitch ,-Roll }; break;
+                case 52: command = new float [] {-Yaw  ,-Pitch , Roll }; break;
+                case 53: command = new float [] {-Yaw  ,-Roll  , Pitch}; break;
+                case 54: command = new float [] {-Yaw  ,-Roll  ,-Pitch}; break;
+                case 61: command = new float [] { Yaw  ,-Pitch ,-Roll }; break;
+                case 62: command = new float [] { Yaw  , Pitch , Roll }; break;
+                case 63: command = new float [] { Yaw  ,-Roll  , Pitch}; break;
+                case 64: command = new float [] { Yaw  ,-Roll  ,-Pitch}; break;
                 default:
                     Output("ERROR: " + target.CustomName + " GYROSCOPE IS IN AN IMPOSSIBLE SETTING."); target.ShowOnHUD = true;
                     return;
@@ -616,7 +616,7 @@ namespace IngameScript {
         }
 
         public List<IMyGyro> GetGyros(bool wantOutput) {
-            List<IMyGyro> list = new List<IMyGyro>();
+            List<IMyGyro> list = new List<IMyGyro>(), temp;
             GridTerminalSystem.GetBlocksOfType((temp = new List<IMyGyro>()));
             foreach (IMyGyro gyro in temp) if (IsOnThisGrid(gyro)) list.Add(gyro);
             if(wantOutput) Output("Found " + list.Count() + " gyros.\nEach gyro has to move about "+GetMass()/list.Count()+"kg of weight.");
@@ -756,21 +756,18 @@ namespace IngameScript {
                         if (SHIP_CONTROLLER != null) {
                             putout = "Program chose this ship controler: " + SHIP_CONTROLLER.CustomName + "\n";
                             //SHIP_CONTROLLER.ShowOnHUD = true;
-                            if (SHIP_CONTROLLER.TryGetPlanetPosition(out planet)) {
-                                planet.X += planet.X >= 0 ? -0.5d : 0.5d;
-                                planet.Y += planet.Y >= 0 ? -0.5d : 0.5d;
-                                planet.Z += planet.Z >= 0 ? -0.5d : 0.5d;
-                            }
                             ship = SHIP_CONTROLLER.GetPosition();
 
-                            if (planet != null) {
+                            if (SHIP_CONTROLLER.TryGetPlanetPosition(out planet)) {
+                                planet.X += planet.X >= 0 ? -0.5d : 0.5d; planet.Y += planet.Y >= 0 ? -0.5d : 0.5d; planet.Z += planet.Z >= 0 ? -0.5d : 0.5d;
+
                                 double elev; SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out elev);
                                 if (CosmicBodyDatabase.TryGet(planet, out body)) {
                                     putout += String.Format(
                                         "Currently in {0}'s sphere of influence.\n" +
                                         "{0}'s gravity: {1} G.\n{2}{3}",
                                         body.name, body.gravity, body.hasAtmo? "Atmosphere present.":"There's no atmosphere.",
-                                        elev!=0? String.Format("\nRelative elevation: {0:0.00} m"):""
+                                        elev!=0? String.Format("\nRelative elevation: {0:0.00} m", elev) :""
                                     );
                                     CurrentTarget = body;
                                 }
@@ -785,7 +782,7 @@ namespace IngameScript {
                                 double distance = Vector3D.Distance(ship, body.coords);
                                 putout += String.Format(
                                     "Closest Astral Body: {0}.\n" +
-                                    "{0}'s gravity: {1} G.\n{2}",
+                                    "{0}'s gravity: {1} G.\n{2}\n",
                                     body.name, body.gravity, body.hasAtmo? "Atmosphere present.":"There's no atmosphere."
                                 );
                             }
