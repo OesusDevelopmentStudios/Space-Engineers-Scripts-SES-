@@ -41,35 +41,63 @@ namespace IngameScript {
                   BW_VAL = 1,
                   DW_VAL = 5;
 
+        class CosmicBodyDatabase {
+            static readonly CosmicBody[] content = {
+                new CosmicBody(new Vector3D(0d, 0d, 0d), 1f, true, "Earth"),
+                new CosmicBody(new Vector3D(16384d, 136384d, -113616d), 0.25f, false, "Moon"),
+                new CosmicBody(new Vector3D(1031072d, 131072d, 1631072d), 0.9f, true, "Mars"),
+                new CosmicBody(new Vector3D(916384d, 16384d, 1616384d), 0.25f, true, "Europa"),
+                new CosmicBody(new Vector3D(131072d, 131072d, 5731072d), 1.1f, true, "Alien Planet"),
+                new CosmicBody(new Vector3D(36384d, 226384d, 5796384d), 0.25f, true, "Titan"),
+                new CosmicBody(new Vector3D(-284463d, -2434463d, 365536), 1f, true, "Triton"),
+            };
 
-        Body EARTH  = new Body(new Vector3D(0d, 0d, 0d), 1f, true, "Earth"),
-             MOON   = new Body(new Vector3D(16384d, 136384d, -113616d), 0.25f, false, "Moon"),
-             MARS   = new Body(new Vector3D(1031072d, 131072d, 1631072d), 0.9f, true, "Mars"),
-             EUROPA = new Body(new Vector3D(916384d, 16384d, 1616384d), 0.25f, true, "Europa"),
-             ALIEN  = new Body(new Vector3D(131072d, 131072d, 5731072d), 1.1f, true, "Alien Planet"),
-             TITAN  = new Body(new Vector3D(36384d, 226384d, 5796384d), 0.25f, true, "Titan"),
-             TRITON = new Body(new Vector3D(-284463d, -2434463d, 365536), 1f, true, "Triton"),
-             DUMMY  = new Body(new Vector3D(44d, 44d, 44d), 1f, false, "DUMMY"),
-             TARGET = new Body(new Vector3D(44d, 44d, 44d), 1f, false, "DUMMY");
+            public static bool TryGet(string name, out CosmicBody body) {
+                foreach(CosmicBody b in content) {
+                    if(b.name.ToLower().Equals(name.ToLower())) { body = b; return true; }
+                }
+                body = null; return false;
+            }
+
+            public static bool TryGet(Vector3D coords, out CosmicBody body) {
+                foreach (CosmicBody b in content) {
+                    if (b.coords.Equals(coords)) { body = b; return true; }
+                }
+                body = null; return false;
+            }
+
+            public static CosmicBody GetClosestBody(Vector3D coords) {
+                double distance = -1d, contender;
+                CosmicBody output = null;
+                foreach(CosmicBody b in content) {
+                    if (distance > (contender = Vector3D.Distance(coords, b.coords)) || distance == -1D) {
+                        distance = contender; output = b;
+                    }
+                }
+                return output;
+            }
+        }
+
+        CosmicBody CurrentTarget;
 
         Vector3D NOTHING_CRDS = new Vector3D(-0.5d, -0.5d, -0.5d);
         /// End of constants
 
-        class Body {
+        class CosmicBody {
             public string       name;
             public Vector3D     coords;
             public float        gravity;
             public bool         hasAtmo;
             public double       gravBound;
 
-            public Body(Vector3D coords,float gravity,bool hasAtmo, string name) {
+            public CosmicBody(Vector3D coords,float gravity,bool hasAtmo, string name) {
                 this.coords     = coords;
                 this.gravity    = gravity;
                 this.hasAtmo    = hasAtmo;
                 this.name       = name;
             }
 
-            public Body(Vector3D coords, float gravity, bool hasAtmo, string name, double gravBound): this(coords,gravity,hasAtmo,name) {
+            public CosmicBody(Vector3D coords, float gravity, bool hasAtmo, string name, double gravBound): this(coords,gravity,hasAtmo,name) {
                 this.gravBound  = gravBound;
             }
         }
@@ -84,21 +112,10 @@ namespace IngameScript {
             }
         }
 
-        /*
-        Earth	0	0	0
-        Moon	16,384	136,384	-113,616
-        Mars	1,031,072	131,072	1,631,072
-        Europa	916,384	16,384	1,616,384
-        Alien	131,072	131,072	5,731,072
-        Titan	36,384	226,384	5,796,384 
-        Triton  -284463 -2434463 365536
-        */
-
-        /// Global variables
 
         IMyShipController SHIP_CONTROLLER;
         IMyTextPanel CONTROL_SCREEN;
-        string ShipName = "";
+        readonly string ShipName = "";
         int stdby_decr,
             landingDir;
         float TWR = 1f;
@@ -106,8 +123,7 @@ namespace IngameScript {
         PROGRAM_STATE CurrentState,
         NextState = PROGRAM_STATE.INIT;
 
-        Dictionary<int, List<IMyThrust>> THRUSTERS = new Dictionary<int, List<IMyThrust>>();
-        List<Body> bodies = new List<Body>();
+        readonly Dictionary<int, List<IMyThrust>> THRUSTERS = new Dictionary<int, List<IMyThrust>>();
 
 
         /// End of global variables
@@ -120,28 +136,6 @@ namespace IngameScript {
             string[] split = name.Split(' ');
             if (!(split.Length > 1 && split[1].ToUpper().Equals("GRID"))) { ShipName = name; }
             SayMyName("SHIP CONTROL");
-            //ChangeState(PROGRAM_STATE.INIT);
-            //if (Storage == null) {
-            //if (CurrentState == null) ChangeState(PROGRAM_STATE.INIT);
-            //}
-            /*/
-            else {
-                string[] bits = Storage.Split(';');
-                if (Storage.Length > 0)
-                    foreach (PROGRAM_STATE state in (PROGRAM_STATE[])Enum.GetValues(typeof(PROGRAM_STATE))) {
-                        if (state.ToString().Equals(bits[0])) {
-                            ChangeState(state);
-                        }
-                    }
-            }/**/
-
-            bodies.Add(EARTH);
-            bodies.Add(MOON);
-            bodies.Add(MARS);
-            bodies.Add(EUROPA);
-            bodies.Add(ALIEN);
-            bodies.Add(TITAN);
-            bodies.Add(TRITON);
         }
 
         public void Save() {
@@ -200,12 +194,12 @@ namespace IngameScript {
 
         public float KgtoN(float input) { return input * GRAV_ACC_CONST; }
 
-        public float evaluate(IMyThrust thrust) {
-            if (TARGET.Equals(DUMMY)) {
+        public float Evaluate(IMyThrust thrust) {
+            if (CurrentTarget==null) {
                 return thrust.MaxEffectiveThrust;
             }
             else {
-                if (TARGET.hasAtmo) {
+                if (CurrentTarget.hasAtmo) {
                     if      (thrust.BlockDefinition.SubtypeName.Contains("Hydrogen")) return thrust.MaxThrust;
                     else if (thrust.BlockDefinition.SubtypeName.Contains("Atmospheric")) return thrust.MaxThrust;
                     else return thrust.MaxThrust/5f;
@@ -221,7 +215,7 @@ namespace IngameScript {
             float inp = 0f;
             foreach (IMyThrust t in list) {
                 if (t.IsWorking)
-                    inp += evaluate(t);
+                    inp += Evaluate(t);
             }
             return inp;
         }
@@ -319,7 +313,7 @@ namespace IngameScript {
 
                 int blockDir = TranslateDirection(block.Orientation.Forward);
                 int blockSub = TranslateDirection(block.Orientation.Up);
-                int firstDigit = 0;
+                int firstDigit;
 
                 if (blockSub == TFW) firstDigit = 2;
                 else if (blockSub == TUP) firstDigit = 6;
@@ -516,7 +510,7 @@ namespace IngameScript {
         public void OverrideThrusters(bool doThat) {
             if (doThat) return;
             for (int i = 0; i < 7; i++) {
-                List<IMyThrust> group = new List<IMyThrust>();
+                List<IMyThrust> group;
                 if (THRUSTERS.TryGetValue(i, out group)) {
                     foreach(IMyThrust thr in group) {
                         thr.ThrustOverride = 0;
@@ -546,7 +540,7 @@ namespace IngameScript {
 
         public void MoveAllGyros(float Yaw, float Pitch, float Roll) {
             List<IMyGyro> gyros = new List<IMyGyro>();
-            GridTerminalSystem.GetBlocksOfType<IMyGyro>(gyros);
+            GridTerminalSystem.GetBlocksOfType(gyros);
             foreach (IMyGyro gyro in gyros) {
                 MoveGyroInAWay(gyro, Yaw, Pitch, Roll);
             }
@@ -684,7 +678,7 @@ namespace IngameScript {
 
         public bool GetControllingBlock() {
             List<IMyShipController> controls = new List<IMyShipController>();
-            GridTerminalSystem.GetBlocksOfType<IMyShipController>(controls);
+            GridTerminalSystem.GetBlocksOfType(controls);
 
             SHIP_CONTROLLER = null;
             foreach (IMyShipController controler in controls) {
@@ -759,8 +753,7 @@ namespace IngameScript {
                     THRUSTERS.Add(dirint, temp);
                 }
                 else {
-                    temp = new List<IMyThrust>();
-                    temp.Add(t);
+                    temp = new List<IMyThrust> { t };
                     THRUSTERS.Add(dirint, temp);
                 }
             }
@@ -876,7 +869,7 @@ namespace IngameScript {
 
         public void Output(Object input) {
             string message = (input is string) ? (string)input : input.ToString();
-            message = message + "\n";
+            message += "\n";
             if (SHIP_CONTROLLER is IMyCockpit && allowOnCockpit) {
                 IMyCockpit cock = (IMyCockpit)SHIP_CONTROLLER;
                 IMyTextSurface pan = cock.GetSurface(0);
@@ -942,16 +935,15 @@ namespace IngameScript {
                             ship = SHIP_CONTROLLER.GetPosition();
 
                             if (planet != null) {
-                                foreach(Body body in bodies) {
-                                    if (planet.Equals(body.coords)) {
+                                CosmicBody body;
+                                    if (CosmicBodyDatabase.TryGet(planet, out body)) {
                                         double elev;
                                         SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out elev);
                                         putout += "Currently in " + body.name + "'s SOI\n";
                                         putout += body.name + "'s gravity: " + body.gravity + "G. " + (body.hasAtmo? "It has atmosphere.":"It has no atmosphere.");
                                         if (elev != 0d) putout +="\n"+Math.Round(elev, 2) + " meters from the ground.\n";
-                                        TARGET = body;
+                                        CurrentTarget = body;
                                     }
-                                }
 
                                 if (putout.Length == 0) {
                                     if (!planet.Equals(NOTHING_CRDS)) {
@@ -959,12 +951,12 @@ namespace IngameScript {
                                         SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out elev);
                                         putout = "In Unknown Planet's SOI\n";
                                         if (elev != 0d) putout += Math.Round(elev, 2) + " meters from the ground.\n";
-                                        TARGET = DUMMY;
+                                        CurrentTarget = null;
                                     }
                                     else {
                                         /// "The Closest Planet is:"
                                         putout = "Not in any SOI\n";
-                                        TARGET = DUMMY;
+                                        CurrentTarget = null;
                                     }
                                 }
 
@@ -1036,14 +1028,14 @@ namespace IngameScript {
                             += "\nMaximum supportable gravity: " + TWR.ToString("f3")
                             + "G ("+DirintToName(currMaxI).Split(' ')[0]+ ")\n\n";
 
-                        if (!TARGET.Equals(DUMMY))
-                        if(TWR >= TARGET.gravity*4) {
+                        if (CurrentTarget!=null)
+                        if(TWR >= CurrentTarget.gravity*4) {
                             putout += "The landing will be a piece of cake.";
                         }
-                        else if (TWR >= TARGET.gravity * 2) {
+                        else if (TWR >= CurrentTarget.gravity * 2) {
                             putout += "The landing should not be a problem.";
                         }
-                        else if (TWR > TARGET.gravity ) {
+                        else if (TWR > CurrentTarget.gravity ) {
                             putout += "You SHOULD be able to land, but take caution and slow down quickly.";
                         }
                         else {
@@ -1107,17 +1099,15 @@ namespace IngameScript {
                             planet.Z = planet.Z >= 0 ? planet.Z - 0.5d : planet.Z + 0.5d;
                         }
 
-                        if (!planet.Equals(TARGET.coords)) {
-                            TARGET = null;
-                            foreach (Body body in bodies) {
-                                if (planet.Equals(body.coords)) {
+                        if (CurrentTarget==null || !planet.Equals(CurrentTarget.coords)) {
+                                CosmicBody body;
+                                if (CosmicBodyDatabase.TryGet(planet, out body)) {
                                     putout += "Currently in " + body.name + "'s SOI\n";
                                     putout += body.name + "'s gravity: " + body.gravity + "G. " + (body.hasAtmo ? "It has atmosphere." : "It has no atmosphere.");
                                     if (elev != 0d) putout += "\n" + Math.Round(elev, 2) + " meters from the ground.\n";
-                                    TARGET = body;
+                                    CurrentTarget = body;
                                 }
-                            }
-                            if (TARGET == null || TWR <= TARGET.gravity) {
+                            if (CurrentTarget == null || TWR <= CurrentTarget.gravity) {
                                 ChangeState(PROGRAM_STATE.LND_INFO);
                                 return;
                             }
@@ -1129,7 +1119,7 @@ namespace IngameScript {
                         //float cautiousPortion = 1f;
                         
                         double 
-                               cautiousAccel = ((TWR - TARGET.gravity) * GRAV_ACC_CONST),
+                               cautiousAccel = ((TWR - CurrentTarget.gravity) * GRAV_ACC_CONST),
                                boldAccel     = ((TWR - currGrav) * GRAV_ACC_CONST),
                                /*/
                                thrustAccel   = (((TWR*TWR*TWR*boldAccel) + (cautiousPortion*cautiousAccel)) / ((TWR*TWR*TWR) + cautiousPortion));
@@ -1147,10 +1137,9 @@ namespace IngameScript {
                         
                         double PONR_Elev    = ((2 * (currSPD * currSPD)) / (3 * thrustAccel)),
                                PONR_CAU     = ((2 * (currSPD * currSPD)) / (3 * cautiousAccel)),
-                               PONR_BLD     = ((2 * (currSPD * currSPD)) / (3 * boldAccel))
-                                ;
+                               PONR_BLD     = ((2 * (currSPD * currSPD)) / (3 * boldAccel));
 
-                        double addition = (TWR - TARGET.gravity);
+                        double addition = (TWR - CurrentTarget.gravity);
 
                         addition *= addition;   addition *= 10;
 
@@ -1208,7 +1197,7 @@ namespace IngameScript {
         }
 
         bool autoThrustOn = false;
-        public void switchAutoThrust() {
+        public void SwitchAutoThrust() {
             List<IMyThrust> 
                 FWD, 
                 BWD;
@@ -1266,7 +1255,7 @@ namespace IngameScript {
                     }
                     else
                     if (eval[0].ToUpper().Equals("SWITCH")) {
-                        switchAutoThrust();
+                        SwitchAutoThrust();
                     }
                     else
                     ChangeState(argument.ToUpper());
