@@ -19,13 +19,11 @@ using VRageMath;
 
 namespace IngameScript {
     partial class Program : MyGridProgram {
-        /// Constants
         const bool      DEFAULT_DAMPENERS_SETTING = true;
         const float     GRAV_ACC_CONST = 9.81f;
         const double    maxDeviation = 0.005d;
         const bool      allowOnCockpit = false;
         const int       CARGO_MULTIPLIER = 10;
-
 
         Vector3D    UPP_CMD = new Vector3D( 0,-1, 0),
                     DWN_CMD = new Vector3D( 0, 1, 0),
@@ -81,7 +79,6 @@ namespace IngameScript {
         CosmicBody CurrentTarget;
 
         Vector3D NOTHING_CRDS = new Vector3D(-0.5d, -0.5d, -0.5d);
-        /// End of constants
 
         class CosmicBody {
             public string       name;
@@ -112,7 +109,6 @@ namespace IngameScript {
             }
         }
 
-
         IMyShipController SHIP_CONTROLLER;
         IMyTextPanel CONTROL_SCREEN;
         readonly string ShipName = "";
@@ -124,11 +120,6 @@ namespace IngameScript {
         NextState = PROGRAM_STATE.INIT;
 
         readonly Dictionary<int, List<IMyThrust>> THRUSTERS = new Dictionary<int, List<IMyThrust>>();
-
-
-        /// End of global variables
-
-        /// UTIL FUNCTIONS
 
         Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
@@ -228,7 +219,6 @@ namespace IngameScript {
                 CONTROL_SCREEN.ContentType = ContentType.TEXT_AND_IMAGE;
                 return true;
             }
-
         }
 
         public void InitShip() {
@@ -246,21 +236,13 @@ namespace IngameScript {
 
         public int TranslateDirection(VRageMath.Base6Directions.Direction d) {
             switch (d) {
-                case Base6Directions.Direction.Forward:
-                    return 1;
-                case Base6Directions.Direction.Backward:
-                    return 2;
-                case Base6Directions.Direction.Left:
-                    return 3;
-                case Base6Directions.Direction.Right:
-                    return 4;
-                case Base6Directions.Direction.Up:
-                    return 5;
-                case Base6Directions.Direction.Down:
-                    return 6;
-                default:
-                    Output("*ANGERY SIREN NOISES*");
-                    return 44;
+                case Base6Directions.Direction.Forward: return 1;
+                case Base6Directions.Direction.Backward:return 2;
+                case Base6Directions.Direction.Left:    return 3;
+                case Base6Directions.Direction.Right:   return 4;
+                case Base6Directions.Direction.Up:      return 5;
+                case Base6Directions.Direction.Down:    return 6;
+                default:Output("*ANGERY SIREN NOISES*");return 44;
             }
         }
 
@@ -310,10 +292,8 @@ namespace IngameScript {
             }
             else
             if (block is IMyGyro) {
-
-                int blockDir = TranslateDirection(block.Orientation.Forward);
-                int blockSub = TranslateDirection(block.Orientation.Up);
-                int firstDigit;
+                int blockDir = TranslateDirection(block.Orientation.Forward),
+                    blockSub = TranslateDirection(block.Orientation.Up), firstDigit;
 
                 if (blockSub == TFW) firstDigit = 2;
                 else if (blockSub == TUP) firstDigit = 6;
@@ -396,20 +376,13 @@ namespace IngameScript {
 
         public string DirintToName(int dirint) {
             switch (dirint) {
-                case 1:
-                    return "FORWARD ";
-                case 2:
-                    return "BACKWARD";
-                case 3:
-                    return "LEFT    ";
-                case 4:
-                    return "RIGHT   ";
-                case 5:
-                    return "UP      ";
-                case 6:
-                    return "DOWN    ";
-                default:
-                    return "ERROR   ";
+                case 1: return "FORWARD ";
+                case 2: return "BACKWARD";
+                case 3: return "LEFT    ";
+                case 4: return "RIGHT   ";
+                case 5: return "UP      ";
+                case 6: return "DOWN    ";
+                default:return "ERROR   ";
             }
         }
 
@@ -448,38 +421,24 @@ namespace IngameScript {
 
         public Vector3D DirintToVec(int dirint) {
             switch (dirint) {
-                case 1:
-                    return SHIP_CONTROLLER.WorldMatrix.Forward;
-                case 2:
-                    return SHIP_CONTROLLER.WorldMatrix.Backward;
-                case 3:
-                    return SHIP_CONTROLLER.WorldMatrix.Left;
-                case 4:
-                    return SHIP_CONTROLLER.WorldMatrix.Right;
-                case 5:
-                    return SHIP_CONTROLLER.WorldMatrix.Up;
-                case 6:
-                    return SHIP_CONTROLLER.WorldMatrix.Down;
-            }
-            return NOTHING_CRDS;
+                case 1: return SHIP_CONTROLLER.WorldMatrix.Forward;
+                case 2: return SHIP_CONTROLLER.WorldMatrix.Backward;
+                case 3: return SHIP_CONTROLLER.WorldMatrix.Left;
+                case 4: return SHIP_CONTROLLER.WorldMatrix.Right;
+                case 5: return SHIP_CONTROLLER.WorldMatrix.Up;
+                case 6: return SHIP_CONTROLLER.WorldMatrix.Down;
+            } return NOTHING_CRDS;
         }
 
         public Vector3D DirintToLndVec(int dirint) {
             switch (dirint) {
-                case 1:
-                    return SHIP_CONTROLLER.WorldMatrix.Backward;
-                case 2:
-                    return SHIP_CONTROLLER.WorldMatrix.Forward;
-                case 3:
-                    return SHIP_CONTROLLER.WorldMatrix.Right;
-                case 4:
-                    return SHIP_CONTROLLER.WorldMatrix.Left;
-                case 5:
-                    return SHIP_CONTROLLER.WorldMatrix.Down;
-                case 6:
-                    return SHIP_CONTROLLER.WorldMatrix.Up;
-            }
-            return NOTHING_CRDS;
+                case 1: return SHIP_CONTROLLER.WorldMatrix.Backward;
+                case 2: return SHIP_CONTROLLER.WorldMatrix.Forward;
+                case 3: return SHIP_CONTROLLER.WorldMatrix.Right;
+                case 4: return SHIP_CONTROLLER.WorldMatrix.Left;
+                case 5: return SHIP_CONTROLLER.WorldMatrix.Down;
+                case 6: return SHIP_CONTROLLER.WorldMatrix.Up;
+            } return NOTHING_CRDS;
         }
 
         public void LndGyroMove(float fir, float sec) {
@@ -520,10 +479,7 @@ namespace IngameScript {
         }
 
         public bool IsOnThisGrid(IMyCubeBlock block) {
-            if (block != null && block.CubeGrid.Equals(Me.CubeGrid))
-                return true;
-            else
-                return false;
+            return (block != null && block.CubeGrid.Equals(Me.CubeGrid));
         }
 
         public void MoveAGroupThrusters(List<IMyThrust> Group, float OverridePercent) {
@@ -547,133 +503,37 @@ namespace IngameScript {
         }
 
         public void MoveGyroInAWay(IMyGyro target, float Yaw, float Pitch, float Roll) {
-            target.GyroOverride = true;
+            target.GyroOverride = true; float[] command;
             switch (TranslateDirection(target)) {
-                case 13:
-                    target.Yaw = Roll;
-                    target.Pitch = Yaw;
-                    target.Roll = Pitch;
-                    break;
-                case 14:
-                    target.Yaw = Roll;
-                    target.Pitch = -Yaw;
-                    target.Roll = -Pitch;
-                    break;
-                case 15:
-                    target.Yaw = Roll;
-                    target.Pitch = -Pitch;
-                    target.Roll = Yaw;
-                    break;
-                case 16:
-                    target.Yaw = Roll;
-                    target.Pitch = Pitch;
-                    target.Roll = -Yaw;
-                    break;
-                case 23:
-                    target.Yaw = -Roll;
-                    target.Pitch = -Yaw;
-                    target.Roll = Pitch;
-                    break;
-                case 24:
-                    target.Yaw = -Roll;
-                    target.Pitch = Yaw;
-                    target.Roll = -Pitch;
-                    break;
-                case 25:
-                    target.Yaw = -Roll;
-                    target.Pitch = Pitch;
-                    target.Roll = Yaw;
-                    break;
-                case 26:
-                    target.Yaw = -Roll;
-                    target.Pitch = -Pitch;
-                    target.Roll = -Yaw;
-                    break;
-                case 31:
-                    target.Yaw = Pitch;
-                    target.Pitch = -Yaw;
-                    target.Roll = -Roll;
-                    break;
-                case 32:
-                    target.Yaw = -Pitch;
-                    target.Pitch = Yaw;
-                    target.Roll = Roll;
-                    break;
-                case 35:
-                    target.Yaw = -Pitch;
-                    target.Pitch = -Roll;
-                    target.Roll = Yaw;
-                    break;
-                case 36:
-                    target.Yaw = -Pitch;
-                    target.Pitch = Roll;
-                    target.Roll = -Yaw;
-                    break;
-                case 41:
-                    target.Yaw = Pitch;
-                    target.Pitch = Yaw;
-                    target.Roll = -Roll;
-                    break;
-                case 42:
-                    target.Yaw = Pitch;
-                    target.Pitch = Yaw;
-                    target.Roll = Roll;
-                    break;
-                case 45:
-                    target.Yaw = Pitch;
-                    target.Pitch = Roll;
-                    target.Roll = Yaw;
-                    break;
-                case 46:
-                    target.Yaw = Pitch;
-                    target.Pitch = -Roll;
-                    target.Roll = -Yaw;
-                    break;
-                case 51:
-                    target.Yaw = -Yaw;
-                    target.Pitch = Pitch;
-                    target.Roll = -Roll;
-                    break;
-                case 52:
-                    target.Yaw = -Yaw;
-                    target.Pitch = -Pitch;
-                    target.Roll = Roll;
-                    break;
-                case 53:
-                    target.Yaw = -Yaw;
-                    target.Pitch = -Roll;
-                    target.Roll = Pitch;
-                    break;
-                case 54:
-                    target.Yaw = -Yaw;
-                    target.Pitch = -Roll;
-                    target.Roll = -Pitch;
-                    break;
-                case 61:
-                    target.Yaw = Yaw;
-                    target.Pitch = -Pitch;
-                    target.Roll = -Roll;
-                    break;
-                case 62:
-                    target.Yaw = Yaw;
-                    target.Pitch = Pitch;
-                    target.Roll = Roll;
-                    break;
-                case 63:
-                    target.Yaw = Yaw;
-                    target.Pitch = -Roll;
-                    target.Roll = Pitch;
-                    break;
-                case 64:
-                    target.Yaw = Yaw;
-                    target.Pitch = -Roll;
-                    target.Roll = -Pitch;
-                    break;
+                case 13: command = { Roll , Yaw   , Pitch}; break;
+                case 14: command = { Roll ,-Yaw   ,-Pitch}; break;
+                case 15: command = { Roll ,-Pitch , Yaw  }; break;
+                case 16: command = { Roll , Pitch ,-Yaw  }; break;
+                case 23: command = {-Roll ,-Yaw   , Pitch}; break;
+                case 24: command = {-Roll , Yaw   ,-Pitch}; break;
+                case 25: command = {-Roll , Pitch , Yaw  }; break;
+                case 26: command = {-Roll ,-Pitch ,-Yaw  }; break;
+                case 31: command = { Pitch,-Yaw   ,-Roll }; break;
+                case 32: command = {-Pitch, Yaw   , Roll }; break;
+                case 35: command = {-Pitch,-Roll  , Yaw  }; break;
+                case 36: command = {-Pitch, Roll  ,-Yaw  }; break;
+                case 41: command = { Pitch, Yaw   ,-Roll }; break;
+                case 42: command = { Pitch, Yaw   , Roll }; break;
+                case 45: command = { Pitch, Roll  , Yaw  }; break;
+                case 46: command = { Pitch,-Roll  ,-Yaw  }; break;
+                case 51: command = {-Yaw  , Pitch ,-Roll }; break;
+                case 52: command = {-Yaw  ,-Pitch , Roll }; break;
+                case 53: command = {-Yaw  ,-Roll  , Pitch}; break;
+                case 54: command = {-Yaw  ,-Roll  ,-Pitch}; break;
+                case 61: command = { Yaw  ,-Pitch ,-Roll }; break;
+                case 62: command = { Yaw  , Pitch , Roll }; break;
+                case 63: command = { Yaw  ,-Roll  , Pitch}; break;
+                case 64: command = { Yaw  ,-Roll  ,-Pitch}; break;
                 default:
-                    Output("ERROR: " + target.CustomName + " GYROSCOPE IS IN AN IMPOSSIBLE SETTING.");
-                    target.ShowOnHUD = true;
-                    break;
+                    Output("ERROR: " + target.CustomName + " GYROSCOPE IS IN AN IMPOSSIBLE SETTING."); target.ShowOnHUD = true;
+                    return;
             }
+            target.Yaw  = command[0]; target.Pitch= command[1]; target.Roll = command[2];
         }
 
         public bool GetControllingBlock() {
@@ -682,11 +542,9 @@ namespace IngameScript {
 
             SHIP_CONTROLLER = null;
             foreach (IMyShipController controler in controls) {
-                if (controler.IsMainCockpit) {
-                    if (controler.IsWorking) {
-                        SHIP_CONTROLLER = controler;
-                        return true;
-                    }
+                if (controler.IsMainCockpit && controler.IsWorking) {
+                    SHIP_CONTROLLER = controler;
+                    return true;
                 }
             }
 
@@ -706,12 +564,7 @@ namespace IngameScript {
                 return true;
         }
 
-        public double GetSpeed() {
-            if (!GetControllingBlock())
-                return -1D;
-            else
-                return SHIP_CONTROLLER.GetShipSpeed();
-        }
+        public double GetSpeed() { return GetControllingBlock()? SHIP_CONTROLLER.GetShipSpeed():-1D; }
 
         public float GetMass() { return GetMass("T"); }
 
@@ -752,10 +605,8 @@ namespace IngameScript {
                     THRUSTERS.Remove(dirint);
                     THRUSTERS.Add(dirint, temp);
                 }
-                else {
-                    temp = new List<IMyThrust> { t };
-                    THRUSTERS.Add(dirint, temp);
-                }
+                else 
+                    THRUSTERS.Add(dirint, new List<IMyThrust> { t });
             }
             bool ok = true;
             if (output) {
@@ -765,8 +616,8 @@ namespace IngameScript {
         }
 
         public List<IMyGyro> GetGyros(bool wantOutput) {
-            List<IMyGyro> list = new List<IMyGyro>(), temp = new List<IMyGyro>();
-            GridTerminalSystem.GetBlocksOfType(temp);
+            List<IMyGyro> list = new List<IMyGyro>();
+            GridTerminalSystem.GetBlocksOfType((temp = new List<IMyGyro>()));
             foreach (IMyGyro gyro in temp) if (IsOnThisGrid(gyro)) list.Add(gyro);
             if(wantOutput) Output("Found " + list.Count() + " gyros.\nEach gyro has to move about "+GetMass()/list.Count()+"kg of weight.");
             return list;
@@ -821,25 +672,12 @@ namespace IngameScript {
         public void ChangeState(string state) {
             Output("Changing mode from " + CurrentState + " to " + state.ToString() + ".");
             switch (state.ToUpper()) {
-                case "INIT":
-                    ChangeState(PROGRAM_STATE.INIT);
-                    break;
+                case "INIT":        ChangeState(PROGRAM_STATE.INIT);        break;
+                case "LND_INFO":    ChangeState(PROGRAM_STATE.LND_INFO);    break;
+                case "LND_ALGN":    ChangeState(PROGRAM_STATE.LND_ALGN);    break;
+                case "LND_AUTO":    ChangeState(PROGRAM_STATE.LND_AUTO);    break;
 
-                case "LND_INFO":
-                    ChangeState(PROGRAM_STATE.LND_INFO);
-                    break;
-
-                case "LND_ALGN":
-                    ChangeState(PROGRAM_STATE.LND_ALGN);
-                    break;
-
-                case "LND_AUTO":
-                    ChangeState(PROGRAM_STATE.LND_AUTO);
-                    break;
-
-                default:
-                    Output("Function 'ChangeState': Undefined input value.");
-                    break;
+                default: Output("Function 'ChangeState': Undefined input value."); break;
             }
         }
 
@@ -893,7 +731,8 @@ namespace IngameScript {
         public Vector3D CutVector(Vector3D vector) { return CutVector(vector, 3); }
 
         public Vector3D CutVector(Vector3D vector, int decNo) {
-            double X = Math.Round(vector.X, decNo),
+            double 
+                X = Math.Round(vector.X, decNo),
                 Y = Math.Round(vector.Y, decNo),
                 Z = Math.Round(vector.Z, decNo);
 
@@ -912,98 +751,52 @@ namespace IngameScript {
                 case PROGRAM_STATE.LND_INFO:
                     if (GetControllingBlock()) {
                         FindThrusters(false);
-                        /*/ SUB,
-                            UPP,
-                            DWN,
-                            LFT,
-                            RIG,
-                            FWD,
-                            BWD,
-                            TMP/**/;
 
-                        //VRageMath.MatrixD mtrx;
-                        
+                        CosmicBody body;
                         if (SHIP_CONTROLLER != null) {
                             putout = "Program chose this ship controler: " + SHIP_CONTROLLER.CustomName + "\n";
                             //SHIP_CONTROLLER.ShowOnHUD = true;
-                            SHIP_CONTROLLER.TryGetPlanetPosition(out planet);
-                            if (planet != null) {
-                                planet.X = planet.X >= 0 ? planet.X - 0.5d : planet.X + 0.5d;
-                                planet.Y = planet.Y >= 0 ? planet.Y - 0.5d : planet.Y + 0.5d;
-                                planet.Z = planet.Z >= 0 ? planet.Z - 0.5d : planet.Z + 0.5d;
+                            if (SHIP_CONTROLLER.TryGetPlanetPosition(out planet)) {
+                                planet.X += planet.X >= 0 ? -0.5d : 0.5d;
+                                planet.Y += planet.Y >= 0 ? -0.5d : 0.5d;
+                                planet.Z += planet.Z >= 0 ? -0.5d : 0.5d;
                             }
                             ship = SHIP_CONTROLLER.GetPosition();
 
                             if (planet != null) {
-                                CosmicBody body;
-                                    if (CosmicBodyDatabase.TryGet(planet, out body)) {
-                                        double elev;
-                                        SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out elev);
-                                        putout += "Currently in " + body.name + "'s SOI\n";
-                                        putout += body.name + "'s gravity: " + body.gravity + "G. " + (body.hasAtmo? "It has atmosphere.":"It has no atmosphere.");
-                                        if (elev != 0d) putout +="\n"+Math.Round(elev, 2) + " meters from the ground.\n";
-                                        CurrentTarget = body;
-                                    }
-
-                                if (putout.Length == 0) {
-                                    if (!planet.Equals(NOTHING_CRDS)) {
-                                        double elev;
-                                        SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out elev);
-                                        putout = "In Unknown Planet's SOI\n";
-                                        if (elev != 0d) putout += Math.Round(elev, 2) + " meters from the ground.\n";
-                                        CurrentTarget = null;
-                                    }
-                                    else {
-                                        /// "The Closest Planet is:"
-                                        putout = "Not in any SOI\n";
-                                        CurrentTarget = null;
-                                    }
+                                double elev; SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out elev);
+                                if (CosmicBodyDatabase.TryGet(planet, out body)) {
+                                    putout += String.Format(
+                                        "Currently in {0}'s sphere of influence.\n" +
+                                        "{0}'s gravity: {1} G.\n{2}{3}",
+                                        body.name, body.gravity, body.hasAtmo? "Atmosphere present.":"There's no atmosphere.",
+                                        elev!=0? String.Format("\nRelative elevation: {0:0.00} m"):""
+                                    );
+                                    CurrentTarget = body;
                                 }
-
+                                else{
+                                    putout = "In Unknown Planet's SOI\n";
+                                    if (elev != 0d) putout += Math.Round(elev, 2) + " meters from the ground.\n";
+                                    CurrentTarget = null;
+                                }
                             }
                             else {
-                                putout = "Not in any SOI\n";
+                                body = CosmicBodyDatabase.GetClosestBody(ship);
+                                double distance = Vector3D.Distance(ship, body.coords);
+                                putout += String.Format(
+                                    "Closest Astral Body: {0}.\n" +
+                                    "{0}'s gravity: {1} G.\n{2}",
+                                    body.name, body.gravity, body.hasAtmo? "Atmosphere present.":"There's no atmosphere."
+                                );
                             }
-
-                            /*/
-                            TMP = planet == null ? new Vector3D(0d, 0d, 0d) : planet;
-                            SUB = planet == null ? ship : CutVector(Vector3D.Normalize(Vector3D.Subtract(planet, ship)));
-                            mtrx = SHIP_CONTROLLER.WorldMatrix;
-                            UPP = Vector3D.Subtract(CutVector(mtrx.Up), SUB);
-                            DWN = Vector3D.Subtract(CutVector(mtrx.Down), SUB);
-                            LFT = Vector3D.Subtract(CutVector(mtrx.Left), SUB);
-                            RIG = Vector3D.Subtract(CutVector(mtrx.Right), SUB);
-                            FWD = Vector3D.Subtract(CutVector(mtrx.Forward), SUB);
-                            BWD = Vector3D.Subtract(CutVector(mtrx.Backward), SUB);
-                            /**/
                         }
-                        else {
-                            /*/
-                            SUB = new Vector3D(0d, 0d, 0d);
-                            UPP = new Vector3D(0d, 0d, 0d);
-                            DWN = new Vector3D(0d, 0d, 0d);
-                            LFT = new Vector3D(0d, 0d, 0d);
-                            RIG = new Vector3D(0d, 0d, 0d);
-                            FWD = new Vector3D(0d, 0d, 0d);
-                            BWD = new Vector3D(0d, 0d, 0d);
-                            TMP = new Vector3D(0d, 0d, 0d);
-                            /**/
-                        }
-                        /*/
-                        putout +="\n" +
-                            "Maximum deviation: " + new Vector3D(0.02d, 0.02d, 0.02d).Length() + "\n" +
-                            "UPP: " + UPP.ToString("#,##0.00") + "\n" +
-                            "DWN: " + DWN.ToString("#,##0.00") + "\n" +
-                            "LFT: " + LFT.ToString("#,##0.00") + "\n" +
-                            "RIG: " + RIG.ToString("#,##0.00") + "\n" +
-                            "FWD: " + FWD.ToString("#,##0.00") + "\n" +
-                            "BWD: " + BWD.ToString("#,##0.00") + "\n\n";
-                        /**/
 
-                        float shipMassN = KgtoN(GetMass()),
-                            shipMassub = KgtoN(GetMass("B")),
-                            currMax = -1f;
-                        int currMaxI = 0, nonT = 0;
+                        float   shipMassN = KgtoN(GetMass()),
+                                shipMassub = KgtoN(GetMass("B")),
+                                currMax = -1f;
+                        int     currMaxI = 0, 
+                                nonT = 0;
+
                         for (int i = 1; i < 7; i++) {
                             List<IMyThrust> temp = new List<IMyThrust>();
                             if (THRUSTERS.TryGetValue(i, out temp)) {
@@ -1022,26 +815,10 @@ namespace IngameScript {
                             return;
                         }
 
-                        TWR = currMax/shipMassN;
-
-                        putout
-                            += "\nMaximum supportable gravity: " + TWR.ToString("f3")
-                            + "G ("+DirintToName(currMaxI).Split(' ')[0]+ ")\n\n";
-
-                        if (CurrentTarget!=null)
-                        if(TWR >= CurrentTarget.gravity*4) {
-                            putout += "The landing will be a piece of cake.";
-                        }
-                        else if (TWR >= CurrentTarget.gravity * 2) {
-                            putout += "The landing should not be a problem.";
-                        }
-                        else if (TWR > CurrentTarget.gravity ) {
-                            putout += "You SHOULD be able to land, but take caution and slow down quickly.";
-                        }
-                        else {
-                            putout += "YOU WILL NOT BE ABLE TO LAND, EVACUATE IMMEDIATLY!";
-                        }
-
+                        putout += String.Format(
+                            "\nThrust to weight ratio: {0} ({1})\n\n", 
+                            (TWR = currMax/shipMassN).ToString("f3"), DirintToName(currMaxI).Split(' ')[0]
+                        );
 
                         landingDir = currMaxI;
 
@@ -1093,11 +870,9 @@ namespace IngameScript {
                     if (SHIP_CONTROLLER != null && SHIP_CONTROLLER.TryGetPlanetPosition(out planet)) {
                         double elev = 100000;
                         SHIP_CONTROLLER.TryGetPlanetElevation(MyPlanetElevation.Surface, out elev);
-                        if (planet != null) {
-                            planet.X = planet.X >= 0 ? planet.X - 0.5d : planet.X + 0.5d;
-                            planet.Y = planet.Y >= 0 ? planet.Y - 0.5d : planet.Y + 0.5d;
-                            planet.Z = planet.Z >= 0 ? planet.Z - 0.5d : planet.Z + 0.5d;
-                        }
+                        planet.X = planet.X >= 0 ? planet.X - 0.5d : planet.X + 0.5d;
+                        planet.Y = planet.Y >= 0 ? planet.Y - 0.5d : planet.Y + 0.5d;
+                        planet.Z = planet.Z >= 0 ? planet.Z - 0.5d : planet.Z + 0.5d;
 
                         if (CurrentTarget==null || !planet.Equals(CurrentTarget.coords)) {
                                 CosmicBody body;
@@ -1141,7 +916,7 @@ namespace IngameScript {
 
                         double addition = (TWR - CurrentTarget.gravity);
 
-                        addition *= addition;   addition *= 10;
+                        addition *= addition; addition *= 10;
 
                         PONR_Elev   += addition;
                         PONR_CAU    += addition;
