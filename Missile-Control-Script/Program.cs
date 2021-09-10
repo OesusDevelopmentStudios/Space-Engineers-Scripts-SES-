@@ -84,6 +84,75 @@ namespace IngameScript {
         readonly List<IMyGasTank> HTankList = new List<IMyGasTank>();
         List<IMyCameraBlock> MissileCameras = new List<IMyCameraBlock>();
 
+        class Size3SquareMatrix {
+            List<Double> content = new List<Double>();
+            
+            public Size3SquareMatrix(List<Double> content){ this.content.AddAll(content); }
+
+            public Size3SquareMatrix(Vector3D fwd, Vector3D rgt, Vector3D upp) {
+                content.Add(fwd.X); content.Add(rgt.X); content.Add(upp.X);
+
+                content.Add(fwd.Y); content.Add(rgt.y); content.Add(upp.y);
+
+                content.Add(fwd.Z); content.Add(rgt.Z); content.Add(upp.Z);
+            }
+
+            public double Get(int matrixIndex){
+                return content[matrixIndex-1];
+            }
+
+            public void Set(int matrixIndex, double value){
+                if(matrixIndex-1>this.content.Count) return;
+                this.content[matrixIndex-1] = value;
+            }
+
+            public Vector3D MultiplyMatrixByVector(Vector3D input){
+                int i = 0;
+                return new Vector3D(
+                    input.X * Get(++i) + input.Y * Get(++i) + input.Z * Get(++i),
+                    input.X * Get(++i) + input.Y * Get(++i) + input.Z * Get(++i),
+                    input.X * Get(++i) + input.Y * Get(++i) + input.Z * Get(++i)
+                );
+            }
+
+            public double GetDet(){
+                return
+                (Get(1) * Get(5) * Get(9)  
+                +Get(2) * Get(6) * Get(7)
+                +Get(3) * Get(4) * Get(8)
+                -Get(3) * Get(5) * Get(7) 
+                -Get(2) * Get(4) * Get(9) 
+                -Get(1) * Get(6) * Get(8)) 
+                //!=0
+                ;
+            }
+
+            public double GetValueForComplementaryMatrix(int index){
+                int indexes;
+                switch(index) {
+                    case 1: indexes = new int []{ 5, 9, 6, 8};
+                    case 2: indexes = new int []{ 6, 7, 4, 9};
+                    case 3: indexes = new int []{ 4, 8, 5, 7};
+                    case 4: indexes = new int []{ 3, 8, 2, 9};
+                    case 5: indexes = new int []{ 1, 9, 3, 7};
+                    case 6: indexes = new int []{ 2, 7, 1, 8};
+                    case 7: indexes = new int []{ 2, 6, 3, 5};
+                    case 8: indexes = new int []{ 3, 4, 1, 6};
+                    default:indexes = new int []{ 1, 5, 2, 4};
+                }
+
+                return (Get(indexes[0]) * Get(indexes[1])) - (Get(indexes[2]) * Get(indexes[3]));
+            }
+
+            public Size3SquareMatrix GetInvertedMatrix() {
+                List<Double> outputContent = new List<Double>();
+                double det;
+                if((det = GetDet())!=0) return new Size3SquareMatrix(new List<Double> { 0, 0, 0, 0, 0, 0, 0, 0, 0});
+                for(int i=1;i<10;i++) outputContent.Add(getValueForComplementaryMatrix(i)/det);
+                return new Size3SquareMatrix(outputContent);
+            }
+        }
+
         class NavPrompt {
             public int dirInt;
             public double vLength;
@@ -194,10 +263,7 @@ namespace IngameScript {
         }
 
         float Multiplier() {
-            if (Runtime.UpdateFrequency == UpdateFrequency.Update1)
-                return 3f;
-            else
-                return 1f;
+            return Runtime.UpdateFrequency == UpdateFrequency.Update1? 3f:1f;
         }
 
         void ChangeState(string state) {
@@ -215,8 +281,7 @@ namespace IngameScript {
         readonly Dictionary<int, List<IMyThrust>> THRUSTERS = new Dictionary<int, List<IMyThrust>>();
 
         public Program() {
-            Runtime.UpdateFrequency
-                            = UpdateFrequency.Update10;
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
             target = NOTHING;
             SayMyName(SCRIPT_VERSION);
             Me.CubeGrid.CustomName = "Universal Missile " + SCRIPT_VERSION;
@@ -325,18 +390,12 @@ namespace IngameScript {
 
         Vector3D DirintToVec(int dirint) {
             switch (dirint) {
-                case 1:
-                    return SHIP_CONTROLLER.WorldMatrix.Forward;
-                case 2:
-                    return SHIP_CONTROLLER.WorldMatrix.Backward;
-                case 3:
-                    return SHIP_CONTROLLER.WorldMatrix.Left;
-                case 4:
-                    return SHIP_CONTROLLER.WorldMatrix.Right;
-                case 5:
-                    return SHIP_CONTROLLER.WorldMatrix.Up;
-                case 6:
-                    return SHIP_CONTROLLER.WorldMatrix.Down;
+                case 1: return SHIP_CONTROLLER.WorldMatrix.Forward;
+                case 2: return SHIP_CONTROLLER.WorldMatrix.Backward;
+                case 3: return SHIP_CONTROLLER.WorldMatrix.Left;
+                case 4: return SHIP_CONTROLLER.WorldMatrix.Right;
+                case 5: return SHIP_CONTROLLER.WorldMatrix.Up;
+                case 6: return SHIP_CONTROLLER.WorldMatrix.Down;
             }
             return NOTHING;
         }
@@ -369,8 +428,7 @@ namespace IngameScript {
                 Output("Could not find any ship controller.");
                 return false;
             }
-            else
-                return true;
+            return true;
         }
 
         List<IMyGyro> GetGyros() {
@@ -397,8 +455,7 @@ namespace IngameScript {
                 rayTG = cameras_target,
                 addition;
             switch (camIndx) {
-                case 0:
-                    break;
+                case 0: break;
                 case 1:
                     addition = Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Right, 50d);
                     rayTG = Vector3D.Add(rayTG, addition);
@@ -435,9 +492,7 @@ namespace IngameScript {
                     addition = Vector3D.Add(addition, Vector3D.Multiply(SHIP_CONTROLLER.WorldMatrix.Up, 35d));
                     rayTG = Vector3D.Add(rayTG, addition);
                     break;
-                default:
-                    rayTG = NOTHING;
-                    break;
+                default: rayTG = NOTHING; break;
             }
             double distance = Vector3D.Distance(camera.GetPosition(), rayTG);
             if (!camera.CanScan(distance))
@@ -452,9 +507,7 @@ namespace IngameScript {
                     cameras_target = target.Position;
                     return ApplyTarSpd(target.Position, target.Velocity);
                 }
-                else {
-                    return FindTargetUsingCameras(++camIndx);
-                }
+                return FindTargetUsingCameras(++camIndx);
             }
             else {
                 Output("\nNO RDY CAM");
@@ -1140,15 +1193,20 @@ namespace IngameScript {
             return scalarProduct / productOfLengths;
         }
 
-        Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed) {/// do not enter if enSpeed is a "0" vector, or if our speed is 0
+        bool GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed, out Vector3D projPos) {/// do not enter if enSpeed is a "0" vector, or if our speed is 0
             if (speed <= 0) speed = 1;
-
+            projPos = null;
             /// A = enPos, B = myPos, C is the estimated meeting point
+
+            if(speed < maxSpeed && speed < enSpeed &&
+            Vector3D.Subtract(Vector3D.Normalize(Vector3D.Subtract(myPos, enPos)),Vector3D.Normalize(enSpeed))
+                .Length() > 1.4142d) // i.e. if there is no chance in hell we will make it... please, accelerate :^)
+                return false;
 
             double
                 t = enSpeed.Length() / speed,           //t -> b = a*t  
                 projPath,                               //b
-                dist = Vector3D.Distance(enPos, myPos), //c
+                dist = Vector3D.Distance(myPos, enPos), //c
                 cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
 
                 // pre 10-08-2021
@@ -1159,7 +1217,7 @@ namespace IngameScript {
                 delta = 4 * (dist * dist) * ((t * t * cos * cos) - (t * t) + 1);
 
             if (delta < 0) {
-                return NOTHING;
+                return false;
             }
             else
             if (delta == 0) {
@@ -1186,7 +1244,8 @@ namespace IngameScript {
             enSpeed = Vector3D.Normalize(enSpeed);
             enSpeed = Vector3D.Multiply(enSpeed, projPath);
 
-            return Vector3D.Add(enPos, enSpeed);
+            projPos = Vector3D.Add(enPos, enSpeed);
+            return true;
         }
 
         Vector3D ApplyTarSpd(Vector3D position, Vector3D speed) {
@@ -1197,9 +1256,7 @@ namespace IngameScript {
 
             if (enSpeed > 0) {
                 Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition(), mySpeed);
-                if (!output.Equals(NOTHING)) {
-                    return output;
-                }
+                if (!output.Equals(NOTHING)) { return output; }
             }
 
             multiplier = (mySpeed != 0 && enSpeed != 0) ? (enSpeed / mySpeed) : 0;
@@ -1357,7 +1414,6 @@ namespace IngameScript {
                             else {
                                 if (CurrentState >= MISSILE_STATE.DAMPENING) {
                                     if (ticksSinceLastOrder++ > 10) {
-                                        ticksSinceLastOrder = 0;
                                         Vector3D tango = FindTargetUsingCameras();
                                         if (!tango.Equals(NOTHING)) {
                                             target = tango;
@@ -1365,6 +1421,7 @@ namespace IngameScript {
                                         }
                                         else
                                             missileChangedTarget = false;
+                                        ticksSinceLastOrder = 0;
                                     }
                                 }
                             }
