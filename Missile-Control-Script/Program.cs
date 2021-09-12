@@ -1,20 +1,11 @@
-﻿using Sandbox.Game.EntityComponents;
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
+﻿using Sandbox.ModAPI.Ingame;
 using SpaceEngineers.Game.ModAPI.Ingame;
-using System.Collections.Generic;
-using System.Collections;
-using System.Linq;
-using System.Text;
 using System;
-using VRage.Collections;
-using VRage.Game.Components;
-using VRage.Game.GUI.TextPanel;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using VRage.Game.ModAPI.Ingame;
-using VRage.Game.ObjectBuilders.Definitions;
+using System.Collections.Generic;
+using System.Linq;
 using VRage.Game;
-using VRage;
+using VRage.Game.GUI.TextPanel;
+using VRage.Game.ModAPI.Ingame;
 using VRageMath;
 
 namespace IngameScript {
@@ -22,7 +13,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v7.0.7";
+        const string SCRIPT_VERSION = "v7.0.11";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 300f;
         const double maxDeviation = 0.02d;
@@ -85,14 +76,16 @@ namespace IngameScript {
         List<IMyCameraBlock> MissileCameras = new List<IMyCameraBlock>();
 
         class Size3SquareMatrix {
-            List<Double> content = new List<Double>();
+            readonly List<double> content = new List<double>();
             
-            public Size3SquareMatrix(List<Double> content){ this.content.AddAll(content); }
+            public Size3SquareMatrix(List<double> content){ this.content.AddList(content); }
+
+            public Size3SquareMatrix(MatrixD matrix) : this(matrix.Forward, matrix.Right, matrix.Up) { }
 
             public Size3SquareMatrix(Vector3D fwd, Vector3D rgt, Vector3D upp) {
                 content.Add(fwd.X); content.Add(rgt.X); content.Add(upp.X);
 
-                content.Add(fwd.Y); content.Add(rgt.y); content.Add(upp.y);
+                content.Add(fwd.Y); content.Add(rgt.Y); content.Add(upp.Y);
 
                 content.Add(fwd.Z); content.Add(rgt.Z); content.Add(upp.Z);
             }
@@ -128,27 +121,27 @@ namespace IngameScript {
             }
 
             public double GetValueForComplementaryMatrix(int index){
-                int indexes;
+                int[] indexes;
                 switch(index) {
-                    case 1: indexes = new int []{ 5, 9, 6, 8};
-                    case 2: indexes = new int []{ 6, 7, 4, 9};
-                    case 3: indexes = new int []{ 4, 8, 5, 7};
-                    case 4: indexes = new int []{ 3, 8, 2, 9};
-                    case 5: indexes = new int []{ 1, 9, 3, 7};
-                    case 6: indexes = new int []{ 2, 7, 1, 8};
-                    case 7: indexes = new int []{ 2, 6, 3, 5};
-                    case 8: indexes = new int []{ 3, 4, 1, 6};
-                    default:indexes = new int []{ 1, 5, 2, 4};
+                    case 1: indexes = new int []{ 5, 9, 6, 8}; break;
+                    case 2: indexes = new int []{ 6, 7, 4, 9}; break;
+                    case 3: indexes = new int []{ 4, 8, 5, 7}; break;
+                    case 4: indexes = new int []{ 3, 8, 2, 9}; break;
+                    case 5: indexes = new int []{ 1, 9, 3, 7}; break;
+                    case 6: indexes = new int []{ 2, 7, 1, 8}; break;
+                    case 7: indexes = new int []{ 2, 6, 3, 5}; break;
+                    case 8: indexes = new int []{ 3, 4, 1, 6}; break;
+                    default:indexes = new int []{ 1, 5, 2, 4}; break;
                 }
 
                 return (Get(indexes[0]) * Get(indexes[1])) - (Get(indexes[2]) * Get(indexes[3]));
             }
 
             public Size3SquareMatrix GetInvertedMatrix() {
-                List<Double> outputContent = new List<Double>();
+                List<double> outputContent = new List<double>();
                 double det;
-                if((det = GetDet())!=0) return new Size3SquareMatrix(new List<Double> { 0, 0, 0, 0, 0, 0, 0, 0, 0});
-                for(int i=1;i<10;i++) outputContent.Add(getValueForComplementaryMatrix(i)/det);
+                if((det = GetDet())==0) return new Size3SquareMatrix(new List<double> { 0, 0, 0, 0, 0, 0, 0, 0, 0});
+                for(int i=1;i<10;i++) outputContent.Add(GetValueForComplementaryMatrix(i)/det);
                 return new Size3SquareMatrix(outputContent);
             }
         }
@@ -1110,9 +1103,9 @@ namespace IngameScript {
                         Runtime.UpdateFrequency = UpdateFrequency.Update1;
                         if (THRUSTERS.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, 1f);
                     }
-                    else {
+                    else 
                         useMNV = false;
-                    }
+
                     if (distance < 50 && distance > lastDist) SelfDestruct();
                     if (StopFiringEngine()) {
                         if (THRUSTERS.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, 0f);
@@ -1127,47 +1120,29 @@ namespace IngameScript {
                         GridTerminalSystem.GetBlocksOfType(merges);
                         GridTerminalSystem.GetBlocksOfType(warheads);
 
-                        foreach (IMyWarhead war in warheads) war.IsArmed = true;
-                        foreach (IMyShipMergeBlock mer in merges) mer.Enabled = false;
-
-                        /* Making Timer Blocks Redundant since 2019
-                        IMyTimerBlock timBl = GridTerminalSystem.GetBlockWithName("Missile/Timer Detach") as IMyTimerBlock;
-                        if (timBl != null) {
-                            timBl.Trigger();
-                        }
-                        /**/
+                        foreach (IMyWarhead war in warheads)        war.IsArmed = true;
+                        foreach (IMyShipMergeBlock mer in merges)   mer.Enabled = false;
                     }
 
                     for (culprit = 0; culprit < 3; culprit++) {
                         if (prompts[culprit].dirInt != 1 && prompts[culprit].dirInt != 2) break;
-                    }
-                    culprit = prompts[culprit].dirInt;
+                    }   culprit = prompts[culprit].dirInt;
 
-                    command = DirToCmd(2, culprit);
                     float mnvAmm = (distance >= 10000) ? (float)curr.Length() * 20f : 1f;
 
                     if (missileIsInGravityWell && !mbOrbital) {
                         if (culprit == 5)
                             mnvAmm = 1f;
                         else
-                        if (culprit == 6) {
-                            if (distance > 4000d)
-                                mnvAmm = 0f;
-                            else
-                                mnvAmm = 1f;
-                        }
+                        if (culprit == 6) 
+                            mnvAmm = distance > 4000d ? 0f : 1f;
                     }
 
-                    if (culprit == 3) {
-                        culprit = 4;
-                    }
-                    else
-                    if (culprit == 4) {
-                        culprit = 3;
-                    }
+                    culprit = culprit == 4 ? 3 : (culprit==3? 4 : culprit);
 
                     if (useMNV) DirToMnv(2, culprit, mnvAmm);
-                    MoveAllGyros((float)(command.X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
+
+                    MoveAllGyros((float)((command = DirToCmd(2, culprit)).X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
 
                     if (distance >= 4000d && missileIsInGravityWell && currentMissileElevation <= 1000) if (THRUSTERS.TryGetValue(5, out group)) MoveAGroupOfThrusters(group, 1f);
                     lastDist = distance;
@@ -1195,10 +1170,10 @@ namespace IngameScript {
 
         bool GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed, out Vector3D projPos) {/// do not enter if enSpeed is a "0" vector, or if our speed is 0
             if (speed <= 0) speed = 1;
-            projPos = null;
+            projPos = NOTHING;
             /// A = enPos, B = myPos, C is the estimated meeting point
 
-            if(speed < maxSpeed && speed < enSpeed &&
+            if(speed < maxSpeed && speed < enSpeed.Length() &&
             Vector3D.Subtract(Vector3D.Normalize(Vector3D.Subtract(myPos, enPos)),Vector3D.Normalize(enSpeed))
                 .Length() > 1.4142d) // i.e. if there is no chance in hell we will make it... please, accelerate :^)
                 return false;
@@ -1255,8 +1230,8 @@ namespace IngameScript {
                 multiplier;
 
             if (enSpeed > 0) {
-                Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition(), mySpeed);
-                if (!output.Equals(NOTHING)) { return output; }
+                Vector3D output;
+                if (GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition(), mySpeed, out output)) { return output; }
             }
 
             multiplier = (mySpeed != 0 && enSpeed != 0) ? (enSpeed / mySpeed) : 0;
@@ -1402,7 +1377,7 @@ namespace IngameScript {
                     case "":
                         if (skipThisTick) {
                             skipThisTick = false;
-                            OutputStatusOnTheAntenna();
+                            //OutputStatusOnTheAntenna();
                             return;
                         }
                         else {

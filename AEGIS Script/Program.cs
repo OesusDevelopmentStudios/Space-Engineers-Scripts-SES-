@@ -20,7 +20,7 @@ namespace IngameScript {
             if (AMTargets.ContainsKey(entry.Id)) SendToAEGIS(entry);
             else if(PrepareForLaunch(entry.Id)) AMTargets.Add(entry.Id, entry);
         }
-        bool TryGetAMT(long key, out Entry entry) { return (AMTargets.TryGetValue(key, out entry)) }
+        bool TryGetAMT(long key, out Entry entry) { return (AMTargets.TryGetValue(key, out entry)); }
 
         readonly Dictionary<long, Entry> CGTargets = new Dictionary<long, Entry>();    // Contact Guns Targets
         void AddToCGT(Entry entry) {
