@@ -140,16 +140,16 @@ namespace IngameScript {
             public string ToSplitString() {
                 string output = "";
 
-                output += (Camera   != null ? Camera.GetId().ToString(): "N/A") + ";";
+                output += (Camera   != null ? Camera    .GetId().ToString(): "N/A") + ";";
 
-                output += (CTRL     != null ? CTRL.GetId()  .ToString(): "N/A") + ";";
+                output += (CTRL     != null ? CTRL      .GetId().ToString(): "N/A") + ";";
 
-                output += (XROT     != null ? XROT.GetId()  .ToString(): "N/A") + ";";
-                output += (YROT     != null ? YROT.GetId()  .ToString(): "N/A") + ";";
-                output += (YROTA    != null ? YROTA.GetId() .ToString(): "N/A") + ";";
+                output += (XROT     != null ? XROT      .GetId().ToString(): "N/A") + ";";
+                output += (YROT     != null ? YROT      .GetId().ToString(): "N/A") + ";";
+                output += (YROTA    != null ? YROTA     .GetId().ToString(): "N/A") + ";";
 
-                output += (RLDCon   != null ? RLDCon.GetId().ToString(): "N/A") + ";";
-                output += (BSDCon   != null ? BSDCon.GetId().ToString(): "N/A") + ";";
+                output += (RLDCon   != null ? RLDCon    .GetId().ToString(): "N/A") + ";";
+                output += (BSDCon   != null ? BSDCon    .GetId().ToString(): "N/A") + ";";
 
                 output += WeaponryToSplitString() + ";";
 
@@ -185,21 +185,15 @@ namespace IngameScript {
                         if (this.weaponry != null && this.weaponry.Count > 0) this.Fire(false);
                         break;
 
-                    case State.TRACK:
-                    case State.MANUAL:
-
-                        break;
+                    default: break;
                 }
             }
 
             public void Fire(bool doThat) {
                 isFiring = doThat;
-                foreach (IMySmallGatlingGun gun in weaponry) {
-                    if (doThat)
-                        gun.ApplyAction("Shoot_On");
-                    else
-                        gun.ApplyAction("Shoot_Off");
-                }
+                String action = "Shoot_"+(doThat?"On":"Off");
+                foreach (IMySmallGatlingGun gun in weaponry)
+                    gun.ApplyAction(action);
             }
 
             public bool CanTarget(Vector3D target) {
@@ -209,9 +203,7 @@ namespace IngameScript {
 
                 target = Vector3D.Normalize(Vector3D.Subtract(target, Vector3D.Add(BSDCon.GetPosition(), Vector3D.Multiply(down, 2))));
                 
-                if (InterCosine(up, target) >= Math.Cos(maxAngle * (Math.PI / 180.0)))
-                    return true;
-                return false;
+                return (InterCosine(up, target) >= Math.Cos(maxAngle * (Math.PI / 180.0)));
             }
 
             public bool TrySetTarget(Vector3D target) {
@@ -219,10 +211,8 @@ namespace IngameScript {
                     SetTarget(target);
                     return true;
                 }
-                else {
-                    ClearTarget();
-                    return false;
-                }
+                ClearTarget();
+                return false;
             }
 
             public void SetTarget(double X, double Y, double Z) { SetTarget(new Vector3D(X, Y, Z)); }
@@ -230,7 +220,6 @@ namespace IngameScript {
             public void SetTarget(Vector3D target) {
                 this.targetCoords = target;
                 this.hasTarget = true;
-
                 ChangeState(State.TRACK);
             }
 
@@ -252,36 +241,24 @@ namespace IngameScript {
             Vector3D CutVector(Vector3D vector) { return CutVector(vector, 3); }
 
             Vector3D CutVector(Vector3D vector, int decNo) {
-                double
-                    X = Math.Round(vector.X, decNo),
-                    Y = Math.Round(vector.Y, decNo),
-                    Z = Math.Round(vector.Z, decNo);
-
-                return new Vector3D(X, Y, Z);
+                return new Vector3D(Math.Round(vector.X, decNo), Math.Round(vector.Y, decNo), Math.Round(vector.Z, decNo));
             }
 
             Vector3D DirintToVec(int dirint) {
                 switch (dirint) {
-                    case 1:
-                        return CTRL.WorldMatrix.Forward;
-                    case 2:
-                        return CTRL.WorldMatrix.Backward;
-                    case 3:
-                        return CTRL.WorldMatrix.Left;
-                    case 4:
-                        return CTRL.WorldMatrix.Right;
-                    case 5:
-                        return CTRL.WorldMatrix.Up;
-                    case 6:
-                        return CTRL.WorldMatrix.Down;
+                    case 1: return CTRL.WorldMatrix.Forward;
+                    case 2: return CTRL.WorldMatrix.Backward;
+                    case 3: return CTRL.WorldMatrix.Left;
+                    case 4: return CTRL.WorldMatrix.Right;
+                    case 5: return CTRL.WorldMatrix.Up;
+                    case 6: return CTRL.WorldMatrix.Down;
                 }
                 return new Vector3D();
             }
 
             public double Difference(double A, double B) {
-                double
-                    max = A > B ? A : B,
-                    min = A > B ? B : A;
+                double  max = A > B ? A : B,
+                        min = A > B ? B : A;
 
                 return max - min;
             }
@@ -332,24 +309,13 @@ namespace IngameScript {
 
             public Vector2 CulpritToMove(int culprit, float deviation) {
                 if (deviation < 0.002f) return new Vector2(0, 0);
-
                 if (culprit <= 4) {
                     deviation = deviation > 0.05 ? 6 : deviation;
-                    if (culprit % 2 == 0) {
-                        return new Vector2(deviation * 5f, 0);
-                    }
-                    else {
-                        return new Vector2(-deviation * 5f, 0);
-                    }
+                    return culprit % 2 == 0? new Vector2(deviation * 5f, 0):new Vector2(-deviation * 5f, 0);
                 }
                 else {
                     deviation *= deviation > 0.05 ? 2 : 1;
-                    if (culprit % 2 == 0) {
-                        return new Vector2(0, deviation * 5);
-                    }
-                    else {
-                        return new Vector2(0, -deviation * 5);
-                    }
+                    return culprit % 2 == 0? new Vector2(0, deviation * 5):return new Vector2(0, -deviation * 5);
                 }
             }
 
@@ -386,7 +352,6 @@ namespace IngameScript {
                     if (Z < 0) Fire(true);
                     else Fire(false);
 
-
                     Move(X / 20, Y / 20);
                     return output + "Manual Control";
                 }
@@ -406,22 +371,20 @@ namespace IngameScript {
                         return output + "...";
                     }
                     Vector3D
-                        target = currState.Equals(State.TRACK) ? targetCoords : Vector3D.Add(BSDCon.GetPosition(), Vector3D.Multiply(BSDCon.WorldMatrix.Forward, 100)),
-                        me = this.CTRL.GetPosition(),
+                        target  = currState.Equals(State.TRACK) ? targetCoords : Vector3D.Add(BSDCon.GetPosition(), Vector3D.Multiply(BSDCon.WorldMatrix.Forward, 100)),
+                        me      = this.CTRL.GetPosition(),
 
-                        sub = CutVector(Vector3D.Normalize(Vector3D.Subtract(target, me))),
-                        curr = Vector3D.Subtract(CutVector(DirintToVec(1)), sub);
-
+                        sub     = CutVector(Vector3D.Normalize(Vector3D.Subtract(target, me))),
+                        curr    = Vector3D.Subtract(CutVector(DirintToVec(1)), sub);
 
                     List<NavPrompt>
-                        prompts = new List<NavPrompt>(),
-                        sorted = new List<NavPrompt>();
+                        prompts = new List<NavPrompt>();
 
                     for (int i = 3; i < 7; i++)
                         prompts.Add(new NavPrompt(i, Vector3D.Subtract(CutVector(DirintToVec(i)), sub)));
-                    sorted = prompts.OrderBy(o => o.vLength).ToList();
+                    prompts = prompts.OrderBy(o => o.vLength).ToList();
 
-                    Vector2I culprit = new Vector2I(sorted[0].dirInt, sorted[1].dirInt);
+                    Vector2I culprit = new Vector2I(prompts[0].dirInt, prompts[1].dirInt);
 
                     if (currState.Equals(State.STOW)) {
                         if (this.RLDCon.Enabled == false) this.RLDCon.Enabled = true;
@@ -430,9 +393,8 @@ namespace IngameScript {
                             if (!hasTarget) ChangeState(State.IDLE);
                             else ChangeState(State.RELOAD);
                         }
-                        else {
-                            DoubleCTM(sorted[0].dirInt, sorted[0].vLength, sorted[1].dirInt, sorted[1].vLength);
-                        }
+                        else DoubleCTM(prompts[0].dirInt, prompts[0].vLength, prompts[1].dirInt, prompts[1].vLength);
+
                         return output + "Stowing";
                     }
                     else
@@ -443,7 +405,7 @@ namespace IngameScript {
                             return "Lost Target";
                         }
 
-                        DoubleCTM(sorted[0].dirInt, sorted[0].vLength, sorted[1].dirInt, sorted[1].vLength);
+                        DoubleCTM(prompts[0].dirInt, prompts[0].vLength, prompts[1].dirInt, prompts[1].vLength);
 
                         double
                             distance = Vector3D.Distance(target, me),
@@ -457,7 +419,6 @@ namespace IngameScript {
                             Fire(false);
                             return output + ("Tracking...");
                         }
-                        /**/
                     }
                     return "???";
                 }
@@ -479,19 +440,16 @@ namespace IngameScript {
 
             public Entry(double px, double py, double pz, double vx, double vy, double vz) : this(new Vector3D(px, py, pz), new Vector3D(vx, vy, vz)) { }
 
-            public Vector3D EstimatePosition() {
-                return ApplyTarSpd(position, velocity);
-            }
+            public Vector3D EstimatePosition() { return ApplyTarSpd(position, velocity); }
 
             double InterCosine(Vector3D first, Vector3D second) {
-                double
-                    scalarProduct = first.X * second.X + first.Y * second.Y + first.Z * second.Z,
-                    productOfLengths = first.Length() * second.Length();
+                double  scalarProduct = first.X * second.X + first.Y * second.Y + first.Z * second.Z,
+                        productOfLengths = first.Length() * second.Length();
 
                 return scalarProduct / productOfLengths;
             }
 
-            Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos) {
+            bool TryGetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, out Vector3D projPos) {
                 /// do not enter if enSpeed is a "0" vector, or if our speed is 0
                 Vector3D
                     A = enPos,
@@ -502,39 +460,22 @@ namespace IngameScript {
                     projPath,//b
                     dist = Vector3D.Distance(A, B),         //c
                     cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
+                    
+                delta = 4 * (dist * dist) * ((t * t * cos * cos) - (t * t) + 1);
 
-                    delta = 4 * dist * dist * ((1 / (t * t)) + (cos * cos) - 1);
-
-                if (delta < 0) {
-                    return NOTHING;
-                }
+                if (delta < 0) return false;
                 else
-                if (delta == 0) {
-                    if (t == 0) {
-                        return NOTHING;
-                    }
-                    projPath = -1 * (2 * dist * cos) / (2 * (((t * t) - 1) / (t * t)));
-                }
+                if (delta == 0) projPath = ((t * dist * cos) / ((t * t) - 1));
                 else {
-                    if (t == 0) {
-                        return NOTHING;
-                    }
-                    else
-                    if (t == 1) {
-                        projPath = (dist) / (2 * cos);
-                    }
-                    else {
-                        projPath = ((2 * dist * cos - Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                        if (projPath < 0) {
-                            projPath = ((2 * dist * cos + Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                        }
-                    }
-
+                    if ((projPath = (((2 * t * dist * cos) + Math.Sqrt(delta)) / (2 * ((t * t) - 1)))) < 0)
+                        projPath = (((2 * t * dist * cos) - Math.Sqrt(delta)) / (2 * ((t * t) - 1)));
                 }
-                enSpeed = Vector3D.Normalize(enSpeed);
-                enSpeed = Vector3D.Multiply(enSpeed, projPath);
+                projPath *= t;
 
-                return Vector3D.Add(enPos, enSpeed);
+                enSpeed = Vector3D.Multiply(Vector3D.Normalize(enSpeed), projPath);
+
+                projPos = Vector3D.Add(enPos, enSpeed);
+                return true;
             }
 
             Vector3D ApplyTarSpd(Vector3D position, Vector3D speed) {
@@ -544,41 +485,36 @@ namespace IngameScript {
                     multiplier;
 
                 /**/
-                position = Vector3D.Add(position, Vector3D.Multiply(speed, Math.Sqrt(enSpeed) / 60));
+                //position = Vector3D.Add(position, Vector3D.Multiply(speed, Math.Sqrt(enSpeed) / 60));
                 /**/
 
                 if (enSpeed > 0) {
-                    Vector3D output = GetProjectedPos(position, speed, turret.CTRL.GetPosition());
-                    if (!output.Equals(NOTHING)) {
+                    Vector3D output;
+                    if (TryGetProjectedPos(position, speed, turret.CTRL.GetPosition(), out output)) {
                         return output;
                     }
                 }
 
                 multiplier = (mySpeed != 0 && enSpeed != 0) ? (enSpeed / mySpeed) : 0;
 
-                Vector3D
-                    addition = Vector3D.Multiply(speed, multiplier);
-
-                return Vector3D.Add(position, addition);
+                return Vector3D.Add(position, Vector3D.Multiply(speed, multiplier));
             }
         }
 
 
-        public void Save() {
-            Storage = hasTurret.ToString() + ";" + turIndx.ToString();
-        }
+        public void Save() { Storage = hasTurret.ToString() + ";" + turIndx.ToString(); }
 
         bool SetAEGISController() {
             /// this should be okay if there are no ships with Radar Control Script docked to the main ship
             AEGIS_Controller = GridTerminalSystem.GetBlockWithName(GetFullScriptName(AEGIS_CONTROLLER_SCRIPT_NAME)) as IMyProgrammableBlock;
 
             /// if the programmable block we picked is not from this ship, we commence the search to find it anyway
-            if (AEGIS_Controller != null && !IsOnThisGrid(AEGIS_Controller)) {
+            if (AEGIS_Controller == null || !IsOnThisGrid(AEGIS_Controller)) {
                 List<IMyProgrammableBlock> temp = new List<IMyProgrammableBlock>();
                 AEGIS_Controller = null;
                 GridTerminalSystem.GetBlocksOfType(temp);
                 foreach (IMyProgrammableBlock prog in temp) {
-                    if (IsOnThisGrid(prog) && prog.CustomName.Equals(GetFullScriptName(AEGIS_CONTROLLER_SCRIPT_NAME))) {
+                    if (IsOnThisGrid(prog) && prog.CustomName.Contains(AEGIS_CONTROLLER_SCRIPT_NAME)) {
                         AEGIS_Controller = prog; return true;
                     }
                 }
@@ -592,8 +528,8 @@ namespace IngameScript {
             MyInstance = this;
             SetAEGISController();
             String[] data = Storage.Split(';');
-            try { hasTurret = bool.Parse(data[0]); }    catch (Exception e) { e.ToString(); hasTurret = false; }
-            try { turIndx = int.Parse(data[1]); }       catch (Exception e) { e.ToString(); turIndx = 0; }
+            try { hasTurret = bool.Parse(data[0]); }catch (Exception e) { e.ToString(); hasTurret = false; }
+            try { turIndx   = int.Parse(data[1]); } catch (Exception e) { e.ToString(); turIndx = 0; }
             SetTurIndx(turIndx);
         }
 
@@ -634,13 +570,9 @@ namespace IngameScript {
             SayMyName(MY_PREFIX);
         }
 
-        bool IsOnThisGrid(IMyCubeBlock one) {
-            return AreOnSameGrid(one, Me);
-        }
+        bool IsOnThisGrid(IMyCubeBlock one) { return AreOnSameGrid(one, Me); }
 
-        bool AreOnSameGrid(IMyCubeBlock one, IMyCubeBlock two) {
-            return one.CubeGrid.Equals(two.CubeGrid);
-        }
+        bool AreOnSameGrid(IMyCubeBlock one, IMyCubeBlock two) { return one.CubeGrid.Equals(two.CubeGrid); }
 
         static void DisownTheTurret() {
             turret.Lockdown();
@@ -700,8 +632,11 @@ namespace IngameScript {
                     }
                     catch (Exception e) {
                         e.ToString();
-                        status += "\n109:There was a parsing error: \"" + ctrl.CustomData.Substring(TURRET_BASE.Length) + "\"";
-                        status += "\n" + e.StackTrace;
+                        status += 
+                        String.Format(
+                            "\n650: There was a parsing error: \"{0]\"\n{1}",
+                            ctrl.CustomData.Substring(TURRET_BASE.Length), e.StackTrace
+                        );
                     }
                 }
             }
@@ -777,7 +712,7 @@ namespace IngameScript {
             if (AEGIS_Controller != null || SetAEGISController()) {
                 AEGIS_Controller.CustomData += message;
             }
-            else Echo("UnU");
+            else Echo("AEGIS controller not found.");
         }
 
 
@@ -853,13 +788,11 @@ namespace IngameScript {
                 }
             }
             else {
-
-                if (hasTurret && turret != null && TimeNo++ >= 600) {
-                    TimeNo = 0;
-                    turret.PerformSelfDiagnostic();
-                }
-
                 if (hasTurret && turret != null) {
+                    if(TimeNo++ >= 600){
+                        TimeNo = 0;
+                        turret.PerformSelfDiagnostic();
+                    }
                     string output = turret.DoYourJob();
                     Output(output);
                 }
