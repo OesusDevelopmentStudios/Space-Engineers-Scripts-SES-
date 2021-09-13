@@ -20,6 +20,7 @@ using VRageMath;
 namespace IngameScript {
 
     partial class Program : MyGridProgram {
+        public static Program MyInstance;
 
         /// CONSTANTS
         public const int 
@@ -27,12 +28,13 @@ namespace IngameScript {
             CONSTRUCTORS_NOMINAL_NUMBER = 4,
             LAUNCH_SPACING = 3, ///ticks between launches in a salvo (6 being one second, apparently)
             
-            MAINTEANCE_FREQUENCY = 60;
+            MAINTENANCE_FREQUENCY = 60;
 
         Color COLOR_BLACK = new Color(0, 0, 0);
 
         public const string
-            DEFAULT_ARBALEST_TAG        = "AKC";
+            DEFAULT_ARBALEST_TAG        = "AKC",
+            DEFAULT_CONTAINED_PHRASE    = "["+DEFAULT_ARBALEST_TAG;
         /// 
 
         Dictionary<int, LauncherSegment>launchers;
@@ -44,7 +46,7 @@ namespace IngameScript {
         Color lastColor     =  new Color(0, 0, 0);
 
         int     DECOLOR_STEP = 8,
-                MAINTEANCE_NUM = 0;
+                MAINTENANCE_NUM = 0;
 
         public enum JobType {
             LOAD,       // MERGER ON , ACC OFF
@@ -65,17 +67,13 @@ namespace IngameScript {
                 this.type   = type;
                 this.TTJ    = TTJ;
                 this.no     = no;
-                if (no == -1)   lnch = false;
-                else            lnch = true;
+                if (no <= 0)lnch = false;
+                else        lnch = true;
             }
         }
 
         class Register {
             static List<Job> schedule = new List<Job>();
-
-            public static void Initialize() {
-                schedule = new List<Job>();
-            }
 
             public static void Add(Job job) {
                 schedule.Add(job);
@@ -120,10 +118,10 @@ namespace IngameScript {
 
             public void EnableMerger(bool enable) {this.merger.Enabled = enable;}
 
-            public int AccelCount() { return this.accelerators.Count; }
+            public int AccelCount(){ return this.accelerators.Count; }
 
             public void EnableAccels(bool enable) {
-                if (this.accelEnabled != enable) SwitchAccels();
+                if(this.accelEnabled != enable) SwitchAccels();
             }
 
             public void SwitchAccels() {
@@ -155,109 +153,46 @@ namespace IngameScript {
                 this.constructors = new List<IMyShipWelder>();
                 this.constructors.AddList(constructors);
             }
-            /**
-            public string GenerateDiagnostics() {
-                string output = "------------------------\nLauncher Diagnostics:";
-
-                for(int i=0; i<accelerators.Count; i++) {
-                    output += "\nAccelerator "+(i+1)+" - ("+accelerators[i].CustomName+") Functional: "+ accelerators[i].IsFunctional + " Enabled: "+ accelerators[i].Enabled;
-                }
-
-                output += "\n";
-
-                for (int i = 0; i < constructors.Count; i++) {
-                    output += "\nConstructor " + (i + 1) + " - (" + constructors[i].CustomName + ") Functional: " + constructors[i].IsFunctional + " Enabled: " + constructors[i].Enabled;
-                }
-
-
-                return output+"\n------------------------";
-            }
-            /**/
-
         }
 
         public Program() {
+            MyInstance = this;
             Me.CustomData = "";
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             launchers = new Dictionary<int, LauncherSegment>();
             doors = new List<IMyAirtightHangarDoor>();
             FindLaunchers(); FindDoors();
-            Register.Initialize();
         }
-        /**
-        int GetDoorStatus() { /// it returns the number of ticks until the missile is o.k. to launch
-            float openness = 1f;
-            foreach(IMyAirtightHangarDoor door in doors) {
-                if (door != null) {
 
-                }
-            }
+        bool IsOnThisGrid(IMyCubeBlock A) { return IsOnThisGrid(A,Me); }
 
-        }
-        /**/
+        bool IsOnSameGrid(IMyCubeBlock A, IMyCubeBlock B) { return (A.CubeGrid.Equals(B.CubeGrid)); }
 
-        bool IsOnSameGrid(IMyCubeBlock A, IMyCubeBlock B = null) {
-            if (B == null) B = Me;
-
-            if (A.CubeGrid.Equals(B.CubeGrid)) return true;
-
-            return false;
+        void GetBlocksForList<T>(List<T> list, string phraseContained = DEFAULT_CONTAINED_PHRASE) where T:class{
+            List<T> temp = new List<T>(); GridTerminalSystem.GetBlocksOfType(temp);
+            list.Clear();
+            foreach(T item in temp) if(IsOnThisGrid(item) && item.CustomName.Contains(phraseContained)) list.Add(item);
         }
 
         List<IMyShipMergeBlock> GetMergers() {
-            List<IMyShipMergeBlock> 
-                temp    = new List<IMyShipMergeBlock>(), 
-                output  = new List<IMyShipMergeBlock>();
-
-            GridTerminalSystem.GetBlocksOfType(temp);
-
-            foreach(IMyShipMergeBlock merge in temp) {
-                if (IsOnSameGrid(merge) && merge.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG)) output.Add(merge);
-            }
-
+            List<IMyShipMergeBlock> output = new List<IMyShipMergeBlock>();
+            GetBlocksForList(output);
             return output;
         }
 
         List<IMyGravityGenerator> GetAccelerators(int num) {
-            List<IMyGravityGenerator>
-                temp = new List<IMyGravityGenerator>(),
-                output = new List<IMyGravityGenerator>();
-
-            GridTerminalSystem.GetBlocksOfType(temp);
-
-            foreach (IMyGravityGenerator gravGen in temp) {
-                if (IsOnSameGrid(gravGen) && gravGen.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(gravGen);
-            }
-
+            List<IMyGravityGenerator> output = new List<IMyGravityGenerator>();
+            GetBlocksForList(output,"[" + DEFAULT_ARBALEST_TAG + "-" + num + "]");
             return output;
         }
+
         List<IMyShipWelder> GetConstructors(int num) {
-            List<IMyShipWelder>
-                temp = new List<IMyShipWelder>(),
-                output = new List<IMyShipWelder>();
-
-            GridTerminalSystem.GetBlocksOfType(temp);
-
-            foreach (IMyShipWelder welder in temp) {
-                if (IsOnSameGrid(welder) && welder.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "-" + num + "]")) output.Add(welder);
-            }
-
+            List<IMyShipWelder> output = new List<IMyShipWelder>();
+            GetBlocksForList(output,"[" + DEFAULT_ARBALEST_TAG + "-" + num + "]");
             return output;
         }
 
-        void FindDoors() {
-            List<IMyAirtightHangarDoor> 
-                temp    = new List<IMyAirtightHangarDoor>();
-                doors   = new List<IMyAirtightHangarDoor>();
-
-            GridTerminalSystem.GetBlocksOfType(temp);
-
-            foreach(IMyAirtightHangarDoor door in temp) {
-                if(IsOnSameGrid(door) && door.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "]")) {
-                    doors.Add(door);
-                }
-            }
-        }
+        void FindDoors() { GetBlocksForList((doors = new List<IMyAirtightHangarDoor>())); }
 
         void FindLaunchers(){
             List<IMyShipMergeBlock>     mergers = GetMergers();
@@ -286,13 +221,8 @@ namespace IngameScript {
 
         bool FindScreens() {
             screens = new List<IMyTextPanel>();
-            List<IMyTextPanel> temp = new List<IMyTextPanel>();
-            GridTerminalSystem.GetBlocksOfType(temp);
-            foreach(IMyTextPanel screen in temp) {
-                if (IsOnSameGrid(screen) && screen.CustomName.Contains("[" + DEFAULT_ARBALEST_TAG + "]")) screens.Add(screen);
-            }
-            if (screens.Count > 0) return true;
-            return false;
+            GetBlocksForList(screens);
+            return (screens.Count > 0);
         }
 
         void SetNextColor() {
@@ -308,9 +238,7 @@ namespace IngameScript {
             if (screens == null || screens.Count == 0)
                 if (!FindScreens()) return;
 
-            foreach (IMyTextPanel screen in screens) {
-                screen.BackgroundColor = color;
-            }
+            foreach (IMyTextPanel screen in screens) screen.BackgroundColor = color;
 
             lastColor = color;
         }
@@ -350,9 +278,7 @@ namespace IngameScript {
             string output = "";
             List<int> keys = new List<int>();
 
-            foreach(int key in launchers.Keys) {
-                keys.Add(key);
-            }
+            foreach(int key in launchers.Keys) keys.Add(key);
             keys = keys.OrderBy(o => o).ToList();
 
             for (int i = 0; i < keys.Count; i++) {
@@ -363,12 +289,10 @@ namespace IngameScript {
 
                     output += 
                         "Launcher " + keys[i] + " - "+ (launcher.busy? "BUSY":"STDBY") + 
-                        (launcher.ConstrCount() == CONSTRUCTORS_NOMINAL_NUMBER ? "" : ("\nCONSTR: " + launcher.ConstrCount() + "/" + CONSTRUCTORS_NOMINAL_NUMBER)) +
-                        (launcher.AccelCount()  == ACCELERATORS_NOMINAL_NUMBER ? "" : ("\nACCEL: " +  launcher.AccelCount()  + "/" + ACCELERATORS_NOMINAL_NUMBER));
+                        (launcher.ConstrCount() == CONSTRUCTORS_NOMINAL_NUMBER ? "" : ("\nCSTR: " + launcher.ConstrCount() + "/" + CONSTRUCTORS_NOMINAL_NUMBER)) +
+                        (launcher.AccelCount()  == ACCELERATORS_NOMINAL_NUMBER ? "" : ("\nACCL: " +  launcher.AccelCount()  + "/" + ACCELERATORS_NOMINAL_NUMBER));
                 }
             }
-
-
             return output;
         }
 
@@ -386,8 +310,6 @@ namespace IngameScript {
                 }
                 if(door.Status != DoorStatus.Open) {if (openness > door.OpenRatio) openness = door.OpenRatio;}
             }
-            if (openness == 0) return 36;
-            else 
             if (openness < 0.5f) {
                 int TTO;
 
@@ -404,14 +326,11 @@ namespace IngameScript {
 
             List<int> keys = new List<int>();
 
-            foreach (int key in launchers.Keys) {
-                keys.Add(key);
-            }
+            foreach (int key in launchers.Keys) keys.Add(key);
             keys = keys.OrderBy(o => o).ToList();
 
-            for (int i=0; i<keys.Count; i++) {
+            for (int i=0; i<keys.Count; i++)
                 ScheduleLaunch(keys[i], timeTillLaunch + (i * LAUNCH_SPACING));
-            }
         }
 
         void PrepareLaunch(int key) {
@@ -493,22 +412,18 @@ namespace IngameScript {
 
         public void Main(string argument, UpdateType updateSource) {
             if ((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) > 0) {
-                if (MAINTEANCE_NUM++ >= MAINTEANCE_FREQUENCY) {
-                    MAINTEANCE_NUM = 0;
+                if (MAINTENANCE_NUM++ >= MAINTENANCE_FREQUENCY) {
+                    MAINTENANCE_NUM = 0;
                     CheckAvailability();
                 }
                 if (!lastColor.Equals(COLOR_BLACK)) SetNextColor();
                 Output(GenerateStatus());
                 Job current = Register.Tick();
-                if (current != null) { DoTheJob(current); }
-                if (Register.GetSize() <= 0) {
-                    DoTheJob(new Job(JobType.CLOSE_DOOR));
-                }
+                if (current != null) DoTheJob(current);
+                if (Register.GetSize() <= 0) DoTheJob(new Job(JobType.CLOSE_DOOR));
             }
             else
-            if ((updateSource & UpdateType.IGC) > 0) {
-
-            }
+            if ((updateSource & UpdateType.IGC) > 0) { }
             else {
                 if (argument.Length > 0) {
                     string[] args = argument.ToLower().Split(' ');
@@ -524,27 +439,26 @@ namespace IngameScript {
                         case "load":
                             if (args.Length > 1) {
                                 int lnchNo;
-                                if(int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo)) {
+                                if(int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo)) 
                                     Register.Add(new Job(JobType.LOAD, 1, lnchNo));
-                                }
+                                
                             }
+                            else Echo("Please, provide Launcher's ID for this to work, e.g. 'load 1'");
                             break;
 
                         case "mid":
                             if (args.Length > 1) {
                                 int lnchNo;
-                                if (int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo)) {
+                                if (int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo))
                                     Register.Add(new Job(JobType.MIDSTATE, 1, lnchNo));
-                                }
                             }
+                            else Echo("Please, provide Launcher's ID for this to work, e.g. 'mid 1'");
                             break;
 
                         case "fire":
                             if (args.Length > 1) {
                                 int lnchNo;
-                                if (int.TryParse(args[1], out lnchNo)) {
-                                    PrepareLaunch(lnchNo);
-                                }
+                                if (int.TryParse(args[1], out lnchNo)) PrepareLaunch(lnchNo);
                             }
                             else PrepareSalvo();
                             break;
@@ -552,10 +466,10 @@ namespace IngameScript {
                         case "accel":
                             if (args.Length > 1) {
                                 int lnchNo;
-                                if (int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo)) {
+                                if (int.TryParse(args[1], out lnchNo) && launchers.ContainsKey(lnchNo))
                                     Register.Add(new Job(JobType.ACCELERATE, 1, lnchNo));
-                                }
                             }
+                            else Echo("Please, provide Launcher's ID for this to work, e.g. 'accel 1'");
                             break;
                     }
                 }

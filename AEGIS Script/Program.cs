@@ -129,10 +129,8 @@ namespace IngameScript {
             //position = Vector3D.Add(position, Vector3D.Multiply(speed,4 / 60));
 
             if (enSpeed > 0) {
-                Vector3D output = GetProjectedPos(position, speed, myPosition, myVel);
-                if (!output.Equals(NOTHING)) {
-                    return output;
-                }
+                Vector3D output;
+                if (TryGetProjectedPos(position, speed, myPosition, myVel, out output)) return output;
             }
 
             multiplier = (mySpeed != 0 && enSpeed != 0) ? (enSpeed / mySpeed) : 0;
@@ -142,8 +140,10 @@ namespace IngameScript {
 
             return Vector3D.Add(position, addition);
         }
-        Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, Vector3D mySpeed) {
+
+        bool TryGetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, Vector3D mySpeed, out Vector3D projPos) {
             /// do not enter if enSpeed is a "0" vector, or if our speed is 0
+            projPos = NOTHING;
             double speed = mySpeed.Length(); if(speed<=0) speed = 1d;
             Vector3D
                 A = myPos,
@@ -158,24 +158,13 @@ namespace IngameScript {
                 //delta = 4 * dist * dist * ((1 / (t * t)) + (cos * cos) - 1);
                 delta = 4 * (dist * dist) * ((t * t * cos * cos) - (t * t) + 1);
 
-            if (delta < 0) {
-                return NOTHING;
-            }
+            if (delta < 0) return false;
             else
             if (delta == 0) {
                 //projPath = -1 * (2 * dist * cos) / (2 * (((t * t) - 1) / (t * t)));
                 projPath = ((t * dist * cos) / ((t * t) - 1));
             }
             else {
-                //if (t == 0) return NOTHING;
-                //else
-                //if (t == 1) projPath = (dist) / (2 * cos);
-                //else {
-                //    projPath = ((2 * dist * cos - Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                //    if (projPath < 0) {
-                //        projPath = ((2 * dist * cos + Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                //    }
-                //}
                 if ((projPath = (((2 * t * dist * cos) + Math.Sqrt(delta)) / (2 * ((t * t) - 1)))) < 0) {
                     projPath = (((2 * t * dist * cos) - Math.Sqrt(delta)) / (2 * ((t * t) - 1)));
                 }
@@ -183,8 +172,10 @@ namespace IngameScript {
             mySpeed = Vector3D.Normalize(mySpeed);
             mySpeed = Vector3D.Multiply(mySpeed, projPath);
 
-            return Vector3D.Add(myPos, mySpeed);
+            projPos = Vector3D.Add(myPos, mySpeed);
+            return true;
         }
+
         double InterCosine(Vector3D first, Vector3D second) {
             double
                 scalarProduct = first.X * second.X + first.Y * second.Y + first.Z * second.Z,
@@ -511,9 +502,8 @@ namespace IngameScript {
                             Entry target;
                             long id;
 
-                            if (curr.code.Length > 0 && long.TryParse(curr.code, out id) && TryGetAMT(id, out target)) {
+                            if (curr.code.Length > 0 && long.TryParse(curr.code, out id) && TryGetAMT(id, out target))
                                 missile.TryRun("prep " + target.Position.X + " " + target.Position.Y + " " + target.Position.Z + " " + curr.code);
-                            }
                         }
                         break;
 
@@ -548,13 +538,9 @@ namespace IngameScript {
 
         void SortJobs() {schedule = schedule.OrderBy(o => o.TTJ).ToList();}
 
-        void AddAJob(Job job) {
-            schedule.Add(job);
-        }
+        void AddAJob(Job job) { schedule.Add(job); }
 
-        public bool PrepareForLaunch(long code, int launchsize = 1) {
-            return PrepareForLaunch(code.ToString(), launchsize);
-        }
+        public bool PrepareForLaunch(long code, int launchsize = 1) { return PrepareForLaunch(code.ToString(), launchsize); }
 
         public bool PrepareForLaunch(string code, int launchSize = 1) {
             List<IMyProgrammableBlock> progList = new List<IMyProgrammableBlock>();
@@ -769,10 +755,7 @@ namespace IngameScript {
                 if (args.Length > 0) {
                     switch (args[0]) {
                         case "reg":
-                            if (!AEGISUseRadarData) {
-                                content = "";
-                                return;
-                            }
+                            if (!AEGISUseRadarData) { content = ""; return; }
                             if (Radar_Controller == null && !SetRadarController()) break;
 
                             content = Radar_Controller.CustomData;

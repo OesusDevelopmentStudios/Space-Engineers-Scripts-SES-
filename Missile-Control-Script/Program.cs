@@ -13,26 +13,24 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v7.0.11";
-        const bool DEFAULT_DAMPENERS_SETTING = false;
-        const float ACT_DIST = 300f;
-        const double maxDeviation = 0.02d;
-        const int MIN_SUCC_CAMERAS = 9;
+        const string    SCRIPT_VERSION = "v7.0.11";
+        const int       MIN_SUCC_CAMERAS = 9;
+        const bool      DEFAULT_DAMPENERS_SETTING = false,
+                        THIS_MISSILE_IS_AN_ANTIMISSILE = false;
 
         MISSILE_STATE CurrentState;
 
         IMyBroadcastListener
                 missileListener;
-        readonly string
-                misCMDTag = "MISSILE_COMMAND-CHN";
+        string misCMDTag = "MISSILE_COMMAND-CHN";
         string missileTag = "MISSILE-CHN";
 
-        Vector3D  UPP_CMD = new Vector3D(0, -1, 0),
-                  DWN_CMD = new Vector3D(0, 1, 0),
-                  LFT_CMD = new Vector3D(-1, 0, 0),
-                  RIG_CMD = new Vector3D(1, 0, 0),
-                  CLK_CMD = new Vector3D(0, 0, 1),
-                  ALK_CMD = new Vector3D(0, 0, -1),
+        Vector3D  UPP_CMD = new Vector3D( 0, -1,  0),
+                  DWN_CMD = new Vector3D( 0,  1,  0),
+                  LFT_CMD = new Vector3D(-1,  0,  0),
+                  RIG_CMD = new Vector3D( 1,  0,  0),
+                  CLK_CMD = new Vector3D( 0,  0,  1),
+                  ALK_CMD = new Vector3D( 0,  0, -1),
 
                   NOTHING = new Vector3D(44, 44, 44),
                   target,
@@ -57,7 +55,9 @@ namespace IngameScript {
 
                 maxSpeed = 256d,
                 addSPDNeed = 100d,
-                maxSPDDev = 30d;
+                maxSPDDev = 30d,
+                ACT_DIST,
+                maxDeviation;
 
         bool    useMNV = false,
                 missileIsInGravityWell = false,
@@ -74,77 +74,6 @@ namespace IngameScript {
         readonly List<IMyBatteryBlock> BattryList = new List<IMyBatteryBlock>();
         readonly List<IMyGasTank> HTankList = new List<IMyGasTank>();
         List<IMyCameraBlock> MissileCameras = new List<IMyCameraBlock>();
-
-        class Size3SquareMatrix {
-            readonly List<double> content = new List<double>();
-            
-            public Size3SquareMatrix(List<double> content){ this.content.AddList(content); }
-
-            public Size3SquareMatrix(MatrixD matrix) : this(matrix.Forward, matrix.Right, matrix.Up) { }
-
-            public Size3SquareMatrix(Vector3D fwd, Vector3D rgt, Vector3D upp) {
-                content.Add(fwd.X); content.Add(rgt.X); content.Add(upp.X);
-
-                content.Add(fwd.Y); content.Add(rgt.Y); content.Add(upp.Y);
-
-                content.Add(fwd.Z); content.Add(rgt.Z); content.Add(upp.Z);
-            }
-
-            public double Get(int matrixIndex){
-                return content[matrixIndex-1];
-            }
-
-            public void Set(int matrixIndex, double value){
-                if(matrixIndex-1>this.content.Count) return;
-                this.content[matrixIndex-1] = value;
-            }
-
-            public Vector3D MultiplyMatrixByVector(Vector3D input){
-                int i = 0;
-                return new Vector3D(
-                    input.X * Get(++i) + input.Y * Get(++i) + input.Z * Get(++i),
-                    input.X * Get(++i) + input.Y * Get(++i) + input.Z * Get(++i),
-                    input.X * Get(++i) + input.Y * Get(++i) + input.Z * Get(++i)
-                );
-            }
-
-            public double GetDet(){
-                return
-                (Get(1) * Get(5) * Get(9)  
-                +Get(2) * Get(6) * Get(7)
-                +Get(3) * Get(4) * Get(8)
-                -Get(3) * Get(5) * Get(7) 
-                -Get(2) * Get(4) * Get(9) 
-                -Get(1) * Get(6) * Get(8)) 
-                //!=0
-                ;
-            }
-
-            public double GetValueForComplementaryMatrix(int index){
-                int[] indexes;
-                switch(index) {
-                    case 1: indexes = new int []{ 5, 9, 6, 8}; break;
-                    case 2: indexes = new int []{ 6, 7, 4, 9}; break;
-                    case 3: indexes = new int []{ 4, 8, 5, 7}; break;
-                    case 4: indexes = new int []{ 3, 8, 2, 9}; break;
-                    case 5: indexes = new int []{ 1, 9, 3, 7}; break;
-                    case 6: indexes = new int []{ 2, 7, 1, 8}; break;
-                    case 7: indexes = new int []{ 2, 6, 3, 5}; break;
-                    case 8: indexes = new int []{ 3, 4, 1, 6}; break;
-                    default:indexes = new int []{ 1, 5, 2, 4}; break;
-                }
-
-                return (Get(indexes[0]) * Get(indexes[1])) - (Get(indexes[2]) * Get(indexes[3]));
-            }
-
-            public Size3SquareMatrix GetInvertedMatrix() {
-                List<double> outputContent = new List<double>();
-                double det;
-                if((det = GetDet())==0) return new Size3SquareMatrix(new List<double> { 0, 0, 0, 0, 0, 0, 0, 0, 0});
-                for(int i=1;i<10;i++) outputContent.Add(GetValueForComplementaryMatrix(i)/det);
-                return new Size3SquareMatrix(outputContent);
-            }
-        }
 
         class NavPrompt {
             public int dirInt;
@@ -234,7 +163,10 @@ namespace IngameScript {
                 case MISSILE_STATE.APPROACHING_TARGET:
                     if (controllerExistsAndWorking) SHIP_CONTROLLER.DampenersOverride = false;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
-                    useMNV = false;
+                    if(THIS_MISSILE_IS_AN_ANTIMISSILE)
+                        if(THRUSTERS.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, 1f);
+                    else
+                        useMNV = false;
                     if (missileListener == null) {
                         missileListener = IGC.RegisterBroadcastListener(missileTag);
                         missileListener.SetMessageCallback();
@@ -255,9 +187,7 @@ namespace IngameScript {
             CurrentState = state;
         }
 
-        float Multiplier() {
-            return Runtime.UpdateFrequency == UpdateFrequency.Update1? 3f:1f;
-        }
+        float Multiplier() { return ((Runtime.UpdateFrequency == UpdateFrequency.Update1) && !THIS_MISSILE_IS_AN_ANTIMISSILE)? 3f:1f; }
 
         void ChangeState(string state) {
             Output("Changing mode from " + CurrentState + " to " + state + ".");
@@ -277,7 +207,22 @@ namespace IngameScript {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             target = NOTHING;
             SayMyName(SCRIPT_VERSION);
-            Me.CubeGrid.CustomName = "Universal Missile " + SCRIPT_VERSION;
+            if(THIS_MISSILE_IS_AN_ANTIMISSILE) {
+                Me.CubeGrid.CustomName = "Antimissile " + SCRIPT_VERSION;
+                ACT_DIST = 100d;
+                maxDeviation = 0.65d;
+                misCMDTag = "AEGIS";
+                addSPDNeed = 25d;
+                maxSPDDev = 50d;
+            }
+            else {
+                Me.CubeGrid.CustomName = "Antiship Missile " + SCRIPT_VERSION;
+                ACT_DIST = 300d;
+                maxDeviation = 0.02d;
+                misCMDTag = "MISSILE_COMMAND-CHN";
+                addSPDNeed = 100d;
+                maxSPDDev = 30d;
+            }
 
             List<IMyShipController> controls = new List<IMyShipController>();
             ControlList = new List<IMyShipController>();
@@ -850,7 +795,7 @@ namespace IngameScript {
             else {
                 Runtime.UpdateFrequency = UpdateFrequency.None;
                 //if (!Me.CustomName.StartsWith("ANTIMISSILE-"))
-                Me.CustomName = "MISSILE-" + refCon.OtherConnector.CustomData;
+                Me.CustomName = String.Format("{0}MISSILE-{1}",THIS_MISSILE_IS_AN_ANTIMISSILE?"ANTI":"",refCon.OtherConnector.CustomData);
                 //getCustName(); 
             }
 
@@ -1050,13 +995,9 @@ namespace IngameScript {
                             return;
                         }
                     }
-                    else {
-                        Runtime.UpdateFrequency = UpdateFrequency.Update1;
-                    }
+                    else Runtime.UpdateFrequency = UpdateFrequency.Update1;
 
-                    for (culprit = 0; culprit < 3; culprit++) {
-                        if (prompts[culprit].dirInt != 1 && prompts[culprit].dirInt != 2) break;
-                    }
+                    for (culprit = 0; culprit < 3; culprit++) if (prompts[culprit].dirInt != 1 && prompts[culprit].dirInt != 2) break;
                     culprit = prompts[culprit].dirInt;
 
                     command = DirToCmd(2, culprit);
@@ -1067,7 +1008,6 @@ namespace IngameScript {
 
                 case MISSILE_STATE.GRAV_ALGN:
                     algn = CutVector(Vector3D.Normalize(Vector3D.Subtract(planet, ship)));
-
 
                     algPr = new List<NavPrompt>();
                     for (int i = 1; i < 7; i++)
@@ -1283,62 +1223,86 @@ namespace IngameScript {
                 ChangeState(argument.ToUpper());
         }
 
-        void EvaluateRadioMessageInput() {
-            while (missileListener != null && missileListener.HasPendingMessage) {
-                MyIGCMessage message = missileListener.AcceptMessage();
-                string data = (string)message.Data;
-                string[] bits = data.Split(';');
-                if (bits[0].ToUpper().Equals("TARSET")) {
-                    Vector3D
-                        oldTar = target,
-                        olCaTa = cameras_target;
+        string GetMessageTag(IMyIGCMessage message){
+            string data = (string)message.Data;
+            string[] bits = data.Split(';');
 
-                    missileHasPendingOrders = true;
-                    if (bits.Length > 3) {
-                        if (bits.Length > 6) {
-                            Vector3D pos, vel;
-                            try {
-                                pos = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
-                                vel = new Vector3D(double.Parse(bits[4]), double.Parse(bits[5]), double.Parse(bits[6]));
+            return (bits.Length>0)? bits[0].ToUpper():"";
+        }
 
-                                target = ApplyTarSpd(pos, vel);
-                                cameras_target = pos;
-                            }
-                            catch (Exception e) {
-                                Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
-                                Me.GetSurface(0).WriteText(e.ToString());
-                                target = oldTar;
-                                cameras_target = olCaTa;
-                                missileHasPendingOrders = false;
-                            }
-                        }
-                        else {
-                            try {
-                                target = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
-                                cameras_target = target;
-                            }
-                            catch (Exception e) {
-                                Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
-                                Me.GetSurface(0).WriteText(e.ToString());
-                                target = oldTar;
-                                cameras_target = olCaTa;
-                                missileHasPendingOrders = false;
-                            }
-                        }
-                    }
+        void EvaluateAllPendingMessages(){
+            List<IMyIGCMessage> messages = new List<IMyIGCMessage>();
+            while(missileListener!=null && missileListener.HasPendingMessage)
+                messages.Add(missileListener.AcceptMessage());
+
+            int msgCount = messages.Count, lastTarsetIndex = -1;
+            string tag;
+            for(int i=0; i<msgCount; i++){
+                IMyIGCMessage message = messages[i];
+                tag = GetMessageTag(message);
+                if (tag.Equals("ABORT")){
+                    EvaluateMessage(message)
                     return;
                 }
                 else
-                if (data.Equals("ABORT") || (bits.Length > 0 && bits[0].ToUpper().Equals("ABORT"))) {
-                    MoveAllGyros(0, 0, 0);
-                    OverrideGyros(false);
-                    List<IMyThrust> group = new List<IMyThrust>();
-                    GridTerminalSystem.GetBlocksOfType(group);
-                    MoveAGroupOfThrusters(group, 0f);
-                    if (controllerExistsAndWorking) SHIP_CONTROLLER.DampenersOverride = false;
-                    SelfDestruct();
-                    ChangeState(MISSILE_STATE.INITIALIZING);
+                if (tag.Equals("TARSET")) 
+                    lastTarsetIndex = i;
+            }
+
+            if(lastTarsetIndex!=-1) EvaluateMessage(messages[lastTarsetIndex]);
+        }
+
+        void EvaluateMessage(IMyIGCMessage message) {
+            string data = (string)message.Data;
+            string[] bits = data.Split(';');
+            if (bits[0].ToUpper().Equals("TARSET")) {
+                Vector3D
+                    oldTar = target,
+                    olCaTa = cameras_target;
+                missileHasPendingOrders = true;
+                if (bits.Length > 3) {
+                    if (bits.Length > 6) {
+                        Vector3D pos, vel;
+                        try {
+                            pos = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
+                            vel = new Vector3D(double.Parse(bits[4]), double.Parse(bits[5]), double.Parse(bits[6]));
+                            target = ApplyTarSpd(pos, vel);
+                            cameras_target = pos;
+                        }
+                        catch (Exception e) {
+                            Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
+                            Me.GetSurface(0).WriteText(e.ToString());
+                            target = oldTar;
+                            cameras_target = olCaTa;
+                            missileHasPendingOrders = false;
+                        }
+                    }
+                    else {
+                        try {
+                            target = new Vector3D(double.Parse(bits[1]), double.Parse(bits[2]), double.Parse(bits[3]));
+                            cameras_target = target;
+                        }
+                        catch (Exception e) {
+                            Me.GetSurface(0).ContentType = ContentType.TEXT_AND_IMAGE;
+                            Me.GetSurface(0).WriteText(e.ToString());
+                            target = oldTar;
+                            cameras_target = olCaTa;
+                            missileHasPendingOrders = false;
+                        }
+                    }
                 }
+                return;
+            }
+            else
+            if (data.Equals("ABORT") || (bits.Length > 0 && bits[0].ToUpper().Equals("ABORT"))) {
+                MoveAllGyros(0, 0, 0);
+                OverrideGyros(false);
+                List<IMyThrust> group = new List<IMyThrust>();
+                GridTerminalSystem.GetBlocksOfType(group);
+                MoveAGroupOfThrusters(group, 0f);
+                if (controllerExistsAndWorking) SHIP_CONTROLLER.DampenersOverride = false;
+                SelfDestruct();
+                ChangeState(MISSILE_STATE.INITIALIZING);
             }
         }
 
