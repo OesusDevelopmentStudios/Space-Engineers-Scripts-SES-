@@ -315,7 +315,7 @@ namespace IngameScript {
                 }
                 else {
                     deviation *= deviation > 0.05 ? 2 : 1;
-                    return culprit % 2 == 0? new Vector2(0, deviation * 5):return new Vector2(0, -deviation * 5);
+                    return culprit % 2 == 0? new Vector2(0, deviation * 5):new Vector2(0, -deviation * 5);
                 }
             }
 
@@ -451,6 +451,7 @@ namespace IngameScript {
 
             bool TryGetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, out Vector3D projPos) {
                 /// do not enter if enSpeed is a "0" vector, or if our speed is 0
+                projPos = NOTHING;
                 Vector3D
                     A = enPos,
                     B = myPos;
@@ -634,7 +635,7 @@ namespace IngameScript {
                         e.ToString();
                         status += 
                         String.Format(
-                            "\n650: There was a parsing error: \"{0]\"\n{1}",
+                            "\n650: There was a parsing error: \"{0}\"\n{1}",
                             ctrl.CustomData.Substring(TURRET_BASE.Length), e.StackTrace
                         );
                     }
