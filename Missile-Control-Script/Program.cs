@@ -13,16 +13,16 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string    SCRIPT_VERSION = "v7.0.11";
+        const string    SCRIPT_VERSION = "v7.1.0";
         const int       MIN_SUCC_CAMERAS = 9;
-        const bool      DEFAULT_DAMPENERS_SETTING = false,
+        readonly bool   DEFAULT_DAMPENERS_SETTING = false,
                         THIS_MISSILE_IS_AN_ANTIMISSILE = false;
 
         MISSILE_STATE CurrentState;
 
         IMyBroadcastListener
                 missileListener;
-        string misCMDTag = "MISSILE_COMMAND-CHN";
+        readonly string misCMDTag = "MISSILE_COMMAND-CHN";
         string missileTag = "MISSILE-CHN";
 
         Vector3D  UPP_CMD = new Vector3D( 0, -1,  0),
@@ -48,14 +48,15 @@ namespace IngameScript {
         int timeIndex = 0, ticksSinceLastOrder = 0;
         readonly int myNumber = 0;
 
-        double  strtSPD = -1d,
+        double strtSPD = -1d,
                 strtELV = -1d,
                 currentMissileElevation = -1d,
                 lastDist = 999999,
 
                 maxSpeed = 256d,
                 addSPDNeed = 100d,
-                maxSPDDev = 30d,
+                maxSPDDev = 30d;
+        readonly double
                 ACT_DIST,
                 maxDeviation;
 
@@ -163,10 +164,11 @@ namespace IngameScript {
                 case MISSILE_STATE.APPROACHING_TARGET:
                     if (controllerExistsAndWorking) SHIP_CONTROLLER.DampenersOverride = false;
                     Runtime.UpdateFrequency = UpdateFrequency.Update1;
-                    if(THIS_MISSILE_IS_AN_ANTIMISSILE)
-                        if(THRUSTERS.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, 1f);
-                    else
-                        useMNV = false;
+                    if (THIS_MISSILE_IS_AN_ANTIMISSILE) {
+                        if (THRUSTERS.TryGetValue(1, out group)) MoveAGroupOfThrusters(group, 1f);
+                    }
+                    else useMNV = false;
+
                     if (missileListener == null) {
                         missileListener = IGC.RegisterBroadcastListener(missileTag);
                         missileListener.SetMessageCallback();
@@ -1037,7 +1039,6 @@ namespace IngameScript {
                     break;
 
                 case MISSILE_STATE.APPROACHING_TARGET:
-
                     if (curr.Length() <= maxDeviation) {
                         useMNV = true;
                         Runtime.UpdateFrequency = UpdateFrequency.Update1;
@@ -1068,7 +1069,11 @@ namespace IngameScript {
                         if (prompts[culprit].dirInt != 1 && prompts[culprit].dirInt != 2) break;
                     }   culprit = prompts[culprit].dirInt;
 
-                    float mnvAmm = (distance >= 10000) ? (float)curr.Length() * 20f : 1f;
+                    Vector3D velocitySub = Vector3D.Subtract(CutVector(Vector3D.Normalize(SHIP_CONTROLLER.GetShipVelocities().LinearVelocity)), sub);
+
+                    float mnvAmm = (distance >= 10000) ? (float)curr.Length() * 20f : (velocitySub.Length() < 0.1d? 0.4f :1f);
+
+                    //AntennaText(String.Format("{0} {1:0.00}", mnvAmm, velocitySub.Length()));
 
                     if (missileIsInGravityWell && !mbOrbital) {
                         if (culprit == 5)
@@ -1077,12 +1082,13 @@ namespace IngameScript {
                         if (culprit == 6) 
                             mnvAmm = distance > 4000d ? 0f : 1f;
                     }
+                    command = DirToCmd(2, culprit);
 
                     culprit = culprit == 4 ? 3 : (culprit==3? 4 : culprit);
 
                     if (useMNV) DirToMnv(2, culprit, mnvAmm);
 
-                    MoveAllGyros((float)((command = DirToCmd(2, culprit)).X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
+                    MoveAllGyros((float)(command.X * curr.Length()), (float)(command.Y * curr.Length()), (float)(command.Z * curr.Length()));
 
                     if (distance >= 4000d && missileIsInGravityWell && currentMissileElevation <= 1000) if (THRUSTERS.TryGetValue(5, out group)) MoveAGroupOfThrusters(group, 1f);
                     lastDist = distance;
@@ -1223,7 +1229,7 @@ namespace IngameScript {
                 ChangeState(argument.ToUpper());
         }
 
-        string GetMessageTag(IMyIGCMessage message){
+        string GetMessageTag(MyIGCMessage message){
             string data = (string)message.Data;
             string[] bits = data.Split(';');
 
@@ -1231,17 +1237,17 @@ namespace IngameScript {
         }
 
         void EvaluateAllPendingMessages(){
-            List<IMyIGCMessage> messages = new List<IMyIGCMessage>();
+            List<MyIGCMessage> messages = new List<MyIGCMessage>();
             while(missileListener!=null && missileListener.HasPendingMessage)
                 messages.Add(missileListener.AcceptMessage());
 
             int msgCount = messages.Count, lastTarsetIndex = -1;
             string tag;
             for(int i=0; i<msgCount; i++){
-                IMyIGCMessage message = messages[i];
+                MyIGCMessage message = messages[i];
                 tag = GetMessageTag(message);
                 if (tag.Equals("ABORT")){
-                    EvaluateMessage(message)
+                    EvaluateMessage(message);
                     return;
                 }
                 else
@@ -1252,7 +1258,7 @@ namespace IngameScript {
             if(lastTarsetIndex!=-1) EvaluateMessage(messages[lastTarsetIndex]);
         }
 
-        void EvaluateMessage(IMyIGCMessage message) {
+        void EvaluateMessage(MyIGCMessage message) {
             string data = (string)message.Data;
             string[] bits = data.Split(';');
             if (bits[0].ToUpper().Equals("TARSET")) {
@@ -1334,14 +1340,14 @@ namespace IngameScript {
             if (SHIP_CONTROLLER == null || !SHIP_CONTROLLER.IsWorking)
                 controllerExistsAndWorking = ControllingBlockFoundAndApplied();
             if ((updateSource & UpdateType.IGC) > 0) {
-                EvaluateRadioMessageInput();
+                EvaluateAllPendingMessages();
             }
             else {
                 switch (argument.ToUpper()) {
                     case "":
                         if (skipThisTick) {
                             skipThisTick = false;
-                            //OutputStatusOnTheAntenna();
+                            OutputStatusOnTheAntenna();
                             return;
                         }
                         else {

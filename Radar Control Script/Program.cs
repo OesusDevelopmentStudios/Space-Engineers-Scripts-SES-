@@ -32,8 +32,6 @@ namespace IngameScript {
         readonly IMyBroadcastListener
             misCMDListener;
 
-        int MAX_WAIT = 900;
-
         float currExt, currRPM;
 
         List<Job> schedule = new List<Job>();
@@ -430,7 +428,7 @@ namespace IngameScript {
             return block.CubeGrid.Equals(Me.CubeGrid);
         }
 
-        void SetMax(int MAX) { Register.SetMax((MAX_WAIT = MAX)); }
+        void SetMax(int MAX) { Register.SetMax(MAX); }
 
         void Detect() {
             bool AllRight = true;
