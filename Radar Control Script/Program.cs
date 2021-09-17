@@ -32,6 +32,8 @@ namespace IngameScript {
         readonly IMyBroadcastListener
             misCMDListener;
 
+        public static int SelectedTargetIndex = 1;
+
         float currExt, currRPM;
 
         List<Job> schedule = new List<Job>();
@@ -218,11 +220,13 @@ namespace IngameScript {
 
                 Vector3D position = Ship_Controller.GetPosition();
                 List<Entry> content = GetContentAsSortedList();
+                if(SelectedTargetIndex>1 && SelectedTargetIndex>GetContentAsList.Count) SelectedTargetIndex = GetContentAsList.Count;
                 foreach (Entry entry in content) {
-                    output += String.Format("\n{0,2}){1,4}{2,4}{3,8}{4,8}", ++i, 
+                    output += String.Format("\n{5,1}{0,2}){1,4}{2,4}{3,8}{4,8}{6,1}{7}", ++i, 
                     RelationToAbbreviation(entry.Relation), TypeToAbbreviation(entry.Type), 
                     new Bearing(position, Ship_Controller.WorldMatrix, entry.Location).ToString(), 
-                    Convert(entry.Location));
+                    Convert(entry.Location), i==SelectedTargetIndex? ">":"", i==SelectedTargetIndex? "":"<",
+                    (entry.));
                 }
 
                 return output;
