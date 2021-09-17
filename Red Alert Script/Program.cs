@@ -22,7 +22,6 @@ namespace IngameScript {
 
         readonly string 
             SHIP_NAME = "",
-            SOUND_BLOCK,
             ROTAT_LIGHT,
             OTHER_LIGHT,
             SRED_LIGHT,
@@ -31,19 +30,6 @@ namespace IngameScript {
 
         bool
             onAlert;
-
-        IMyProgrammableBlock EnergyControl;
-
-        void GetECBlock() {
-            List<IMyProgrammableBlock> Progs = new List<IMyProgrammableBlock>();
-            GridTerminalSystem.GetBlocksOfType(Progs);
-            foreach(IMyProgrammableBlock block in Progs) {
-                if (IsOnThisGrid(block) && block.CustomName.Contains("[ENERGY CONTROL]")) {
-                    EnergyControl = block;
-                    return;
-                }
-            }
-        }
 
         bool IsOnThisGrid(IMyCubeBlock block) { return (Me.CubeGrid.Equals(block.CubeGrid)); }
 
@@ -60,24 +46,12 @@ namespace IngameScript {
             SHIP_NAME = Me.CubeGrid.CustomName;
             SayMyName("RED ALERT");
             onAlert = false;
-            SOUND_BLOCK = SHIP_NAME + "/Sound Block";
-            ROTAT_LIGHT = SHIP_NAME + "/Rotating Light";
-            OTHER_LIGHT = SHIP_NAME + "/Light";
-            SRED_LIGHT = SHIP_NAME + "/Static Red Light";
-            SWITCH_LIGHT = SHIP_NAME + "/Switch Light";
-            ALARM_LIGHT = SHIP_NAME + "/Alarm Light";
-            GetECBlock();
+            ROTAT_LIGHT = "Rotating Light";
+            OTHER_LIGHT = "Light";
+            SRED_LIGHT = "Static Red Light";
+            SWITCH_LIGHT = "Switch Light";
+            ALARM_LIGHT = "Alarm Light";
         }
-
-        public List<IMyLightingBlock> GetRotatingLights() { return GetLights(ROTAT_LIGHT); }
-
-        public List<IMyLightingBlock> GetOtherLights() { return GetLights(OTHER_LIGHT); }
-
-        public List<IMyLightingBlock> GetAlarmLights() { return GetLights(ALARM_LIGHT); }
-
-        public List<IMyLightingBlock> GetSwtchLights() { return GetLights(SWITCH_LIGHT); }
-
-        public List<IMyLightingBlock> GetSredLights() { return GetLights(SRED_LIGHT); }
 
         public void SetWeapons(bool turn) {
             List<IMyLargeTurretBase> temp = new List<IMyLargeTurretBase>();
@@ -98,17 +72,16 @@ namespace IngameScript {
         }
 
         public List<IMyLightingBlock> GetLights(string name) {
-            List<IMyLightingBlock> result = new List<IMyLightingBlock>();
-            List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-            GridTerminalSystem.SearchBlocksOfName(name, temp);
+            List<IMyLightingBlock> 
+                result = new List<IMyLightingBlock>(),
+                temp = new List<IMyLightingBlock>();
 
-            foreach (IMyTerminalBlock b in temp) {
-                if (b is IMyLightingBlock) {
-                    IMyLightingBlock tempo = b as IMyLightingBlock;
-                    result.Add(tempo);
-                }
+            GridTerminalSystem.GetBlocksOfType(temp);
+
+            foreach (IMyLightingBlock light in temp) {
+                if (IsOnThisGrid(light) && light.CustomName.Contains(name))
+                    result.Add(light);
             }
-            temp.Clear();
 
             return result;
         }
@@ -125,42 +98,12 @@ namespace IngameScript {
             }
         }
 
-        public List<IMyTextPanel> GetSupportScreens() {
-            List<IMyTextPanel>  
-                temp = new List<IMyTextPanel>(),
-                output = new List<IMyTextPanel>();
-
-            GridTerminalSystem.GetBlocksOfType(temp);
-            foreach(IMyTextPanel panel in temp) {
-                if (IsOnThisGrid(panel) && panel.CustomName.Contains("[RED ALERT]")) output.Add(panel);
-            }
-
-            return output;
-        }
-
-        public void Output(string input) {
-            List<IMyTextPanel> screens = GetSupportScreens();
-            if(screens.Count>0)
-                foreach (IMyTextPanel screen in screens) {
-                    if (screen != null) {
-                        screen.FontSize = (float)1.9;
-                        screen.Alignment = TextAlignment.CENTER;
-                        screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                        screen.WriteText(input, false);
-                    }
-                }
-            else Echo(input);
-        }
-
-        //Main Functions
-
         public void SwitchRedAlert() {
-            List<IMyLightingBlock> rotatLights = GetRotatingLights();
-            List<IMyLightingBlock> alarmLights = GetAlarmLights();
-            List<IMyLightingBlock> switchLights= GetSwtchLights();
-            List<IMyLightingBlock> otherLights = GetOtherLights();
-            List<IMyLightingBlock> sredLights  = GetSredLights();
-            IMySoundBlock alarmBlock = GridTerminalSystem.GetBlockWithName(SOUND_BLOCK) as IMySoundBlock;
+            List<IMyLightingBlock> rotatLights = GetLights(ROTAT_LIGHT);
+            List<IMyLightingBlock> alarmLights = GetLights(ALARM_LIGHT);
+            List<IMyLightingBlock> switchLights= GetLights(SWITCH_LIGHT);
+            List<IMyLightingBlock> otherLights = GetLights(OTHER_LIGHT);
+            List<IMyLightingBlock> sredLights  = GetLights(SRED_LIGHT);
 
             onAlert = !onAlert;
 
@@ -171,7 +114,6 @@ namespace IngameScript {
                 ChangeLightsColor   (sredLights,    new Color( 60,  0,  0));
                 ChangeLightsStatus  (rotatLights, true);
                 ChangeLightsStatus  (alarmLights, true);
-                if (alarmBlock != null) alarmBlock.Play();
                 foreach (IMyLightingBlock l in otherLights) {
                     l.BlinkLength = 50f;
                     l.BlinkIntervalSeconds = 2;
@@ -182,8 +124,6 @@ namespace IngameScript {
                 }
                 SetWeapons(true);
                 CloseAllDoors();
-                Output("\nRED ALERT");
-                if (EnergyControl != null) EnergyControl.TryRun("COMBAT");
             }
             else {   // turn the <s> Fucking Furries </s> off
                 ChangeLightsColor   (otherLights,   new Color(255,255,255));
@@ -191,7 +131,6 @@ namespace IngameScript {
                 ChangeLightsColor   (sredLights,    new Color(255,255,255));
                 ChangeLightsStatus  (rotatLights, false);
                 ChangeLightsStatus  (alarmLights, false);
-                if (alarmBlock != null) alarmBlock.Stop();
                 foreach (IMyLightingBlock l in otherLights) {
                     l.BlinkIntervalSeconds = 0;
                     l.BlinkOffset = 50f;
@@ -199,8 +138,6 @@ namespace IngameScript {
                 foreach (IMyLightingBlock l in switchLights) {
                     l.BlinkIntervalSeconds = 0;
                 }
-                Output("\nIN ORDER");
-                if (EnergyControl != null) EnergyControl.TryRun("NORMAL");
             }
         }
 
@@ -249,15 +186,15 @@ namespace IngameScript {
                         ) {
                             if(bl.BlockDefinition.SubtypeName.Equals("RotatingLightLarge")
                                || bl.BlockDefinition.SubtypeName.Equals("RotatingLightSmall")) {
-                                bl.CustomName = ROTAT_LIGHT;
+                                bl.CustomName += ROTAT_LIGHT;
                             }
                             else
                             if(bl.BlockDefinition.SubtypeName.Equals("LargeBlockFrontLight")
                                || bl.BlockDefinition.SubtypeName.Equals("SmallBlockFrontLight")) {
-                                bl.CustomName = SHIP_NAME+"/Spotlight";
+                                bl.CustomName += "Spotlight";
                             }
                             else {
-                                bl.CustomName = OTHER_LIGHT;
+                                bl.CustomName += OTHER_LIGHT;
                             }
                         }
                     }

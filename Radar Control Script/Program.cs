@@ -657,8 +657,8 @@ namespace IngameScript {
                     catch (Exception e) { missNo = 0; e.ToString(); }
                     if (missNo != 0) {
                         AddAJob(new Job(JobType.OpenDoor, missNo * 10, missNo));
-                        AddAJob(new Job(JobType.Launch, 200 + missNo * 10, missNo, code));
-                        AddAJob(new Job(JobType.CloseDoor, 700 + missNo * 10, missNo));
+                        AddAJob(new Job(JobType.Launch, 10 + missNo * 10, missNo, code));
+                        AddAJob(new Job(JobType.CloseDoor, 100 + missNo * 10, missNo));
                     }
                     else continue;
                     if (++counter >= launchSize) return;
@@ -703,7 +703,7 @@ namespace IngameScript {
                 Job curr = schedule[0];
                 schedule.RemoveAt(0);
                 string name = "MISSILE-";
-                IMyAirtightHangarDoor siloDoor = GridTerminalSystem.GetBlockWithName("Silo Door " + curr.misNo) as IMyAirtightHangarDoor;
+                IMyAirtightSlideDoor siloDoor = GridTerminalSystem.GetBlockWithName("Silo Door " + curr.misNo) as IMyAirtightSlideDoor;
                 switch (curr.type) {
                     case JobType.OpenDoor:
                         if (siloDoor != null) siloDoor.OpenDoor();

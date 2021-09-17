@@ -13,7 +13,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string    SCRIPT_VERSION = "v7.1.0";
+        const string    SCRIPT_VERSION = "v8.2.3";
         const int       MIN_SUCC_CAMERAS = 9;
         readonly bool   DEFAULT_DAMPENERS_SETTING = false,
                         THIS_MISSILE_IS_AN_ANTIMISSILE = false;
@@ -38,8 +38,8 @@ namespace IngameScript {
 
         const int FW_VAL = 2,
                   UP_VAL = 6,
-                  LF_VAL = 4,
-                  RT_VAL = 3,
+                  LF_VAL = 3,
+                  RT_VAL = 4,
                   BW_VAL = 1,
                   DW_VAL = 5;
 
@@ -97,9 +97,9 @@ namespace IngameScript {
         }
 
         void CutAnchor(int ticksToLaunch) {
-            if (ticksToLaunch == 120) { foreach (IMyShipConnector con in ConnecList) { if (con.CustomName.Equals("Missile/Refuel Connector")) con.Enabled = false; } }
-            else if (ticksToLaunch == 80) { foreach (IMyGasTank tank in HTankList) { tank.Stockpile = false; } }
-            else if (ticksToLaunch == 40) { foreach (IMyBatteryBlock batt in BattryList) { batt.ChargeMode = ChargeMode.Auto; } }
+            if (ticksToLaunch == 6) { foreach (IMyShipConnector con in ConnecList) { if (con.CustomName.Equals("Missile/Refuel Connector")) con.Enabled = false; } }
+            else if (ticksToLaunch == 4) { foreach (IMyGasTank tank in HTankList) { tank.Stockpile = false; } }
+            else if (ticksToLaunch == 2) { foreach (IMyBatteryBlock batt in BattryList) { batt.ChargeMode = ChargeMode.Auto; } }
             else if (ticksToLaunch <= 0) {
                 foreach (IMyShipMergeBlock mer in MergerList) { if (mer.CustomName.Equals("Missile/DMerge Block")) mer.Enabled = false; }
             }
@@ -208,7 +208,6 @@ namespace IngameScript {
         public Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             target = NOTHING;
-            SayMyName(SCRIPT_VERSION);
             if(THIS_MISSILE_IS_AN_ANTIMISSILE) {
                 Me.CubeGrid.CustomName = "Antimissile " + SCRIPT_VERSION;
                 ACT_DIST = 100d;
@@ -225,7 +224,8 @@ namespace IngameScript {
                 addSPDNeed = 100d;
                 maxSPDDev = 30d;
             }
-
+			
+            SayMyName(SCRIPT_VERSION);
             List<IMyShipController> controls = new List<IMyShipController>();
             ControlList = new List<IMyShipController>();
             GridTerminalSystem.GetBlocksOfType(controls);
@@ -240,6 +240,12 @@ namespace IngameScript {
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
             surface.FontSize = textSize;
             surface.WriteText(ScriptName);
+
+            surface = Me.GetSurface(0);
+            surface.Alignment = TextAlignment.CENTER;
+            surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.FontSize = 2f;
+            surface.WriteText("\n\n\n"+Me.CustomName);
         }
 
         Vector3D CutVector(Vector3D vector) { return CutVector(vector, 3); }
@@ -316,8 +322,9 @@ namespace IngameScript {
         void DirToMnv(int lndDir, int culprit, float ovrPrc) {
             ResetThrust();
             List<IMyThrust> manThr;
+            //if (lndDir == 2 && THRUSTERS.TryGetValue(culprit, out manThr)) { MoveAGroupOfThrusters(manThr, ovrPrc); return; }
             /**/
-            if (lndDir == 1 && (culprit == 3 || culprit == 4)) {
+            if (lndDir == 2 && (culprit == 3 || culprit == 4)) {
                 if (culprit == 3) { if (THRUSTERS.TryGetValue(4, out manThr)) { MoveAGroupOfThrusters(manThr, ovrPrc); return; } }
                 else { if (THRUSTERS.TryGetValue(3, out manThr)) { MoveAGroupOfThrusters(manThr, ovrPrc); return; } }
             }
@@ -786,19 +793,30 @@ namespace IngameScript {
             IMyShipConnector refCon = null;
             List<IMyShipConnector> cons = new List<IMyShipConnector>();
             GridTerminalSystem.GetBlocksOfType(cons);
+            bool refconFound = false;
             foreach (IMyShipConnector con in cons) {
-                if (con.IsWorking && IsOnThisGrid(con) && con.CustomName.Equals("Missile/Refuel Connector")) {
+                if (con.IsWorking && IsOnThisGrid(con) && con.CustomName.Contains("Refuel Connector")) {
                     refCon = con;
+                    refconFound = true;
                     break;
                 }
             }
 
-            if (MissileCameras.Count < MIN_SUCC_CAMERAS || refCon == null || refCon.Status != MyShipConnectorStatus.Connected) return;
+            if (MissileCameras.Count < MIN_SUCC_CAMERAS || refCon==null || refCon.Status != MyShipConnectorStatus.Connected || refCon.OtherConnector == null || refCon.OtherConnector.CustomData.Length <= 0) {
+                if (MissileCameras.Count < MIN_SUCC_CAMERAS) Echo("MissileCameras.Count < MIN_SUCC_CAMERAS");
+                if (!refconFound) Echo("!refconFound");
+                else {
+                    if (refCon.Status != MyShipConnectorStatus.Connected) Echo("refCon.Status != MyShipConnectorStatus.Connected");
+                    if (refCon.OtherConnector == null) Echo("refCon.OtherConnector == null");
+                    else
+                    if (refCon.OtherConnector.CustomData.Length <= 0) Echo("refCon.OtherConnector.CustomData.Length <= 0");
+                }
+                return;
+            }
             else {
                 Runtime.UpdateFrequency = UpdateFrequency.None;
-                //if (!Me.CustomName.StartsWith("ANTIMISSILE-"))
-                Me.CustomName = String.Format("{0}MISSILE-{1}",THIS_MISSILE_IS_AN_ANTIMISSILE?"ANTI":"",refCon.OtherConnector.CustomData);
-                //getCustName(); 
+                Me.CustomName = String.Format("{0}MISSILE-{1}", THIS_MISSILE_IS_AN_ANTIMISSILE ? "ANTI" : "", refCon.OtherConnector.CustomData);
+                SayMyName(SCRIPT_VERSION);
             }
 
             FindThrusters();
@@ -895,8 +913,10 @@ namespace IngameScript {
                 forward = SHIP_CONTROLLER.WorldMatrix.Forward,
                 diff = Vector3D.Subtract(velocity, forward);
 
+            double multiplier = distance > 1000d ? 0.75 : 1;
+
             ///    New Part               && Classic Part
-            return (diff.Length() < 0.5d) && (distance <= GetSpeed() + ACT_DIST || GetSpeed() > maxSpeed);
+            return (diff.Length() < 0.5d) && (distance <= GetSpeed() + ACT_DIST || GetSpeed() > (maxSpeed * multiplier));
         }
 
         bool PayloadPrimed = false;
@@ -928,11 +948,11 @@ namespace IngameScript {
                     break;
 
                 case MISSILE_STATE.PREPARING_FOR_LAUNCH:
-                    if (timeIndex > 200) { // /2 because of the throttling
+                    if (timeIndex > 8) { // /2 because of the throttling
                         initPos = Me.GetPosition();
                         ChangeState(MISSILE_STATE.EXITING_LAUNCHPORT);
                     }
-                    CutAnchor(200 - timeIndex);
+                    CutAnchor(8 - timeIndex);
                     break;
 
                 case MISSILE_STATE.EXITING_LAUNCHPORT:
@@ -1084,7 +1104,7 @@ namespace IngameScript {
                     }
                     command = DirToCmd(2, culprit);
 
-                    culprit = culprit == 4 ? 3 : (culprit==3? 4 : culprit);
+                    //culprit = culprit == 4 ? 3 : (culprit==3? 4 : culprit);
 
                     if (useMNV) DirToMnv(2, culprit, mnvAmm);
 
@@ -1130,11 +1150,6 @@ namespace IngameScript {
                 dist = Vector3D.Distance(myPos, enPos), //c
                 cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
 
-                // pre 10-08-2021
-                // delta = 4 * dist * dist * ((1 / (t * t)) + (cos * cos) - 1);
-
-                // post 10-08-2021
-                // delta = 4c^2(t^2cos^2 - t^2 + 1)
                 delta = 4 * (dist * dist) * ((t * t * cos * cos) - (t * t) + 1);
 
             if (delta < 0) {
@@ -1142,20 +1157,9 @@ namespace IngameScript {
             }
             else
             if (delta == 0) {
-                // pre 10-08-2021
-                // projPath = -1 * (2 * dist * cos) / (2 * (((t * t) - 1) / (t * t)));
-
-                // post 10-08-2021
                 projPath = ((t * dist * cos) / ((t * t) - 1));
             }
             else {
-                // pre 10-08-2021
-                // projPath = ((2 * dist * cos - Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                // if (projPath < 0) {
-                //     projPath = ((2 * dist * cos + Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                // }
-
-                // post 10-08-2021
                 if ((projPath = (((2 * t * dist * cos) + Math.Sqrt(delta)) / (2 * ((t * t) - 1)))) < 0) {
                     projPath = (((2 * t * dist * cos) - Math.Sqrt(delta)) / (2 * ((t * t) - 1)));
                 }
@@ -1199,6 +1203,12 @@ namespace IngameScript {
                     MoveAllGyros(0, 0, 0);
                     OverrideGyros(false);
                 }
+            }
+            else if (eval[0].Equals("THRUST")) {
+                if (eval.Length > 1) {
+                    DirToMnv(2, int.Parse(eval[1]), 1f);
+                }
+                else ResetThrust(true);
             }
             else if (eval[0].Equals("LNCH")) {
                 if (eval.Length > 3) {

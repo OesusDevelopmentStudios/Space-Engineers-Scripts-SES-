@@ -110,8 +110,7 @@ namespace IngameScript {
         }
 
         IMyShipController SHIP_CONTROLLER;
-        IMyTextPanel CONTROL_SCREEN;
-        readonly string ShipName = "";
+        List<IMyTextPanel> screens = new List<IMyTextPanel>();
         int stdby_decr,
             landingDir;
         float TWR = 1f;
@@ -125,7 +124,6 @@ namespace IngameScript {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             string name = Me.CubeGrid.CustomName;
             string[] split = name.Split(' ');
-            if (!(split.Length > 1 && split[1].ToUpper().Equals("GRID"))) { ShipName = name; }
             SayMyName("SHIP CONTROL");
         }
 
@@ -211,18 +209,24 @@ namespace IngameScript {
             return inp;
         }
 
-        public bool GetScreen() {
-            CONTROL_SCREEN = GridTerminalSystem.GetBlockWithName(ShipName + "/SCS") as IMyTextPanel;
-            if (CONTROL_SCREEN == null)
-                return false;
-            else {
-                CONTROL_SCREEN.ContentType = ContentType.TEXT_AND_IMAGE;
-                return true;
-            }
+        public bool GetScreens() {
+            List<IMyTextPanel> 
+                temp = new List<IMyTextPanel>();
+                screens = new List<IMyTextPanel>();
+            GridTerminalSystem.GetBlocksOfType(temp);
+            foreach(IMyTextPanel screen in temp)
+                if(IsOnThisGrid(screen) && 
+                    screen.CustomName.Contains("SCS"))
+                    screens.Add(screen);
+
+
+
+            return screens.Count>0;
         }
 
         public void InitShip() {
-            FindThrusters();
+            FindThrusters(); 
+            GetScreens();
             GetGyros(true);
         }
 
@@ -610,7 +614,7 @@ namespace IngameScript {
             }
             bool ok = true;
             if (output) {
-                for (int i = 1; i < 7; i++) if (!THRUSTERS.TryGetValue(i, out temp)) { ok = false; Output("WARNING: NO " + DirintToName(i) + " THRUSTERS."); }
+                for (int i = 1; i < 7; i++) if (!THRUSTERS.ContainsKey(i)) { ok = false; Output("WARNING: NO " + DirintToName(i) + " THRUSTERS."); }
                 if (ok) Output("All thrusters found.");
             }
         }
@@ -682,6 +686,7 @@ namespace IngameScript {
         }
 
         public void CLS() {
+            foreach(IMyTextPanel CONTROL_SCREEN in screens)
             if (CONTROL_SCREEN is IMyCockpit && allowOnCockpit) {
                 IMyCockpit cock = (IMyCockpit)CONTROL_SCREEN;
                 IMyTextSurface pan = cock.GetSurface(0);
@@ -689,25 +694,25 @@ namespace IngameScript {
                     pan.ContentType = ContentType.TEXT_AND_IMAGE;
                     pan.WriteText("", false);
                 }
-                else {
-                    if (GetScreen()) {
-                        CONTROL_SCREEN.WriteText("", false);
-                    }
-                }
             }
-            else if (GetScreen()) {
+            else {
+                CustomizePanel();
                 CONTROL_SCREEN.WriteText("", false);
             }
         }
 
         public void CustomizePanel() {
-            CONTROL_SCREEN.FontSize = 0.8f;
-            CONTROL_SCREEN.Font = "Monospace";
+            foreach(IMyTextPanel CONTROL_SCREEN in screens){
+                CONTROL_SCREEN.FontSize = 0.8f;
+                CONTROL_SCREEN.Font = "Monospace";
+            }
         }
 
         public void Output(Object input) {
             string message = (input is string) ? (string)input : input.ToString();
             message += "\n";
+            
+            foreach(IMyTextPanel CONTROL_SCREEN in screens)
             if (SHIP_CONTROLLER is IMyCockpit && allowOnCockpit) {
                 IMyCockpit cock = (IMyCockpit)SHIP_CONTROLLER;
                 IMyTextSurface pan = cock.GetSurface(0);
@@ -715,14 +720,8 @@ namespace IngameScript {
                     pan.ContentType = ContentType.TEXT_AND_IMAGE;
                     pan.WriteText(message, true);
                 }
-                else {
-                    if (GetScreen()) {
-                        CustomizePanel();
-                        CONTROL_SCREEN.WriteText(message, true);
-                    }
-                }
             }
-            else if (GetScreen()) {
+            else {
                 CustomizePanel();
                 CONTROL_SCREEN.WriteText(message, true);
             }

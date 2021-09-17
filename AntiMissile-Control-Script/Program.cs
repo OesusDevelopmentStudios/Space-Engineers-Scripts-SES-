@@ -23,7 +23,7 @@ namespace IngameScript {
         //////////////////// MISSILE CONTROL SCRIPT ///////////////////////
         /// Constants
 
-        const string SCRIPT_VERSION = "v6.0.0";
+        const string SCRIPT_VERSION = "v6.2.0";
         const bool DEFAULT_DAMPENERS_SETTING = false;
         const float ACT_DIST = 100f;
         const double maxDeviation = 0.65d;
@@ -1179,52 +1179,43 @@ namespace IngameScript {
 
             return scalarProduct / productOfLengths;
         }
-        Vector3D GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed) {
-            /// do not enter if enSpeed is a "0" vector, or if our speed is 0
-            Vector3D
-            A = enPos,
-            B = myPos;
-
+        bool GetProjectedPos(Vector3D enPos, Vector3D enSpeed, Vector3D myPos, double speed, out Vector3D projPos) {/// do not enter if enSpeed is a "0" vector, or if our speed is 0
             if (speed <= 0) speed = 1;
+            projPos = NOTHING;
+            /// A = enPos, B = myPos, C is the estimated meeting point
+
+            if (speed < maxSpeed && speed < enSpeed.Length() &&
+            Vector3D.Subtract(Vector3D.Normalize(Vector3D.Subtract(myPos, enPos)), Vector3D.Normalize(enSpeed))
+                .Length() > 1.4142d) // i.e. if there is no chance in hell we will make it... please, accelerate :^)
+                return false;
 
             double
-                t = enSpeed.Length() / speed,        //t -> b = a*t  
-                projPath,//b
-                dist = Vector3D.Distance(A, B),         //c
+                t = enSpeed.Length() / speed,           //t -> b = a*t  
+                projPath,                               //b
+                dist = Vector3D.Distance(myPos, enPos), //c
                 cos = InterCosine(enSpeed, Vector3D.Subtract(myPos, enPos)),
 
-                delta = 4 * dist * dist * ((1 / (t * t)) + (cos * cos) - 1);
+                delta = 4 * (dist * dist) * ((t * t * cos * cos) - (t * t) + 1);
 
             if (delta < 0) {
-                return NOTHING;
+                return false;
             }
             else
             if (delta == 0) {
-                if (t == 0) {
-                    return NOTHING;
-                }
-                projPath = -1 * (2 * dist * cos) / (2 * (((t * t) - 1) / (t * t)));
+                projPath = ((t * dist * cos) / ((t * t) - 1));
             }
             else {
-                if (t == 0) {
-                    return NOTHING;
+                if ((projPath = (((2 * t * dist * cos) + Math.Sqrt(delta)) / (2 * ((t * t) - 1)))) < 0) {
+                    projPath = (((2 * t * dist * cos) - Math.Sqrt(delta)) / (2 * ((t * t) - 1)));
                 }
-                else
-                if (t == 1) {
-                    projPath = (dist) / (2 * cos);
-                }
-                else {
-                    projPath = ((2 * dist * cos - Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                    if (projPath < 0) {
-                        projPath = ((2 * dist * cos + Math.Sqrt(delta)) / (2 * (((t * t) - 1) / (t * t))));
-                    }
-                }
-
             }
+            projPath *= t; /// projPath = a, so, to get b, we need to a*t = b
+
             enSpeed = Vector3D.Normalize(enSpeed);
             enSpeed = Vector3D.Multiply(enSpeed, projPath);
 
-            return Vector3D.Add(enPos, enSpeed);
+            projPos = Vector3D.Add(enPos, enSpeed);
+            return true;
         }
 
         Vector3D ApplyTarSpd(Vector3D position, Vector3D speed, int addedTicks=0) {
@@ -1237,8 +1228,8 @@ namespace IngameScript {
                     Vector3D addition = Vector3D.Multiply(speed,((double)addedTicks/60d));
                     position = Vector3D.Add(position, addition);
                 }
-                Vector3D output = GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition()/**/, SHIP_CONTROLLER.GetShipSpeed()/**/);
-                if (!output.Equals(NOTHING)) {
+                Vector3D output;
+                if (GetProjectedPos(position, speed, SHIP_CONTROLLER.CubeGrid.GetPosition(), SHIP_CONTROLLER.GetShipSpeed(), out output)) {
                     return output;
                 }
             }
