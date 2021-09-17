@@ -220,13 +220,12 @@ namespace IngameScript {
 
                 Vector3D position = Ship_Controller.GetPosition();
                 List<Entry> content = GetContentAsSortedList();
-                if(SelectedTargetIndex>1 && SelectedTargetIndex>GetContentAsList.Count) SelectedTargetIndex = GetContentAsList.Count;
                 foreach (Entry entry in content) {
                     output += String.Format("\n{5,1}{0,2}){1,4}{2,4}{3,8}{4,8}{6,1}{7}", ++i, 
                     RelationToAbbreviation(entry.Relation), TypeToAbbreviation(entry.Type), 
                     new Bearing(position, Ship_Controller.WorldMatrix, entry.Location).ToString(), 
                     Convert(entry.Location), i==SelectedTargetIndex? ">":"", i==SelectedTargetIndex? "":"<",
-                    (entry.));
+                    MissionCodes.Contains(entry.Id.ToString())?"[M]":"");
                 }
 
                 return output;
@@ -834,6 +833,17 @@ namespace IngameScript {
                     int index, i = 0;
                     Entry target;
                     switch (args[0]) {
+                        case "up":
+                            SelectedTargetIndex++;
+                            int count = Register.GetContentAsList().Count;
+                            if (SelectedTargetIndex > 1 && SelectedTargetIndex > count) SelectedTargetIndex = count;
+                            break;
+
+                        case "down":
+                            SelectedTargetIndex--;
+                            if (SelectedTargetIndex < 1) SelectedTargetIndex = 1;
+                            break;
+
                         case "ext":
                         case "range":
                             if (args.Length > 1 && float.TryParse(args[1], out detExt)) {

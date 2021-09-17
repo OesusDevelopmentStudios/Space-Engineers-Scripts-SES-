@@ -21,7 +21,6 @@ namespace IngameScript {
     partial class Program : MyGridProgram {// UTILITY
 
         readonly string 
-            SHIP_NAME = "",
             ROTAT_LIGHT,
             OTHER_LIGHT,
             SRED_LIGHT,
@@ -43,7 +42,6 @@ namespace IngameScript {
         }
 
         public Program() {
-            SHIP_NAME = Me.CubeGrid.CustomName;
             SayMyName("RED ALERT");
             onAlert = false;
             ROTAT_LIGHT = "Rotating Light";
@@ -203,7 +201,7 @@ namespace IngameScript {
 
                 case "test":
                         string chckName = argument.Substring(eval[0].Length+1);
-                        IMyTerminalBlock block = GridTerminalSystem.GetBlockWithName(chckName) as IMyTerminalBlock;
+                        IMyTerminalBlock block = GridTerminalSystem.GetBlockWithName(chckName);
                         if (block == null) {
                             Echo("UnU");
                             return;

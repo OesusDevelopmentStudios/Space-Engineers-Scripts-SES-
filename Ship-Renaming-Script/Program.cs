@@ -28,9 +28,8 @@ namespace IngameScript {
                 ShipName = "Ship";
         }
 
-        const string IGNORE = "[NO-RENAME]";
-        string   ShipName   = "";
-        string[] Alphabet   = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"};
+        readonly string   ShipName   = "";
+        readonly string[] Alphabet   = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"};
 
         public bool ShouldBeIgnored(IMyTerminalBlock block) {
             string name = block.CustomName.ToLower(), data = block.CustomData.ToLower();
@@ -108,16 +107,14 @@ namespace IngameScript {
                 smolH2 = 0;
 
             foreach (IMyGasTank tank in tanks) {
-                if (!thisOnly || IsOnThisGrid(tank)) {
-                    if (tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
-                        if(tank.BlockDefinition.SubtypeName.Contains("LargeHydrogenTank"))
-                            tank.CustomName = ShipName + "/H2 Tank " + GetAlphabet(H2Tanks++);
-                        else
-                            tank.CustomName = ShipName + "/Small H2 Tank " + GetAlphabet(smolH2++);
-                        tank.ShowInInventory = true;
-                        tank.ShowInTerminal = false;
-                        tank.ShowInToolbarConfig = false;
-                    }
+                if (tank.BlockDefinition.SubtypeName.Contains("HydrogenTank")) {
+                    if(tank.BlockDefinition.SubtypeName.Contains("LargeHydrogenTank"))
+                        tank.CustomName = ShipName + "/H2 Tank " + GetAlphabet(H2Tanks++);
+                    else
+                        tank.CustomName = ShipName + "/Small H2 Tank " + GetAlphabet(smolH2++);
+                    tank.ShowInInventory = true;
+                    tank.ShowInTerminal = false;
+                    tank.ShowInToolbarConfig = false;
                 }
             }
         }
@@ -446,7 +443,7 @@ namespace IngameScript {
 
         public bool IsOnThisGrid(IMyCubeBlock block) { return (block != null && block.CubeGrid.Equals(Me.CubeGrid)); }
                
-        public void executeNameAll() {
+        public void ExecuteNameAll() {
             switch (allInc) {
                 case 0:
                     GasTanks();
@@ -529,11 +526,11 @@ namespace IngameScript {
         public void Main(string argument, UpdateType updateSource) {
             String[] eval = argument.ToLower().Split(' ');
             if (argument.Equals("")) {
-                executeNameAll();
+                ExecuteNameAll();
             }
             if (eval[0].Equals("name") || eval[0].Equals("rename")) {
                 string arg = eval.Length > 1 ? eval[1] : "all";
-                notAll = eval.Length > 2 ? (eval[2].Equals("unlimited")||eval[2].Equals("all") ? false:true) : true;
+                notAll = eval.Length <= 2 || (!eval[2].Equals("unlimited")&& !eval[2].Equals("all"));
                 FindAllBlocks(notAll);
                 switch (arg) {
                     case "all":
