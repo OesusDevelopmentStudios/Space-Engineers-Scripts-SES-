@@ -32,6 +32,12 @@ namespace IngameScript {
         string   ShipName   = "";
         string[] Alphabet   = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"};
 
+        public bool ShouldBeIgnored(IMyTerminalBlock block) {
+            string name = block.CustomName.ToLower(), data = block.CustomData.ToLower();
+            if(name.Contains("ignore") || data.Contains("ignore")) return true;
+            return false;
+        }
+
         public string GetAlphabet(int index) {
             int count = Alphabet.Count();
             if (index < count) return Alphabet[index];
@@ -46,7 +52,7 @@ namespace IngameScript {
             List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
             GridTerminalSystem.GetBlocksOfType(temp); allBlocks = new List<IMyTerminalBlock>();
             foreach(IMyTerminalBlock block in temp)
-                if((!thisOnly || IsOnThisGrid(block)) && !block.CustomName.Contains(IGNORE)) allBlocks.Add(block);
+                if((!thisOnly || IsOnThisGrid(block)) && !ShouldBeIgnored(block)) allBlocks.Add(block);
         }
 
         void FindItemsForList<T>(List<T> list) where T: IMyTerminalBlock{
@@ -163,8 +169,9 @@ namespace IngameScript {
         public void PowerProds() {
             List<IMyPowerProducer> prods = new List<IMyPowerProducer>();
             FindItemsForList(prods);
-            int reactorNo = 0;
-            int BatteryNo = 0;
+            int reactorNo = 0,
+                batteryNo = 0,
+                h2coreNo  = 0;
 
             foreach (IMyPowerProducer prod in prods) {
                 if(prod is IMyReactor) {
@@ -182,13 +189,13 @@ namespace IngameScript {
                 }
                 else
                 if (prod is IMyBatteryBlock) {
-                    prod.CustomName = ShipName + "/Battery " + ++BatteryNo;
+                    prod.CustomName = ShipName + "/Battery " + ++batteryNo;
                     prod.ShowInInventory = false;
                     prod.ShowInTerminal = false;
                     prod.ShowInToolbarConfig = false;
                 }
                 else {
-                    prod.CustomName = ShipName + "/Hydrogen Power Core";
+                    prod.CustomName = ShipName + "/Hydrogen Power Core " + GetAlphabet(h2coreNo++);
                     prod.ShowInInventory = false;
                     prod.ShowInTerminal = false;
                     prod.ShowInToolbarConfig = false;
@@ -198,9 +205,9 @@ namespace IngameScript {
         public void Batteries() {
             List<IMyBatteryBlock> bats = new List<IMyBatteryBlock>();
             FindItemsForList(bats);
-            int BatteryNo = 0;
+            int batteryNo = 0;
             foreach (IMyBatteryBlock bat in bats) {
-                bat.CustomName = ShipName + "/Battery "+ ++BatteryNo;
+                bat.CustomName = ShipName + "/Battery "+ ++batteryNo;
                 bat.ShowInInventory = false;
                 bat.ShowInTerminal = false;
                 bat.ShowInToolbarConfig = false;
@@ -256,7 +263,7 @@ namespace IngameScript {
                     wep.ShowInToolbarConfig = false;
                 }
                 else {
-                    wep.CustomName = ShipName + "/.Undefined Weapon";
+                    wep.CustomName = ShipName + "/Undefined Weapon";
                     wep.ShowInInventory = true;
                     wep.ShowInTerminal = false;
                     wep.ShowInToolbarConfig = false;
@@ -301,21 +308,25 @@ namespace IngameScript {
             List<IMyAssembler> items = new List<IMyAssembler>();
             FindItemsForList(items);
 
+            int assemblerNo = 0,
+                bassemblerNo = 0,
+                survKitNo = 0;
+
             foreach (IMyAssembler item in items) {
                 if (item.BlockDefinition.SubtypeName.Contains("Assembler")) {
                     if (item.BlockDefinition.SubtypeName.Contains("Large")) {
-                        item.CustomName = ShipName + "/Assembler";
+                        item.CustomName = ShipName + "/Assembler "+ GetAlphabet(assemblerNo++);
                         item.ShowInTerminal = false;
                         item.ShowInToolbarConfig = false;
                     }
                     else {
-                        item.CustomName = ShipName + "/Basic Assembler";
+                        item.CustomName = ShipName + "/Basic Assembler "+ GetAlphabet(bassemblerNo++);
                         item.ShowInTerminal = false;
                         item.ShowInToolbarConfig = false;
                     }
                 }
                 else {
-                    item.CustomName = ShipName + "/Survival Kit";
+                    item.CustomName = ShipName + "/Survival Kit "+ GetAlphabet(survKitNo++);
                     item.ShowInTerminal = false;
                     item.ShowInToolbarConfig = false;
                 }
@@ -326,8 +337,10 @@ namespace IngameScript {
             List<IMyRefinery> items = new List<IMyRefinery>();
             FindItemsForList(items);
 
+            int refineryNo = 0;
+
             foreach (IMyRefinery item in items) {
-                item.CustomName = ShipName + "/Refinery";
+                item.CustomName = ShipName + "/Refinery "+ GetAlphabet(refineryNo++);
                 item.ShowInTerminal = false;
                 item.ShowInToolbarConfig = false;
             }

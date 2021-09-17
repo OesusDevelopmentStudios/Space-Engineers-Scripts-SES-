@@ -141,9 +141,12 @@ namespace IngameScript {
             }
         }
 
-        public bool CheckForIgnore(IMyTerminalBlock block) {
-            string name = block.CustomName.ToLower();
-            if(name.Contains("(ignore)")|| name.Contains("[ignore]")) return true;
+        public bool ShouldBeIgnored(IMyTerminalBlock block) {
+            string 
+                name = block.CustomName.ToLower(), 
+                data = block.CustomData.ToLower();
+
+            if(name.Contains("ignore") || data.Contains("ignore")) return true;
             return false;
         }
 
@@ -164,8 +167,6 @@ namespace IngameScript {
         }
 
         public void Main(string argument, UpdateType updateSource) {
-            /**/
-
             String[] eval = argument.Split(' ');
 
             if(eval.Length<=0)
@@ -177,11 +178,11 @@ namespace IngameScript {
                     GridTerminalSystem.GetBlocksOfType(temp);
                     foreach (IMyLightingBlock bl in temp) {
                         if (
-                            !CheckForIgnore(bl) &&
-                            !bl.CustomName.Equals(ALARM_LIGHT) &&
-                            !bl.CustomName.Equals(ROTAT_LIGHT) &&
-                            !bl.CustomName.Equals(SWITCH_LIGHT) &&
-                            !bl.CustomName.Equals(OTHER_LIGHT) &&
+                            !ShouldBeIgnored(bl) &&
+                            !bl.CustomName.Contains(ALARM_LIGHT) &&
+                            !bl.CustomName.Contains(ROTAT_LIGHT) &&
+                            !bl.CustomName.Contains(SWITCH_LIGHT) &&
+                            !bl.CustomName.Contains(OTHER_LIGHT) &&
                             bl.CubeGrid.Equals(Me.CubeGrid)
                         ) {
                             if(bl.BlockDefinition.SubtypeName.Equals("RotatingLightLarge")

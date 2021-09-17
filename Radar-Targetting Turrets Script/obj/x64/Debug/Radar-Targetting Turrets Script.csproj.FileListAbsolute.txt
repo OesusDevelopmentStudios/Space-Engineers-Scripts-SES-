@@ -1,3 +1,0 @@
-C:\Users\patap\source\repos\Radar-Targetting Turrets Script\obj\x64\Debug\Radar-Targetting Turrets Script.csprojAssemblyReference.cache
-C:\Users\patap\source\repos\Radar-Targetting Turrets Script\obj\x64\Debug\Radar-Targetting Turrets Script.exe.config
-C:\Users\patap\source\repos\Radar-Targetting Turrets Script\obj\x64\Debug\Radar-Targetting Turrets Script.csproj.CoreCompileInputs.cache
