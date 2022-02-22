@@ -224,7 +224,7 @@ namespace IngameScript {
                     output += String.Format("\n{5,1}{0,2}){1,4}{2,4}{3,8}{4,8}{6,1}{7}", ++i, 
                     RelationToAbbreviation(entry.Relation), TypeToAbbreviation(entry.Type), 
                     new Bearing(position, Ship_Controller.WorldMatrix, entry.Location).ToString(), 
-                    Convert(entry.Location), i==SelectedTargetIndex? ">":"", i==SelectedTargetIndex? "":"<",
+                    Convert(entry.Location), i==SelectedTargetIndex? ">":"", i==SelectedTargetIndex? "<":"",
                     MissionCodes.Contains(entry.Id.ToString())?"[M]":"");
                 }
 
@@ -834,14 +834,14 @@ namespace IngameScript {
                     Entry target;
                     switch (args[0]) {
                         case "up":
-                            SelectedTargetIndex++;
-                            int count = Register.GetContentAsList().Count;
-                            if (SelectedTargetIndex > 1 && SelectedTargetIndex > count) SelectedTargetIndex = count;
+                            SelectedTargetIndex--;
+                            if (SelectedTargetIndex < 1) SelectedTargetIndex = 1;
                             break;
 
                         case "down":
-                            SelectedTargetIndex--;
-                            if (SelectedTargetIndex < 1) SelectedTargetIndex = 1;
+                            SelectedTargetIndex++;
+                            int count = Register.GetContentAsList().Count;
+                            if (SelectedTargetIndex > 1 && SelectedTargetIndex > count) SelectedTargetIndex = count;
                             break;
 
                         case "ext":
@@ -895,6 +895,7 @@ namespace IngameScript {
 
                         case "attack":
                         case "fire":
+                            string code;
                             if (args.Length > 1) {
                                 int magnitude = 0;
                                 try { index = int.Parse(args[1]) - 1; } catch (Exception e) { e.ToString(); return; }
@@ -903,10 +904,16 @@ namespace IngameScript {
                                 if (args.Length > 2) {
                                     try { magnitude = int.Parse(args[2]); } catch (Exception e) { e.ToString(); magnitude = 0; }
                                 }
-                                Register.AddMissionCode(target.Id.ToString());
-                                PrepareForLaunch(target.Id.ToString(),magnitude);
+                                code = target.Id.ToString();
+                                Register.AddMissionCode(code);
+                                PrepareForLaunch(code, magnitude);
                             }
-
+                            else {
+                                target = Register.GetByIndex(SelectedTargetIndex - 1); if (target == null) return;
+                                code = target.Id.ToString();
+                                Register.AddMissionCode(code);
+                                PrepareForLaunch(code, 1);
+                            }
                             break;
 
                         case "abort":
