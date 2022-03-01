@@ -109,7 +109,8 @@ namespace IngameScript
             }
 
             public int GetToggleTimeForDoorType( IMyDoor door )
-            {
+            {//AirtightHangarDoor
+                if ( door is IMyAirtightHangarDoor ) return 16;
                 if ( door.BlockDefinition.SubtypeName.Contains( "SlidingHatchDoor" ) ) return 3;
                 //if ( door.BlockDefinition.SubtypeName.Equals( "" ) || door.BlockDefinition.SubtypeName.Equals( "SmallDoor" ) ) return 1;
                 return 1;
@@ -309,6 +310,32 @@ namespace IngameScript
             return Me.CubeGrid.Equals( block.CubeGrid );
         }
 
+        public void SetUpAirlockUsingArguments(IMyDoor door, string[] args)
+        {
+            string airKey = args[1];
+            bool isDoorA = args[2].Equals( "a" );
+            AirlockOperationMode mode = args.Length > 3 ? ParseMode( args[3] ) : AirlockOperationMode.TIME_CONTROLLED_FULL_CYCLE;
+            FinalAirlockState state = args.Length > 4 ? ParseState( args[4] ) : FinalAirlockState.CLOSE_BOTH;
+
+            Airlock air;
+            if ( airlocks.TryGetValue( airKey, out air ) )
+                airlocks.Remove( airKey );
+            else
+                air = new Airlock( );
+
+            if ( isDoorA )
+                air.AddA( door );
+            else
+                air.AddB( door );
+
+            if ( !mode.Equals( AirlockOperationMode.TIME_CONTROLLED_FULL_CYCLE ) ) air.SetMode( mode );
+            if ( !state.Equals( FinalAirlockState.CLOSE_BOTH ) ) air.SetFinalState( state );
+
+            door.CustomName = String.Format( "Door {0} - Airlock {1}", isDoorA ? "A" : "B", airKey.ToUpper( ) );
+
+            airlocks.Add( airKey, air );
+        }
+
         public void FindAllAirlocks()
         {
             List<IMyDoor> doors = new List<IMyDoor>( );
@@ -321,28 +348,16 @@ namespace IngameScript
                     //if(args.Length) AIRLCK;PPAL45;A;TIME;BOTH
                     if ( args.Length > 2 && args[0].Equals( PROGRAM_TAG ) )
                     {
-                        string airKey = args [1];
-                        bool isDoorA = args [2].Equals( "a" );
-                        AirlockOperationMode mode = args.Length>3? ParseMode(args[3]):AirlockOperationMode.TIME_CONTROLLED_FULL_CYCLE;
-                        FinalAirlockState state = args.Length>4? ParseState(args[4]):FinalAirlockState.CLOSE_BOTH;
-
-                        Airlock air;
-                        if ( airlocks.TryGetValue( airKey, out air ) )
-                            airlocks.Remove( airKey );
-                        else
-                            air = new Airlock( );
-
-                        if ( isDoorA )
-                            air.AddA( door );
-                        else
-                            air.AddB( door );
-
-                        if ( !mode.Equals( AirlockOperationMode.TIME_CONTROLLED_FULL_CYCLE ) ) air.SetMode( mode );
-                        if ( !state.Equals( FinalAirlockState.CLOSE_BOTH ) ) air.SetFinalState( state );
-
-                        door.CustomName = String.Format("Door {0} - Airlock {1}", isDoorA? "A":"B", airKey.ToUpper());
-
-                        airlocks.Add( airKey, air );
+                        SetUpAirlockUsingArguments( door, args );
+                    }
+                    else
+                    {
+                        args = door.CustomName.ToLower( ).Split( ';' );
+                        if ( args.Length > 2 && args[0].Equals( PROGRAM_TAG ) )
+                        {
+                            door.CustomData = door.CustomName;
+                            SetUpAirlockUsingArguments( door, args );
+                        }
                     }
                 }
             }
