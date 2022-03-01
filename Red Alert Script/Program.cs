@@ -45,7 +45,7 @@ namespace IngameScript {
             SayMyName("RED ALERT");
             onAlert = false;
             ROTAT_LIGHT = "Rotating Light";
-            OTHER_LIGHT = "Light";
+            OTHER_LIGHT = "Static Light";
             SRED_LIGHT = "Static Red Light";
             SWITCH_LIGHT = "Switch Light";
             ALARM_LIGHT = "Alarm Light";
@@ -110,6 +110,7 @@ namespace IngameScript {
                 ChangeLightsColor   (switchLights,  new Color(  0,  0,255));
                 ChangeLightsColor   (alarmLights,   new Color(  0,  0,255));
                 ChangeLightsColor   (sredLights,    new Color( 60,  0,  0));
+                ChangeLightsColor   (rotatLights,   new Color(255,  0,  0));
                 ChangeLightsStatus  (rotatLights, true);
                 ChangeLightsStatus  (alarmLights, true);
                 foreach (IMyLightingBlock l in otherLights) {
