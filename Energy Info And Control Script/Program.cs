@@ -256,13 +256,13 @@ namespace IngameScript {
             }
         }
 
-        void SayMyName(string ScriptName, float textSize = 2f) {
+        void SayMyName() {
             IMyTextSurface surface = Me.GetSurface(0);
             surface.Alignment = TextAlignment.CENTER;
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
-            surface.FontSize = textSize;
-            surface.WriteText("\n\n" + ScriptName);
-            Me.CustomName = "[" + ScriptName + "] Script";
+            surface.FontSize = 2f;
+            surface.WriteText("\n\n" + "ENERGY INFO\n& CONTROL" );
+            Me.CustomName = "[ENERGY INFO & CONTROL] Script";
         }
 
         public void Save(){ Storage = CurrentState.ToString(); }
@@ -278,7 +278,7 @@ namespace IngameScript {
             FindHydrogenTanks();
             FindTextPanels();
             IceAmount = GetIceAmount();
-            SayMyName("ENERGY INFO & CONTROL");
+            SayMyName();
             if(!Enum.TryParse(Storage, out CurrentState))
                 CurrentState = ControllerState.NORMAL;
 

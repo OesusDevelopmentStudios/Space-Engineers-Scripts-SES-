@@ -20,12 +20,11 @@ using VRageMath;
 namespace IngameScript {
     partial class Program : MyGridProgram {
 
-        Dictionary<string, Component> dictionary;
+        //Dictionary<string, Component> dictionary;
 
         List<IMyAssembler> assemblers = new List<IMyAssembler>();
         int StateTim = 0;
-
-        double accDev = 0.2d;
+        readonly double acceptableDeviation = 0.2d;
 
         State currentState;
 
@@ -43,7 +42,7 @@ namespace IngameScript {
             surface.WriteText(ScriptName);
         }
 
-        public string unpackList(List<object> list) {
+        public string UnpackList(List<object> list) {
             string output = "";
             foreach (object obj in list) {
                 output += obj.ToString() + "\n";
@@ -51,7 +50,7 @@ namespace IngameScript {
             return output;
         }
 
-        public string unpackList(List<MyInventoryItem> list) {
+        public string UnpackList(List<MyInventoryItem> list) {
             string output = "";
             foreach (MyInventoryItem obj in list) {
                 output += obj.Amount + "x " + obj.Type.TypeId.Substring(16) + "/" + obj.Type.SubtypeId + " [" + obj.ItemId + "]\n";
@@ -59,7 +58,7 @@ namespace IngameScript {
             return output;
         }
 
-        public string unpackList(List<MyProductionItem> list) {
+        public string UnpackList(List<MyProductionItem> list) {
             string output = "";
             foreach (MyProductionItem obj in list) {
                 //output += obj.Amount + "x " + obj.Type.TypeId.Substring(16) + "/" + obj.Type.SubtypeId + " [" + obj.ItemId + "]\n";
@@ -68,66 +67,69 @@ namespace IngameScript {
             return output;
         }
 
-        public string listToDictionary(List<MyInventoryItem> list) {
+        public string ListToDictionary(List<MyInventoryItem> list) {
             string output = "";
             foreach (MyInventoryItem obj in list) {
                 output += "dictionary.Add(\"" + obj.Type.TypeId.Substring(16) + "/" + obj.Type.SubtypeId + "\", new Component());\n";
             }
             return output;
         }
-
-        public void buildDictionary() {
-            dictionary = new Dictionary<string, Component>();
-            dictionary.Add("AmmoMagazine/Missile200mm", new Component());
-            dictionary.Add("AmmoMagazine/NATO_25x184mm", new Component());
-            dictionary.Add("AmmoMagazine/NATO_5p56x45mm", new Component());
-            dictionary.Add("Component/BulletproofGlass", new Component());
-            dictionary.Add("Component/Canvas", new Component());
-            dictionary.Add("Component/Computer", new Component());
-            dictionary.Add("Component/Construction", new Component());
-            dictionary.Add("Component/Detector", new Component());
-            dictionary.Add("Component/Display", new Component());
-            dictionary.Add("Component/Explosives", new Component());
-            dictionary.Add("Component/Girder", new Component());
-            dictionary.Add("Component/GravityGenerator", new Component());
-            dictionary.Add("Component/InteriorPlate", new Component());
-            dictionary.Add("Component/LargeTube", new Component());
-            dictionary.Add("Component/Medical", new Component());
-            dictionary.Add("Component/MetalGrid", new Component());
-            dictionary.Add("Component/Motor", new Component());
-            dictionary.Add("Component/PowerCell", new Component());
-            dictionary.Add("Component/RadioCommunication", new Component());
-            dictionary.Add("Component/Reactor", new Component());
-            dictionary.Add("Component/SmallTube", new Component());
-            dictionary.Add("Component/SolarCell", new Component());
-            dictionary.Add("Component/SteelPlate", new Component());
-            dictionary.Add("Component/Superconductor", new Component());
-            dictionary.Add("Component/Thrust", new Component());
-            dictionary.Add("Datapad/Datapad", new Component());
-            dictionary.Add("GasContainerObject/HydrogenBottle", new Component());
-            dictionary.Add("OxygenContainerObject/OxygenBottle", new Component());
-            dictionary.Add("PhysicalGunObject/AngleGrinderItem", new Component());
-            dictionary.Add("PhysicalGunObject/AngleGrinder2Item", new Component());
-            dictionary.Add("PhysicalGunObject/AngleGrinder3Item", new Component());
-            dictionary.Add("PhysicalGunObject/AngleGrinder4Item", new Component());
-            dictionary.Add("PhysicalGunObject/AutomaticRifleItem", new Component());
-            dictionary.Add("PhysicalGunObject/HandDrillItem", new Component());
-            dictionary.Add("PhysicalGunObject/HandDrill2Item", new Component());
-            dictionary.Add("PhysicalGunObject/HandDrill3Item", new Component());
-            dictionary.Add("PhysicalGunObject/HandDrill4Item", new Component());
-            dictionary.Add("PhysicalGunObject/PreciseAutomaticRifleItem", new Component());
-            dictionary.Add("PhysicalGunObject/RapidFireAutomaticRifleItem", new Component());
-            dictionary.Add("PhysicalGunObject/UltimateAutomaticRifleItem", new Component());
-            dictionary.Add("PhysicalGunObject/WelderItem", new Component());
-            dictionary.Add("PhysicalGunObject/Welder2Item", new Component());
-            dictionary.Add("PhysicalGunObject/Welder3Item", new Component());
-            dictionary.Add("PhysicalGunObject/Welder4Item", new Component());
+        /*/
+        public void BuildDictionary() {
+            dictionary = new Dictionary<string, Component>
+            {
+                { "AmmoMagazine/Missile200mm", new Component( ) },
+                { "AmmoMagazine/NATO_25x184mm", new Component( ) },
+                { "AmmoMagazine/NATO_5p56x45mm", new Component( ) },
+                { "Component/BulletproofGlass", new Component( ) },
+                { "Component/Canvas", new Component( ) },
+                { "Component/Computer", new Component( ) },
+                { "Component/Construction", new Component( ) },
+                { "Component/Detector", new Component( ) },
+                { "Component/Display", new Component( ) },
+                { "Component/Explosives", new Component( ) },
+                { "Component/Girder", new Component( ) },
+                { "Component/GravityGenerator", new Component( ) },
+                { "Component/InteriorPlate", new Component( ) },
+                { "Component/LargeTube", new Component( ) },
+                { "Component/Medical", new Component( ) },
+                { "Component/MetalGrid", new Component( ) },
+                { "Component/Motor", new Component( ) },
+                { "Component/PowerCell", new Component( ) },
+                { "Component/RadioCommunication", new Component( ) },
+                { "Component/Reactor", new Component( ) },
+                { "Component/SmallTube", new Component( ) },
+                { "Component/SolarCell", new Component( ) },
+                { "Component/SteelPlate", new Component( ) },
+                { "Component/Superconductor", new Component( ) },
+                { "Component/Thrust", new Component( ) },
+                { "Datapad/Datapad", new Component( ) },
+                { "GasContainerObject/HydrogenBottle", new Component( ) },
+                { "OxygenContainerObject/OxygenBottle", new Component( ) },
+                { "PhysicalGunObject/AngleGrinderItem", new Component( ) },
+                { "PhysicalGunObject/AngleGrinder2Item", new Component( ) },
+                { "PhysicalGunObject/AngleGrinder3Item", new Component( ) },
+                { "PhysicalGunObject/AngleGrinder4Item", new Component( ) },
+                { "PhysicalGunObject/AutomaticRifleItem", new Component( ) },
+                { "PhysicalGunObject/HandDrillItem", new Component( ) },
+                { "PhysicalGunObject/HandDrill2Item", new Component( ) },
+                { "PhysicalGunObject/HandDrill3Item", new Component( ) },
+                { "PhysicalGunObject/HandDrill4Item", new Component( ) },
+                { "PhysicalGunObject/PreciseAutomaticRifleItem", new Component( ) },
+                { "PhysicalGunObject/RapidFireAutomaticRifleItem", new Component( ) },
+                { "PhysicalGunObject/UltimateAutomaticRifleItem", new Component( ) },
+                { "PhysicalGunObject/WelderItem", new Component( ) },
+                { "PhysicalGunObject/Welder2Item", new Component( ) },
+                { "PhysicalGunObject/Welder3Item", new Component( ) },
+                { "PhysicalGunObject/Welder4Item", new Component( ) }
+            };
         }
+        /**/
 
         public Program() {
-            //Runtime.UpdateFrequency = UpdateFrequency.Update10;
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
             //buildDictionary();
-            changeState(State.INIT);
+            ChangeState(State.INIT);
             SayMyName("PROD CTRL\n SCRIPT",2f);
         }
 
@@ -139,7 +141,7 @@ namespace IngameScript {
 
         }
 
-        public void changeState(State state) {
+        public void ChangeState(State state) {
             StateTim = 0;
             switch (state) {
                 case State.INIT:
@@ -154,28 +156,28 @@ namespace IngameScript {
             }
         }
 
-        public void executeStateWork() {
+        public void ExecuteStateWork() {
             switch (currentState) {
                 case State.INIT:
                     switch (StateTim++) {
-                        case 0: findAssemblers(); break;
-                        case 1: changeState(State.WORK);  break;
+                        case 0: FindAssemblers(); break;
+                        case 1: if (assemblers.Count>0) ChangeState(State.WORK); else Runtime.UpdateFrequency = UpdateFrequency.None;  break;
                     }
                     break;
 
                 case State.WORK:
                     switch (StateTim++) {
                         case  2:
-                            distributeWork();
+                            DistributeWork();
                             break;
                         case  5:
-                            distributeWork();
+                            DistributeWork();
                             break;
                         case  8:
-                            distributeWork();
+                            DistributeWork();
                             break;
                         case 11:
-                            distributeWork();
+                            DistributeWork();
                             StateTim = 0;
                             break;
                     }
@@ -183,7 +185,7 @@ namespace IngameScript {
             }
         }
 
-        public List<MyProductionItem> glueQuota(List<MyProductionItem> input) {
+        public List<MyProductionItem> GlueQuota(List<MyProductionItem> input) {
             Dictionary<MyDefinitionId, MyFixedPoint> gluer = new Dictionary<MyDefinitionId, MyFixedPoint>();
             MyFixedPoint temp;
             foreach(MyProductionItem subQuota in input) {
@@ -199,9 +201,9 @@ namespace IngameScript {
             return output;
         }
 
-        public void divideWork(List<MyProductionItem> quota, List<IMyAssembler> workers) {
+        public void DivideWork(List<MyProductionItem> quota, List<IMyAssembler> workers) {
             int workersNo = workers.Count;
-            quota = glueQuota(quota);
+            quota = GlueQuota(quota);
             Echo("Workers Count: " + workersNo);
             foreach (IMyAssembler worker in workers) {
                 worker.ClearQueue();
@@ -218,13 +220,13 @@ namespace IngameScript {
             }
         }
 
-        public MyFixedPoint getAmount(List<MyProductionItem> list) {
+        public MyFixedPoint GetAmount(List<MyProductionItem> list) {
             MyFixedPoint output = 0;
             foreach(MyProductionItem quota in list) {output += quota.Amount;}
             return output;
         }
 
-        public MyFixedPoint difference(MyFixedPoint A, MyFixedPoint B) {
+        public MyFixedPoint GetDifferenceBetween(MyFixedPoint A, MyFixedPoint B) {
             if (A == B) return 0;
             MyFixedPoint 
                 min = A > B ? B : A,
@@ -234,7 +236,7 @@ namespace IngameScript {
         }
 
 
-        public void distributeWork() {
+        public void DistributeWork() {
             //int avAss = 0;
             List<MyProductionItem>
                 input   = new List<MyProductionItem>(),
@@ -252,40 +254,40 @@ namespace IngameScript {
                     ass.GetQueue(input);
                     summary.AddList(input);
                     if (ass.IsWorking) {
-                        amounts.Add(getAmount(input));
+                        amounts.Add(GetAmount(input));
                         workable.Add(ass);
                     }
                     else ass.ClearQueue();
                 }
             }
             bool isFine = true;
-            MyFixedPoint median = (int)getAmount(summary) / workable.Count;
+            MyFixedPoint median = (int)GetAmount(summary) / workable.Count;
 
             foreach(MyFixedPoint amount in amounts) {
-                if (difference(amount, median) > 100 && ((double)amount > (double)median * (1 + accDev) || (double)amount < (double)median * (1- accDev))) isFine = false;
+                if (GetDifferenceBetween(amount, median) > 100 && ((double)amount > (double)median * (1 + acceptableDeviation) || (double)amount < (double)median * (1- acceptableDeviation))) isFine = false;
             }
 
-            if (!isFine) divideWork(summary, workable);
+            if (!isFine) DivideWork(summary, workable);
         }
 
-        public bool isOnThisGrid(IMyCubeBlock block) {
+        public bool IsOnThisGrid(IMyCubeBlock block) {
             if (Me.CubeGrid.Equals(block.CubeGrid)) return true;
             return false;
         }
 
-        public void findAssemblers(){
+        public void FindAssemblers(){
             List<IMyAssembler> 
                 temp    = new List<IMyAssembler>(), 
                 output  = new List<IMyAssembler>();
 
             GridTerminalSystem.GetBlocksOfType(temp);
-            foreach (IMyAssembler ass in temp) { if (isOnThisGrid(ass) && !ass.BlockDefinition.SubtypeName.Contains("SurvivalKit")) output.Add(ass); }
+            foreach (IMyAssembler ass in temp) { if (IsOnThisGrid(ass) && !ass.BlockDefinition.SubtypeName.Contains("SurvivalKit")) output.Add(ass); }
 
             assemblers = new List<IMyAssembler>();
             assemblers.AddList(output);
         }
 
-        public void output(object input) {
+        public void Output(object input) {
             string output = input is string ? (string)input : input.ToString();
             IMyTextSurface surf = GridTerminalSystem.GetBlockWithName("OutputTest") as IMyTextSurface;
             if (surf == null) return;
@@ -293,10 +295,10 @@ namespace IngameScript {
         }
 
         public void Main(string argument, UpdateType updateSource) {
-            if((updateSource & UpdateType.Update10)>0) executeStateWork();
+            if((updateSource & UpdateType.Update10)>0) ExecuteStateWork();
             else {
                 if (argument.ToLower().Equals("clear")) {
-                    divideWork(new List<MyProductionItem>(), assemblers);
+                    DivideWork(new List<MyProductionItem>(), assemblers);
                 }
             }
         }

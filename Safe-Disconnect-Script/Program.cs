@@ -154,7 +154,7 @@ namespace IngameScript {
             }
         }
 
-        public void Main(string argument, UpdateType updateSource) {
+        public void Main(UpdateType updateSource) {
             if ((updateSource & (UpdateType.Update10 | UpdateType.Update100)) > 0) {
                 Echo(GetCurrentStateName());
                 FindNeededShipBlocks(updateSource);

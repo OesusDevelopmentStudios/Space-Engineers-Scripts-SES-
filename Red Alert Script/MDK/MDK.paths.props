@@ -5,10 +5,10 @@
     You can safely exclude this file from code repositories and use different 
     user settings per machine.
     -->
-    <MDKVersion>1.4.9</MDKVersion>
+    <MDKVersion>1.4.12</MDKVersion>
     <MDKUseGameBinPath>no</MDKUseGameBinPath>
     <MDKGameBinPath>G:\Ze Steama\SteamApps\common\SpaceEngineers\Bin64</MDKGameBinPath>
-    <MDKInstallPath>c:\users\patap\appdata\local\microsoft\visualstudio\16.0_f0d7aaa8\extensions\mnid5gxa.zrt</MDKInstallPath>
+    <MDKInstallPath>c:\users\patap\appdata\local\microsoft\visualstudio\16.0_f0d7aaa8\extensions\btqseond.rvo</MDKInstallPath>
     <MDKOutputPath>C:\Users\patap\AppData\Roaming\SpaceEngineers\IngameScripts\local</MDKOutputPath>
   </PropertyGroup>
   <ItemGroup>

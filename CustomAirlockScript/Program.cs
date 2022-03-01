@@ -342,7 +342,7 @@ namespace IngameScript
             GridTerminalSystem.GetBlocksOfType( doors );
             foreach(IMyDoor door in doors )
             {
-                if(IsOnThisGrid(door) && door.CustomData.Length > 0 )
+                if( IsOnThisGrid(door) )
                 {
                     string [ ] args = door.CustomData.ToLower().Split( ';' );
                     //if(args.Length) AIRLCK;PPAL45;A;TIME;BOTH
